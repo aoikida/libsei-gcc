@@ -12,7 +12,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "heap.h"
-#define ALLOC_MAX_SIZE HEAP_10MB
+#define ALLOC_MAX_SIZE 1024
 
 struct allocation {
     size_t size;

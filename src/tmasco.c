@@ -75,3 +75,5 @@ ITM_WRITE(uint64_t, U8)
 /* methods used by clang-tm */
 int _ITM_initializeProcess() { return 0; }
 void tanger_stm_save_restore_stack(void* low_addr, void* high_addr) {}
+//void* tanger_stm_indirect_resolve_multiple(void *nontxnal_function,
+//                                           uint32_t version) { return NULL; }

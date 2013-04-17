@@ -1,0 +1,24 @@
+# -*- python -*-
+
+# ----------------------------------------------------------------------
+# Copyright (c) 2013 Diogo Behrens
+# Distributed under the MIT license. See accompanying file LICENSE.
+# ----------------------------------------------------------------------
+
+env = Environment()
+env.Append(CFLAGS = '-g -O0 ')
+
+env.Append(LIBPATH=['../build'])
+env.Append(CPPPATH=['../include'])
+
+llvm = False
+
+if llvm:
+   env.Replace(CC = 'clang')
+   env.Append(CFLAGS = '-emit-llvm ')
+   env.Append(CFLAGS = '-ftm ')
+   env.Replace(OBJSUFFIX = '.bc')
+else:
+   env.Append(CFLAGS = '-fgnu-tm ')
+
+env.Program('test', 'glue.c', LIBS=['asco'])
