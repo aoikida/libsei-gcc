@@ -1,0 +1,165 @@
+/* -----------------------------------------------------------------------------
+ * Copyright (c) 2013 Diogo Behrens
+ * Distributed under the MIT license. See accompanying file LICENSE.
+ * -------------------------------------------------------------------------- */
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <asco.h>
+
+/* -----------------------------------------------------------------------------
+ * types and data structures
+ * -------------------------------------------------------------------------- */
+
+#include "heap.h"
+#include "cow.h"
+
+struct asco {
+    heap_t* heap[2];  /* the heap of each process */
+    cow_t*  cow[2];   /* a copy-on-write buffer   */
+    int p;            /* the actual process       */
+};
+
+
+/* -----------------------------------------------------------------------------
+ * constructor/destructor
+ * -------------------------------------------------------------------------- */
+
+asco_t*
+asco_init()
+{
+    asco_t* asco = (asco_t*) malloc(sizeof(asco_t));
+    assert(asco);
+    asco->cow[0] = cow_init(10);
+    asco->cow[1] = cow_init(10);
+
+    asco->heap[0] = heap_init(HEAP_10MB);
+    asco->heap[1] = heap_init(HEAP_10MB);
+    asco->p = -1;
+
+    return asco;
+}
+
+void
+asco_fini(asco_t* asco)
+{
+    assert(asco);
+    cow_fini(asco->cow[0]);
+    cow_fini(asco->cow[1]);
+    heap_fini(asco->heap[0]);
+    heap_fini(asco->heap[1]);
+}
+
+
+/* -----------------------------------------------------------------------------
+ * traversal control
+ * -------------------------------------------------------------------------- */
+
+void
+asco_begin(asco_t* asco)
+{
+    asco->p = 0;
+}
+
+void
+asco_switch(asco_t* asco)
+{
+    asco->p = 1;
+}
+
+void
+asco_commit(asco_t* asco)
+{
+    int i;
+    cow_t* cow = asco->cow[0];
+    cow_show(cow);
+    cow_apply(cow);
+
+    cow = asco->cow[1];
+    cow_show(cow);
+    cow_apply(cow);
+}
+
+
+/* -----------------------------------------------------------------------------
+ * memory management
+ * -------------------------------------------------------------------------- */
+
+void*
+asco_malloc(asco_t* asco, size_t size)
+{
+    return heap_malloc(asco->heap[asco->p], size);
+}
+
+void
+asco_free(asco_t* asco, void* ptr)
+{
+    assert (heap_in(asco->heap[asco->p], ptr));
+    heap_free(asco->heap[asco->p], ptr);
+}
+
+void*
+asco_calloc(asco_t* asco, size_t nmemb, size_t size)
+{
+    assert (0 && "not implemented");
+}
+
+void
+asco_free2(asco_t* asco, void* ptr1, void* ptr2)
+{
+    assert (asco);
+    heap_free(asco->heap[0], ptr1);
+    heap_free(asco->heap[2], ptr2);
+}
+
+/* -----------------------------------------------------------------------------
+ * load and stores
+ * -------------------------------------------------------------------------- */
+
+
+#define ASCO_READ(type)                                                 \
+    type asco_read_##type(asco_t* asco, const type* addr)               \
+    {                                                                   \
+        if (!heap_in(asco->heap[asco->p], (void*) addr))                \
+            return *addr;                                               \
+        size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);       \
+        type* addr2 = (type*) heap_get(asco->heap[1-asco->p], rel);     \
+        printf("checking rel = %ld (%ld %ld)\n", rel, *addr, *addr2);   \
+        if (*addr != *addr2) {                                          \
+            /* could the variable be a pointer? */                      \
+            if (sizeof(type) == sizeof(uint64_t)) {                     \
+                type* ptr1 = (type*) (uint64_t) *addr;                  \
+                type* ptr2 = (type*) (uint64_t) *addr2;                 \
+                size_t rel1 = heap_rel(asco->heap[asco->p], ptr1);      \
+                size_t rel2 = heap_rel(asco->heap[1-asco->p], ptr2);    \
+                assert (rel1 == rel2 && "error mem check");             \
+            } else {                                                    \
+                assert (0 && "error mem check");                        \
+            }                                                           \
+        }                                                               \
+        if (0 && asco->p == 1)                                          \
+            return *addr;                                               \
+        cow_t* cow = asco->cow[asco->p];                                \
+        return cow_read_##type(cow, addr);                              \
+    }
+ASCO_READ(uint8_t)
+ASCO_READ(uint16_t)
+ASCO_READ(uint32_t)
+ASCO_READ(uint64_t)
+
+#define ASCO_WRITE(type)                                                \
+    void asco_write_##type(asco_t* asco, type* addr, type value)        \
+    {                                                                   \
+        if (!heap_in(asco->heap[asco->p], addr)) {                      \
+            *addr = value;                                              \
+            return;                                                     \
+        }                                                               \
+        cow_t* cow = asco->cow[asco->p];                                \
+        cow_write_##type(cow, addr, value);                             \
+    }
+ASCO_WRITE(uint8_t)
+ASCO_WRITE(uint16_t)
+ASCO_WRITE(uint32_t)
+ASCO_WRITE(uint64_t)
