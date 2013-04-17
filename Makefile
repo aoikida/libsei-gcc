@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS = -g -O0
+CFLAGS = -g -O0 -DDEBUG=0
 BUILD  = build
 SRCS   = heap.c cow.c asco.c tmasco.c
 OBJS   = $(addprefix $(BUILD)/, $(SRCS:.c=.o))

@@ -4,6 +4,8 @@
  * -------------------------------------------------------------------------- */
 #include <asco.h>
 #include <assert.h>
+#include <stdio.h>
+#include "debug.h"
 
 #define SIZE_U1 sizeof(uint8_t)
 #define SIZE_U2 sizeof(uint16_t)
@@ -14,12 +16,6 @@ typedef uint8_t     _ITM_TYPE_U1;
 typedef uint16_t    _ITM_TYPE_U2;
 typedef uint32_t    _ITM_TYPE_U4;
 typedef uint64_t    _ITM_TYPE_U8;
-typedef float       _ITM_TYPE_F;
-typedef double      _ITM_TYPE_D;
-typedef long double _ITM_TYPE_E;
-typedef float _Complex _ITM_TYPE_CF;
-typedef double _Complex _ITM_TYPE_CD;
-typedef long double _Complex _ITM_TYPE_CE;
 
 extern asco_t* asco;
 
@@ -77,3 +73,18 @@ int _ITM_initializeProcess() { return 0; }
 void tanger_stm_save_restore_stack(void* low_addr, void* high_addr) {}
 //void* tanger_stm_indirect_resolve_multiple(void *nontxnal_function,
 //                                           uint32_t version) { return NULL; }
+
+
+/* other methods */
+void
+_ITM_changeTransactionMode(int flag)
+{
+    DLOG3("changeTransactionMode\n");
+}
+
+void*
+_ITM_getTMCloneOrIrrevocable(void* ptr)
+{
+    DLOG3("getTMCloneOrIrrevocable\n");
+    return ptr;
+}

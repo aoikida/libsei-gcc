@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 #include <asco.h>
+#include "debug.h"
 
 /* -----------------------------------------------------------------------------
  * types and data structures
@@ -39,6 +40,7 @@ asco_init()
     asco->heap[1] = heap_init(HEAP_10MB);
     asco->p = -1;
 
+    DLOG3("asco_init addr: %p (heap = {%p, %p})\n", asco, asco->heap[0], asco->heap[1]);
     return asco;
 }
 
@@ -90,12 +92,15 @@ asco_commit(asco_t* asco)
 void*
 asco_malloc(asco_t* asco, size_t size)
 {
-    return heap_malloc(asco->heap[asco->p], size);
+    void* ptr = heap_malloc(asco->heap[asco->p], size);
+    DLOG3("asco_malloc addr: %p (size = %ld)\n", ptr, size);
+    return ptr;
 }
 
 void
 asco_free(asco_t* asco, void* ptr)
 {
+    DLOG3("asco_free addr: %p\n", ptr);
     assert (heap_in(asco->heap[asco->p], ptr));
     heap_free(asco->heap[asco->p], ptr);
 }
@@ -110,8 +115,9 @@ void
 asco_free2(asco_t* asco, void* ptr1, void* ptr2)
 {
     assert (asco);
+    DLOG3("asco_free2 addrs:(%p, %p)\n", ptr1, ptr2);
     heap_free(asco->heap[0], ptr1);
-    heap_free(asco->heap[2], ptr2);
+    heap_free(asco->heap[1], ptr2);
 }
 
 /* -----------------------------------------------------------------------------
@@ -122,11 +128,15 @@ asco_free2(asco_t* asco, void* ptr1, void* ptr2)
 #define ASCO_READ(type)                                                 \
     type asco_read_##type(asco_t* asco, const type* addr)               \
     {                                                                   \
-        if (!heap_in(asco->heap[asco->p], (void*) addr))                \
+        DLOG3("asco_read_%s addr = %\p", #type, addr);                  \
+        if (!heap_in(asco->heap[asco->p], (void*) addr)) {              \
+            DLOG3("(not in heap) = %ld\n", (uint64_t) *addr);             \
             return *addr;                                               \
+        }                                                               \
+        DLOG3("(in heap)\n", (uint64_t) *addr);                         \
         size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);       \
         type* addr2 = (type*) heap_get(asco->heap[1-asco->p], rel);     \
-        printf("checking rel = %ld (%ld %ld)\n", rel, *addr, *addr2);   \
+        DLOG2("checking rel = %ld (%ld %ld)\n", rel, *addr, *addr2);    \
         if (*addr != *addr2) {                                          \
             /* could the variable be a pointer? */                      \
             if (sizeof(type) == sizeof(uint64_t)) {                     \
@@ -152,6 +162,8 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type)                                                \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
+        DLOG3("asco_write_%s: %p <- %lld\n", #type, addr,                \
+              (uint64_t) value);                                        \
         if (!heap_in(asco->heap[asco->p], addr)) {                      \
             *addr = value;                                              \
             return;                                                     \

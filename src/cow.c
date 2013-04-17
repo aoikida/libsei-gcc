@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "cow.h"
-
+#include "debug.h"
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -129,12 +129,12 @@ void
 cow_show(cow_t* cow)
 {
     int i;
-    printf("----------\n");
-    printf("COW BUFFER 0:\n");
+    DLOG2("----------\n");
+    DLOG2("COW BUFFER %p:\n", cow);
     for (i = 0; i < cow->size; ++i) {
-        printf("addr = %16p value = %ld \n",
-               cow->buffer[i].addr,
-               cow->buffer[i].value_uint8_t);
+        DLOG2("addr = %16p value = %ld \n",
+              cow->buffer[i].addr,
+              cow->buffer[i].value_uint8_t);
     }
-    printf("----------\n");
+    DLOG2("----------\n");
 }
