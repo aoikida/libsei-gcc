@@ -8,6 +8,8 @@
 #include <setjmp.h>
 #include <errno.h>
 
+extern asco_t* __asco;
+
 void* tmasco_malloc(size_t size);
 
 #ifdef TMASCO_ENABLED
