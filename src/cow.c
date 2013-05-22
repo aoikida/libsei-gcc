@@ -65,6 +65,7 @@ cow_apply(cow_t* cow)
 static inline void
 cow_realloc(cow_t* cow)
 {
+    assert (0);
     cow->max_size *= 2;
     cow->buffer = (cow_entry_t*) realloc(cow->buffer,
                                          cow->max_size*sizeof(cow_entry_t));
@@ -88,12 +89,15 @@ cow_find(cow_t* cow, void* addr)
  * reading and writing
  * -------------------------------------------------------------------------- */
 
-#define COW_READ(type)                                                  \
+#define COW_READ(type) inline                                           \
     type cow_read_##type(cow_t* cow, const type* addr)                  \
     {                                                                   \
         cow_entry_t* e = cow_find(cow, (void*)addr);                    \
-        if (e) return e->value_##type;                                  \
-            else   return *addr;                                        \
+        if (e) {                                                        \
+            return e->value_##type;                                     \
+        } else {                                                        \
+            return *addr;                                               \
+        }                                                               \
     }
 COW_READ(uint8_t)
 COW_READ(uint16_t)
@@ -101,13 +105,12 @@ COW_READ(uint32_t)
 COW_READ(uint64_t)
 
 
-#define COW_WRITE(type)                                                 \
+#define COW_WRITE(type) inline                                          \
     void cow_write_##type(cow_t* cow, type* addr, type value)           \
     {                                                                   \
         cow_entry_t* e = cow_find(cow, (void*) addr);                   \
         if (!e) {                                                       \
-            if (cow->size == cow->max_size)                             \
-                cow_realloc(cow);                                       \
+            if (cow->size == cow->max_size) cow_realloc(cow);           \
             e = &cow->buffer[cow->size++];                              \
             assert (e);                                                 \
         }                                                               \
@@ -128,13 +131,14 @@ COW_WRITE(uint64_t)
 void
 cow_show(cow_t* cow)
 {
+    if (cow->size > 100) printf("cow size: %d\n", cow->size);
     int i;
-    DLOG2("----------\n");
-    DLOG2("COW BUFFER %p:\n", cow);
+    DLOG3("----------\n");
+    DLOG3("COW BUFFER %p:\n", cow);
     for (i = 0; i < cow->size; ++i) {
-        DLOG2("addr = %16p value = %ld \n",
+        DLOG3("addr = %16p value = %ld \n",
               cow->buffer[i].addr,
               cow->buffer[i].value_uint8_t);
     }
-    DLOG2("----------\n");
+    DLOG3("----------\n");
 }

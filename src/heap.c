@@ -12,7 +12,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "heap.h"
-#define ALLOC_MAX_SIZE 1024
+#define ALLOC_MAX_SIZE HEAP_100MB //1024
 
 struct allocation {
     size_t size;
@@ -24,8 +24,8 @@ struct allocation {
  * static prototypes
  * -------------------------------------------------------------------------- */
 
-static size_t upper_power_of_two(size_t v);
-static unsigned int_log2(size_t x);
+static inline size_t upper_power_of_two(size_t v);
+static inline unsigned int_log2(size_t x);
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -109,7 +109,7 @@ heap_free(heap_t* heap, void* ptr)
     }
 }
 
-int
+inline int
 heap_in(heap_t* heap, void* ptr)
 {
     return ((char*)ptr >= heap->data

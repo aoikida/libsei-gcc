@@ -27,5 +27,7 @@ void*   heap_get(heap_t* heap, size_t rel);
 #define HEAP_1MB   1024*1024
 #define HEAP_10MB  10*HEAP_1MB
 #define HEAP_100MB 100*HEAP_1MB
+#define HEAP_500MB 500*HEAP_1MB
+#define HEAP_1GB   1000*HEAP_1MB
 
 #endif /* _ASCO_HEAP_H_ */
