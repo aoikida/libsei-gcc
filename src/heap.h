@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 typedef struct allocation allocation_t;
-typedef struct {
+typedef struct heap {
     uint32_t size;
     uint32_t cursor;
     allocation_t** free_list;

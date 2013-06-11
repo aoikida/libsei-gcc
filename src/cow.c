@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "cow.h"
+#include "heap.h"
 #include "debug.h"
 
 /* -----------------------------------------------------------------------------
@@ -35,6 +36,52 @@ cow_fini(cow_t* cow)
 /* -----------------------------------------------------------------------------
  * main interface methods
  * -------------------------------------------------------------------------- */
+
+void
+cow_check_apply(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
+{
+    assert (cow1->size == cow2->size && "cow buffers differ (size)");
+    int i;
+    for (i = 0; i < cow1->size; ++i) {
+        cow_entry_t* e1 = &cow1->buffer[i];
+        cow_entry_t* e2 = &cow2->buffer[i];
+
+        assert (e1->size == e2->size && "cow entries differ (size)");
+        assert (e1->addr != e2->addr && "cow entries point to same address");
+
+        switch(e1->size) {
+        case sizeof(uint8_t):
+            assert (e1->value_uint8_t == e2->value_uint8_t
+                    && "cow entries differ (value)");
+            *((uint8_t*) e1->addr) = e1->value_uint8_t;
+            *((uint8_t*) e2->addr) = e2->value_uint8_t;
+            break;
+        case sizeof(uint16_t):
+            assert (e1->value_uint16_t == e2->value_uint16_t
+                    && "cow entries differ (value)");
+            *((uint16_t*) e1->addr) = e1->value_uint16_t;
+            *((uint16_t*) e2->addr) = e2->value_uint16_t;
+            break;
+        case sizeof(uint32_t):
+            assert (e1->value_uint32_t == e2->value_uint32_t
+                    && "cow entries differ (value)");
+            *((uint32_t*) e1->addr) = e1->value_uint32_t;
+            *((uint32_t*) e2->addr) = e2->value_uint32_t;
+            break;
+        case sizeof(uint64_t):
+            assert ((e1->value_uint64_t == e2->value_uint64_t
+                     || heap_rel(heap1, e1->addr) == heap_rel(heap2, e2->addr))
+                    && "cow entries differ (value)");
+            *((uint64_t*) e1->addr) = e1->value_uint64_t;
+            *((uint64_t*) e2->addr) = e2->value_uint64_t;
+            break;
+        default:
+            assert (0 && "invalid size");
+        }
+    }
+    cow1->size = 0;
+    cow2->size = 0;
+}
 
 void
 cow_apply(cow_t* cow)

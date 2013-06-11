@@ -12,12 +12,13 @@ extern asco_t* __asco;
 
 void* tmasco_malloc(size_t size);
 
+#define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
 #define tmasco_begin() { /* asco scope */       \
     volatile int asco_first;                    \
     asco_first = 1;                             \
     jmp_buf asco_buf;                           \
-    asco_first = 1 - setjmp(&asco_buf);         \
+    asco_first = 1 - setjmp(asco_buf);          \
     asco_begin(__asco);                         \
     __transaction_relaxed {
 
@@ -27,8 +28,9 @@ void* tmasco_malloc(size_t size);
         asco_switch(__asco);
 
 #define tmasco_commit()                         \
-    longjmp(&asco_buf, 1);                      \
+    longjmp(asco_buf, 1);                       \
     } /* !switching */                          \
+    printf("committing: %s:%d\n", __FILE__, __LINE__);\
     asco_commit(__asco);                        \
     } /* !asco scope */
 

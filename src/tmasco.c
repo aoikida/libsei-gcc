@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "debug.h"
 
+// we include libasco as source code here to facilitate inlining
 #include "asco.c"
 #include "cow.c"
 #include "heap.c"
@@ -40,14 +41,13 @@ static inline uintptr_t getsp() {
 /* check whether address x is in the stack or not. */
 #define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __asco_high
 
-
-
+#if 0
 extern char __data_start;
 extern char __bss_start;
 extern char __bss_end;
 extern char edata;
-
 extern void* ignore_addrs[];
+#endif
 
 /* addresses inside the stack are local variables and shouldn't be
  * considered when reading and writing. Other addresses can be
@@ -148,6 +148,7 @@ _ITM_getTMCloneOrIrrevocable(void* ptr)
 void*
 _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 {
+    assert (0 && "check this");
 
     // printf("memcpy size: %d\n", size);
     // TODO: call asco on read and cow on write
@@ -172,6 +173,7 @@ void*
 _ITM_memsetW(void* s, int c, size_t n)
 {
     // TODO: call asco on read and cow on write
+    assert (0 && "check this");
     return memset(s, c, n);
 }
 
@@ -221,9 +223,9 @@ tanger_stm_save_restore_stack(void* low_addr, void* high_addr)
     DLOG2("low = %p, high = %p \n", __asco_low, __asco_high);
 }
 
-/* whenever a method cannot be instrumented in compile time, this
- * method is called to resolve that. We simply return the same
- * method. */
+/* whenever a function cannot be instrumented in compile time, this
+ * function is called to resolve that. We simply return the same
+ * function pointer. */
 void*
 tanger_stm_indirect_resolve_multiple(void *nontxnal_function, uint32_t version)
 {
@@ -231,4 +233,11 @@ tanger_stm_indirect_resolve_multiple(void *nontxnal_function, uint32_t version)
         return tanger_txnal_tmasco_malloc;
     else
         return nontxnal_function;
+}
+
+void*
+tanger_stm_realloc(void* ptr, size_t size)
+{
+    assert (0 && "not supported");
+    return realloc(ptr, size);
 }
