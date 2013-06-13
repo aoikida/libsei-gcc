@@ -155,16 +155,20 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     char* destination = (char*) dst;
     char* source      = (char*) src;
     uint32_t i = 0;
-    /*
+
     do {
-    destination[i] = source[i];
+        //destination[i] = source[i];
+        asco_write_uint8_t(__asco, (void*) (destination + i),
+                           asco_read_uint8_t(__asco, (void*) (source + i)));
     } while (i++ < size);
-    */
+
+    /*
     do {
         asco_write_uint64_t(__asco, (void*) (destination + i),
                            asco_read_uint64_t(__asco, (void*) (source + i)));
         i += 8;
     } while (i < size);
+    */
 
     return (void*) destination;
 }
