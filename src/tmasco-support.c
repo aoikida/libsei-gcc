@@ -11,6 +11,7 @@
 #include "libc/string/strlen.c"
 #include "libc/string/strdup.c"
 #include "libc/string/memcmp.c"
+#include "libc/string/strcmp.c"
 #include "libc/string/strncpy.c"
 #include "libc/string/strcpy.c"
 

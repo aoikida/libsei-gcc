@@ -3,6 +3,7 @@
 void* ignore_addrs[] = {NULL};
 
 #define TMASCO_ENABLED
+#include "../../src/tmasco-support.c"
 #include "ukv.c"
 #include "hashtable/hashtable.c"
 #include "hashtable/hashtable_utility.c"

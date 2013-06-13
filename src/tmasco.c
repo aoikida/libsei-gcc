@@ -148,7 +148,7 @@ _ITM_getTMCloneOrIrrevocable(void* ptr)
 void*
 _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 {
-    assert (0 && "check this");
+    //assert (0 && "check this");
 
     // printf("memcpy size: %d\n", size);
     // TODO: call asco on read and cow on write
@@ -173,7 +173,7 @@ void*
 _ITM_memsetW(void* s, int c, size_t n)
 {
     // TODO: call asco on read and cow on write
-    assert (0 && "check this");
+    //assert (0 && "check this");
     return memset(s, c, n);
 }
 

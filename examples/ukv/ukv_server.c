@@ -71,6 +71,8 @@ main(const int argc, const char* argv[])
     tmasco_switch();
     ukv1 = ukv2;
     tmasco_commit();
+
+    printf("ukv1 = %p ukv2 = %p\n", ukv1, ukv2);
 #endif
 
     while (1) {
@@ -124,6 +126,7 @@ main(const int argc, const char* argv[])
             r1 = r2;
             ukv = ukv2;
             tmasco_commit();
+            printf ("r1 = %p r2 = %p\n", r1, r2);
 
             if (!r1) goto fini;
 
