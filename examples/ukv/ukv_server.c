@@ -66,11 +66,11 @@ main(const int argc, const char* argv[])
     ukv_t* ukv1 = NULL;
     ukv_t* ukv2 = NULL;
 
-    tmasco_begin();
+    tmasco_begin(1);
     ukv2 = ukv_init();
-    tmasco_switch();
+    tmasco_switch(1);
     ukv1 = ukv2;
-    tmasco_commit();
+    tmasco_commit(1);
 
     printf("ukv1 = %p ukv2 = %p\n", ukv1, ukv2);
 #endif
@@ -120,12 +120,12 @@ main(const int argc, const char* argv[])
             ukv_t* ukv = ukv1;
             const char* r1 = NULL;
             const char* r2 = NULL;
-            tmasco_begin();
+            tmasco_begin(2);
             r2 = ukv_recv(ukv, buffer);
-            tmasco_switch();
+            tmasco_switch(2);
             r1 = r2;
             ukv = ukv2;
-            tmasco_commit();
+            tmasco_commit(2);
             printf ("r1 = %p r2 = %p\n", r1, r2);
 
             if (!r1) goto fini;
@@ -137,12 +137,13 @@ main(const int argc, const char* argv[])
                    (struct sockaddr*) &caddr, sizeof(caddr));
 
             ukv = ukv1;
-            tmasco_begin();
+            tmasco_begin(3);
             ukv_done(ukv, r1);
-            tmasco_switch();
+            tmasco_switch(3);
             r1 = r2;
             ukv = ukv2;
-            tmasco_commit();
+            tmasco_commit(3);
+            printf("---------------------\n");
 #endif
         }
         close(cfd);

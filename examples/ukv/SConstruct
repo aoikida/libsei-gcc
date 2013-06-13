@@ -32,7 +32,7 @@ env.Append(LIBPATH=['../../build'])
 env.Append(CPPPATH=['../../include'])
 
 llvm = False
-llvm = True
+#llvm = True
 
 if llvm:
     env.Replace(CC = 'clang')
@@ -41,6 +41,7 @@ if llvm:
     env.Replace(OBJSUFFIX = '.bc')
 else:
     env.Append(CFLAGS = '-fgnu-tm ')
+env.Append(CFLAGS = '-DNDEBUG ')
 
 # ukv server (telnet-like) with tmasco
 env.Program('ukv-server.tmasco', ['tmasco_glue.c'], LIBS = ['tmasco', 'm'])

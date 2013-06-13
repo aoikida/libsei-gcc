@@ -58,7 +58,8 @@ hash(struct hashtable *h, void *k)
 {
     /* Aim to protect against poor hash functions by adding logic here
      * - logic taken from java 1.4 hashtable source */
-    unsigned int i = h->hashfn(k);
+    //XXX unsigned int i = h->hashfn(k);
+    unsigned int i = hashfn(k);
     i += ~(i << 9);
     i ^=  ((i >> 14) | (i << 18)); /* >>> */
     i +=  (i << 4);
@@ -170,7 +171,8 @@ hashtable_search(struct hashtable *h, void *k)
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->eqfn(k, e->k))) return e->v;
+        //XXX if ((hashvalue == e->h) && (h->eqfn(k, e->k))) return e->v;
+        if ((hashvalue == e->h) && (eqfn(k, e->k))) return e->v;
         e = e->next;
     }
     return NULL;
@@ -195,7 +197,8 @@ hashtable_remove(struct hashtable *h, void *k)
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        //XXX if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        if ((hashvalue == e->h) && (eqfn(k, e->k)))
         {
             *pE = e->next;
             h->entrycount--;

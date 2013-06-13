@@ -5,6 +5,10 @@
 
 #include "hashtable.h"
 
+// XXX
+extern unsigned int hashfn (void *k);
+extern int eqfn(void* k1, void* k2);
+
 /*****************************************************************************/
 struct entry
 {

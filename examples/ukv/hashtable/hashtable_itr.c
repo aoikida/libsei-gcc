@@ -139,7 +139,8 @@ hashtable_iterator_search(struct hashtable_itr *itr,
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        //XXX if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        if ((hashvalue == e->h) && (eqfn(k, e->k)))
         {
             itr->index = index;
             itr->e = e;

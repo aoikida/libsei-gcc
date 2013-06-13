@@ -26,7 +26,8 @@ hashtable_change(struct hashtable *h, void *k, void *v)
     while (NULL != e)
     {
         /* Check hash value to short circuit heavier comparison */
-        if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        //XXX if ((hashvalue == e->h) && (h->eqfn(k, e->k)))
+        if ((hashvalue == e->h) && (eqfn(k, e->k)))
         {
             free(e->v);
             e->v = v;
