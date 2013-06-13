@@ -91,8 +91,12 @@ ukv_set(ukv_t* ukv, char* key, char* value)
         return v;
     }
 
-    int r;
-    r = hashtable_insert(ukv->h, key, value);
+#ifndef NDEBUG
+    int r =
+#endif
+        hashtable_insert(ukv->h, key, value);
+
+    // assert is removed if NDEBUG is defined
     assert (r != 0);
 
     return NULL;
