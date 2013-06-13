@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -DDEBUG=1 -Wall
+CFLAGS  = -g -O0 -DDEBUG=0 -Wall
 #CFLAGS  = -O3
 ASCOFLG = -DASCO_COMPLETE -DTMASCO_ENABLED
 BUILD   = build
