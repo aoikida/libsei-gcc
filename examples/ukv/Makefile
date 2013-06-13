@@ -78,18 +78,3 @@ $(BUILD)/ukv_test: ukv_test.c $(addprefix $(BUILD)/, $(UKVSRCS:.c=.o))
 
 $(BUILD)/ukv_net_test: ukv_net_test.c $(addprefix $(BUILD)/, $(UKVNSRC:.c=.o))
 	$(CC) $(CFLAGS) $(INCP) $(LIBP) -o $@ $^ $(LIBS)
-
-# llvm = False
-# #llvm = True
-
-# if llvm:
-#     env.Replace(CC = 'clang')
-#     env.Append(CFLAGS = '-emit-llvm -DINC_SUPPORT')
-#     env.Append(CFLAGS = '-ftm ')
-#     env.Replace(OBJSUFFIX = '.bc')
-# else:
-#     env.Append(CFLAGS = '-fgnu-tm ')
-#     env.Append(CFLAGS = '-DNDEBUG ')
-
-# # ukv server (telnet-like) with tmasco
-# env.Program('ukv-server.tmasco', ['tmasco_glue.c'], LIBS = ['tmasco', 'm'])

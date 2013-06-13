@@ -12,8 +12,8 @@ To compile ukv type::
 
   make
 
-In a `build` subdirectory two binaries will be created: ``ukv-server``
-and ``ukv-server.tmasco``.
+In the ``build`` subdirectory two binaries will be created:
+``ukv-server`` and ``ukv-server.tmasco``.
 
 To run the service type::
 
