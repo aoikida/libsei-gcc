@@ -3,7 +3,6 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
 
-/* Sample TCP server */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
