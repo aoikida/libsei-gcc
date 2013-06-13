@@ -29,12 +29,12 @@ Try passing some commands via telnet such as ``+k,v`` and then ``?k``.
 The telnet interface
 --------------------
 
-To set a key send `+key,value` via telnet. There are two possible
-answers. A successful set returns `!`, and an unsuccessful set returns
-`!old value`.
+To set a key send ``+key,value`` via telnet. There are two possible
+answers. A successful set returns ``!``, and an unsuccessful set returns
+``!old value``.
 
-To read a key send `?key` via telnet. If the key is empty, ukv returns
-`!` otherwise `!value`.
+To read a key send ``?key`` via telnet. If the key is empty, ukv returns
+``!`` otherwise ``!value``.
 
-Finally to delete a key simply send `-key`. ukv always returns `!` on
+Finally to delete a key simply send ``-key``. ukv always returns ``!`` on
 delete.

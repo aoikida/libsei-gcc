@@ -16,7 +16,7 @@ Compile the library::
 Example:
 -------
 
-See into ``examples/ukv``.
+See ``examples/ukv``.
 
 ..
    Step into example and call::
