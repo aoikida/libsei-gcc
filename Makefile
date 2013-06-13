@@ -12,7 +12,7 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 TARGET  = libasco.a
 TARGET2 = libtmasco.a
 
-TMSRCS  = tmasco.c tmasco-support.c
+TMSRCS  = tmasco.c tmasco_support.c
 TMOBJS  = $(addprefix $(BUILD)/, $(TMSRCS:.c=.o))
 
 # $(info $(OBJS))
@@ -24,8 +24,8 @@ all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET2)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmasco-%.o: src/tmasco-%.c
-	gcc $(CFLAGS) -fgnu-tm -c -o $@ $<
+$(BUILD)/tmasco_%.o: src/tmasco_%.c
+	gcc $(CFLAGS) -fgnu-tm -I include -c -o $@ $<
 
 $(BUILD)/%.o : src/%.c | $(BUILD)
 	gcc $(CFLAGS) $(ASCOFLG) -I include -c -o $@ $<

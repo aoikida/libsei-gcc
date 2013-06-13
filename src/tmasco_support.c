@@ -3,6 +3,8 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
 #include <assert.h>
+#define TMASCO_IMPL
+#include <tmasco_support.h>
 
 /* -----------------------------------------------------------------------------
  * libc/string functions that should be transactified

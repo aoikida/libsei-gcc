@@ -4,7 +4,10 @@
  * -------------------------------------------------------------------------- */
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
+
 #include <asco.h>
+#include <tmasco_support.h>
+
 #include <setjmp.h>
 #include <errno.h>
 
