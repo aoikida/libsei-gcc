@@ -14,7 +14,28 @@ void* tmasco_malloc(size_t size);
 
 #define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
-#define tmasco_begin() { /* asco scope */       \
+#define tmasco_begin(X) { /* asco scope */      \
+    volatile int asco_first;                    \
+    asco_first = 1;                             \
+asco##X:                                        \
+asco_begin(__asco);                             \
+__transaction_relaxed {
+
+#define tmasco_switch(X) }                      \
+        if (asco_first) { /* switching */       \
+        asco_switch(__asco);
+
+#define tmasco_commit(X)                           \
+    asco_first = 0;                                \
+    goto asco##X;                                  \
+    } /* !switching */                             \
+    printf("Commit: %s:%d\n", __FILE__, __LINE__); \
+    asco_commit(__asco);                           \
+    } /* !asco scope */
+
+#elif TMASCO_ENABLED2
+
+#define tmasco_begin(X) { /* asco scope */      \
     volatile int asco_first;                    \
     asco_first = 1;                             \
     jmp_buf asco_buf;                           \
@@ -22,16 +43,15 @@ void* tmasco_malloc(size_t size);
     asco_begin(__asco);                         \
     __transaction_relaxed {
 
-#define tmasco_switch() }                       \
-        printf("first: %d\n", asco_first);      \
+#define tmasco_switch(X) }                      \
         if (asco_first) { /* switching */       \
         asco_switch(__asco);
 
-#define tmasco_commit()                         \
-    longjmp(asco_buf, 1);                       \
-    } /* !switching */                          \
-    printf("committing: %s:%d\n", __FILE__, __LINE__);\
-    asco_commit(__asco);                        \
+#define tmasco_commit(X)                           \
+    longjmp(asco_buf, 1);                          \
+    } /* !switching */                             \
+    printf("Commit: %s:%d\n", __FILE__, __LINE__); \
+    asco_commit(__asco);                           \
     } /* !asco scope */
 
 #else
