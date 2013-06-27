@@ -3,8 +3,13 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -DDEBUG=0 -Wall
+CFLAGS  = -g -O0 -Wall
 #CFLAGS  = -O3
+
+ifdef ASCO_DEBUG
+CFLAGS += -DDEBUG=$(ASCO_DEBUG)
+endif
+
 ASCOFLG = -DASCO_COMPLETE -DTMASCO_ENABLED
 BUILD   = build
 SRCS    = heap.c cow.c asco.c
