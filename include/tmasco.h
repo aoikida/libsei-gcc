@@ -14,22 +14,25 @@
 extern asco_t* __asco;
 
 void* tmasco_malloc(size_t size);
+void* tmasco_other(void* addr);
 
 #define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
-#define tmasco_begin(X) { /* asco scope */      \
-    volatile int asco_first;                    \
-    asco_first = 1;                             \
-asco##X:                                        \
-asco_begin(__asco);                             \
-__transaction_relaxed {
+#define tmasco_begin(X) { /* asco scope */         \
+    printf("Begin: %s:%d\n", __FILE__, __LINE__);  \
+    volatile int asco_first;                       \
+    asco_first = 1;                                \
+asco##X:                                           \
+asco_begin(__asco);                                \
+__transaction_atomic {
 
-#define tmasco_switch(X) }                      \
-        if (asco_first) { /* switching */       \
-        asco_switch(__asco);
+#define tmasco_switch(X) }                              \
+        printf("Switch: %s:%d\n", __FILE__, __LINE__);  \
+        if (asco_first) { /* switching */
 
 #define tmasco_commit(X)                           \
     asco_first = 0;                                \
+    asco_switch(__asco);                           \
     goto asco##X;                                  \
     } /* !switching */                             \
     printf("Commit: %s:%d\n", __FILE__, __LINE__); \

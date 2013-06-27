@@ -148,10 +148,6 @@ _ITM_getTMCloneOrIrrevocable(void* ptr)
 void*
 _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 {
-    //assert (0 && "check this");
-
-    // printf("memcpy size: %d\n", size);
-    // TODO: call asco on read and cow on write
     char* destination = (char*) dst;
     char* source      = (char*) src;
     uint32_t i = 0;
@@ -162,23 +158,26 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
                            asco_read_uint8_t(__asco, (void*) (source + i)));
     } while (i++ < size);
 
-    /*
-    do {
-        asco_write_uint64_t(__asco, (void*) (destination + i),
-                           asco_read_uint64_t(__asco, (void*) (source + i)));
-        i += 8;
-    } while (i < size);
-    */
-
     return (void*) destination;
+}
+
+void*
+_ITM_memmoveRtWt(void* dst, const void* src, size_t size)
+{
+    assert(0 && "not supported yet");
+    return _ITM_memcpyRtWt(dst, src, size);
 }
 
 void*
 _ITM_memsetW(void* s, int c, size_t n)
 {
-    // TODO: call asco on read and cow on write
-    //assert (0 && "check this");
-    return memset(s, c, n);
+    char* ptr = (char*) s;
+    uint32_t i = 0;
+
+    for (i = 0; i < n; ++i)
+        asco_write_uint8_t(__asco, (void*) (ptr + i), c);
+
+    return s;
 }
 
 int _ITM_initializeProcess() { return 0; }
@@ -204,8 +203,13 @@ tanger_txnal_tmasco_malloc(size_t size)
 void*
 tmasco_other(void* ptr)
 {
-    return asco_other(__asco, ptr);
+    int p = __asco->p;
+    __asco->p = 0;
+    void* r = asco_other(__asco, ptr);
+    __asco->p = p;
+    return r;
 }
+
 /* -----------------------------------------------------------------------------
  * clang-tm methods
  * -------------------------------------------------------------------------- */
@@ -242,6 +246,6 @@ tanger_stm_indirect_resolve_multiple(void *nontxnal_function, uint32_t version)
 void*
 tanger_stm_realloc(void* ptr, size_t size)
 {
-    assert (0 && "not supported");
-    return realloc(ptr, size);
+    assert (ptr == NULL && "not supported");
+    return asco_malloc(__asco, size);
 }
