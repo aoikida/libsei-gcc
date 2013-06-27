@@ -24,7 +24,7 @@ all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET2)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmasco_%.o: src/tmasco_%.c
+$(BUILD)/tmasco_%.o: src/tmasco_%.c $(OBJS)
 	gcc $(CFLAGS) -fgnu-tm -I include -c -o $@ $<
 
 $(BUILD)/%.o : src/%.c | $(BUILD)
