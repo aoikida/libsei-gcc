@@ -99,6 +99,9 @@ asco_commit(asco_t* asco)
     cow_show(cow);
     cow_apply(cow);
 #else
+    cow_show(asco->cow[0]);
+    cow_show(asco->cow[1]);
+
     cow_check_apply(asco->heap[0], asco->cow[0], asco->heap[1], asco->cow[1]);
 #endif
 }
@@ -175,9 +178,16 @@ void*
 asco_other(asco_t* asco, void* addr)
 {
     assert (asco->p == 0 || asco->p == 1);
-    size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);
-    void* other = (void*) heap_get(asco->heap[1-asco->p], rel);
-    return other;
+    if (heap_in(asco->heap[asco->p], addr)) {
+        size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);
+        void* other = (void*) heap_get(asco->heap[1-asco->p], rel);
+        return other;
+    } else {
+        assert (heap_in(asco->heap[1-asco->p], addr) && "address in no heap");
+        size_t rel = heap_rel(asco->heap[1-asco->p], (void*) addr);
+        void* other = (void*) heap_get(asco->heap[asco->p], rel);
+        return other;
+    }
 }
 
 void*
@@ -203,12 +213,15 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
 #define ASCO_READ(type)                                                 \
     type asco_read_##type(asco_t* asco, const type* addr)               \
     {                                                                   \
+        assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_read_%s addr = %p", #type, addr);                   \
         if (!heap_in(asco->heap[asco->p], (void*) addr)) {              \
-            DLOG3("(not in heap) = %ld\n", (uint64_t) *addr);           \
+            DLOG3("(not in heap) = %ld x%lx \n", (uint64_t) *addr,      \
+                  (uint64_t) *addr);                                    \
             return *addr;                                               \
         }                                                               \
-        DLOG3("(in heap)\n", (uint64_t) *addr);                         \
+        DLOG3("(in heap) = %ld x%lx\n", (uint64_t) *addr,               \
+              (uint64_t) *addr);                                        \
         size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);       \
         type* addr2 = (type*) heap_get(asco->heap[1-asco->p], rel);     \
         DLOG2("checking rel = %ld (%ld %ld)\n", rel, *addr, *addr2);    \
@@ -237,9 +250,14 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type)                                                \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
-        DLOG3("asco_write_%s: %p <- %lld\n", #type, addr,               \
-              (uint64_t) value);                                        \
+        assert (asco->p == 0 || asco->p == 1);                          \
+        DLOG3("asco_write_%s: %p <- %lld x%llx\n", #type, addr,         \
+              (uint64_t) value, (uint64_t) value);                      \
         if (!heap_in(asco->heap[asco->p], addr)) {                      \
+            if (heap_in(asco->heap[1- asco->p], addr)) {                \
+                printf("ERROR, writing on other heap %p\n", addr);      \
+                assert (0);                                             \
+            }                                                           \
             *addr = value;                                              \
             return;                                                     \
         }                                                               \
@@ -283,6 +301,7 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type) inline                                         \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
+        assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
               addr, (uint64_t) value);                                  \
         cow_t* cow = asco->cow[asco->p];                                \
@@ -299,6 +318,7 @@ ASCO_WRITE(uint64_t)
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
     {                                                                   \
+        assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_read_%s(%d) addr = %p", #type, asco->p, addr);      \
         cow_t* cow = asco->cow[asco->p];                                \
         type value = cow_read_##type(cow, addr);                        \
@@ -317,6 +337,7 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type) inline                                         \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
+        assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
               addr, (uint64_t) value);                                  \
         cow_t* cow = asco->cow[asco->p];                                \
