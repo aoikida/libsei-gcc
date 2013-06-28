@@ -22,13 +22,14 @@ void* tmasco_other(void* addr);
     printf("Begin: %s:%d\n", __FILE__, __LINE__);  \
     volatile int asco_first;                       \
     asco_first = 1;                                \
-asco##X:                                           \
-asco_begin(__asco);                                \
-__transaction_relaxed {
+    asco##X:                                       \
+    asco_begin(__asco);                            \
+    __transaction_relaxed {
 
-#define tmasco_switch(X) }                              \
-        printf("Switch: %s:%d\n", __FILE__, __LINE__);  \
-        if (asco_first) { /* switching */
+#define tmasco_switch(X) }                         \
+    if (asco_first) { /* switching */              \
+    printf("Switch: %s:%d\n", __FILE__, __LINE__);
+
 
 #define tmasco_commit(X)                           \
     asco_first = 0;                                \
