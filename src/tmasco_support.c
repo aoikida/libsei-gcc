@@ -16,6 +16,8 @@
 #include "libc/string/strcmp.c"
 #include "libc/string/strncpy.c"
 #include "libc/string/strcpy.c"
+#include "libc/string/strncmp.c"
+#include "libc/string/strchr.c"
 
 char*
 strndup(const char *s, size_t n)
@@ -75,11 +77,19 @@ ___string_mock() {
             ;
         }
 
+        // strncmp
+        if (strncmp(str1, str2, 2) == 0) {
+            ;
+        }
+        if (strchr(str1, '\n') == NULL) {
+            ;
+        }
+
+
         // remove 'unused variable' warnings
         y = x;
         y = str1 + s;
         y = str2;
         return y;
-
     }
 }
