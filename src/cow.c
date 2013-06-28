@@ -144,6 +144,9 @@ COW_READ(uint64_t)
             assert (e);                                                 \
             WKEY(e) = GETWKEY(addr);                                    \
             WVAL(e, uint64_t, 0) = *(uint64_t*) GETWADDR(e->wkey);      \
+            printf("[%s:%d] creating new entry x%x = x%x  (x%x)\n",     \
+                       __FILE__, __LINE__, WKEY(e),                     \
+                   WVAL(e, uint64_t, 0), value);                        \
         }                                                               \
         WVAL(e, type, PICKMASK(addr,type)) = value;                     \
         e->next = e+1;                                                  \
