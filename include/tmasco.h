@@ -24,7 +24,7 @@ void* tmasco_other(void* addr);
     asco_first = 1;                                \
 asco##X:                                           \
 asco_begin(__asco);                                \
-__transaction_atomic {
+__transaction_relaxed {
 
 #define tmasco_switch(X) }                              \
         printf("Switch: %s:%d\n", __FILE__, __LINE__);  \

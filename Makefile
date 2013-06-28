@@ -20,11 +20,17 @@ TARGET2 = libtmasco.a
 TMSRCS  = tmasco.c tmasco_support.c
 TMOBJS  = $(addprefix $(BUILD)/, $(TMSRCS:.c=.o))
 
-# $(info $(OBJS))
+TSRCS   = cow_test.c
+TTARGET = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
-.PHONY: all clean
+
+# $(info $(OBJS) $(TTARGET)
+
+.PHONY: all clean test
 
 all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET2)
+
+test: $(TTARGET)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -40,6 +46,9 @@ $(BUILD)/$(TARGET): $(OBJS)
 
 $(BUILD)/$(TARGET2): $(TMOBJS)
 	ar rvs $@ $^
+
+$(BUILD)/%.test: src/%.c $(OBJS)
+	gcc $(CFLAGS) -I include -I src -o $@ $^
 
 clean:
 	rm -rf $(BUILD)

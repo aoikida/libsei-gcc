@@ -7,15 +7,25 @@
 #include <stdint.h>
 #include <stdlib.h> // size_t
 
-typedef struct {
-    void* addr;
-    union {
-        uint8_t  value_uint8_t;
-        uint16_t value_uint16_t;
-        uint32_t value_uint32_t;
-        uint64_t value_uint64_t;
-    };
-    size_t size;
+typedef union {
+    struct {
+        uint64_t value[1];
+    } _uint64_t;
+    struct {
+        uint32_t value[2];
+    } _uint32_t;
+    struct {
+        uint16_t value[4];
+    } _uint16_t;
+    struct {
+        uint8_t value[8];
+    } _uint8_t;
+} cow_word_t;
+
+typedef struct cow_entry {
+    uintptr_t  wkey;
+    cow_word_t wvalue;
+    struct cow_entry* next;
 } cow_entry_t;
 
 typedef struct cow_buffer {

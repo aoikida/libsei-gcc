@@ -9,6 +9,19 @@
 #include "debug.h"
 
 /* -----------------------------------------------------------------------------
+ * helper macros
+ * -------------------------------------------------------------------------- */
+
+#define GETWKEY(addr)        (((uintptr_t) addr) >> 3)
+#define GETWADDR(wkey)       (((uintptr_t) wkey) << 3)
+
+#define TYPEMASK(addr, type) ( (uintptr_t) addr & (sizeof(type) - 1))
+#define PICKMASK(addr, type) (((uintptr_t) addr & 0x07) >> (sizeof(type) >> 1))
+
+#define WKEY(e) (e->wkey)
+#define WVAL(e, type, idx) (e->wvalue._##type.value[idx])
+
+/* -----------------------------------------------------------------------------
  * constructor/destructor
  * -------------------------------------------------------------------------- */
 
@@ -46,38 +59,15 @@ cow_check_apply(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
         cow_entry_t* e1 = &cow1->buffer[i];
         cow_entry_t* e2 = &cow2->buffer[i];
 
-        assert (e1->size == e2->size && "cow entries differ (size)");
-        assert (e1->addr != e2->addr && "cow entries point to same address");
+        assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
 
-        switch(e1->size) {
-        case sizeof(uint8_t):
-            assert (e1->value_uint8_t == e2->value_uint8_t
-                    && "cow entries differ (value)");
-            *((uint8_t*) e1->addr) = e1->value_uint8_t;
-            *((uint8_t*) e2->addr) = e2->value_uint8_t;
-            break;
-        case sizeof(uint16_t):
-            assert (e1->value_uint16_t == e2->value_uint16_t
-                    && "cow entries differ (value)");
-            *((uint16_t*) e1->addr) = e1->value_uint16_t;
-            *((uint16_t*) e2->addr) = e2->value_uint16_t;
-            break;
-        case sizeof(uint32_t):
-            assert (e1->value_uint32_t == e2->value_uint32_t
-                    && "cow entries differ (value)");
-            *((uint32_t*) e1->addr) = e1->value_uint32_t;
-            *((uint32_t*) e2->addr) = e2->value_uint32_t;
-            break;
-        case sizeof(uint64_t):
-            assert ((e1->value_uint64_t == e2->value_uint64_t
-                     || heap_rel(heap1, e1->addr) == heap_rel(heap2, e2->addr))
-                    && "cow entries differ (value)");
-            *((uint64_t*) e1->addr) = e1->value_uint64_t;
-            *((uint64_t*) e2->addr) = e2->value_uint64_t;
-            break;
-        default:
-            assert (0 && "invalid size");
-        }
+        uint64_t v1 = WVAL(e1, uint64_t, 0);
+        uint64_t v2 = WVAL(e2, uint64_t, 0);
+        assert ((v1 == v2
+                 || heap_rel(heap1, (void*) v1) == heap_rel(heap2, (void*) v2))
+                && "cow entries differ (value)");
+        *(uint64_t*) GETWADDR(e1->wkey) = v1;
+        *(uint64_t*) GETWADDR(e2->wkey) = v2;
     }
     cow1->size = 0;
     cow2->size = 0;
@@ -89,22 +79,8 @@ cow_apply(cow_t* cow)
     int i;
     for (i = 0; i < cow->size; ++i) {
         cow_entry_t* e = &cow->buffer[i];
-        switch(e->size) {
-        case sizeof(uint8_t):
-            *((uint8_t*) e->addr) = e->value_uint8_t;
-            break;
-        case sizeof(uint16_t):
-            *((uint16_t*) e->addr) = e->value_uint16_t;
-            break;
-        case sizeof(uint32_t):
-            *((uint32_t*) e->addr) = e->value_uint32_t;
-            break;
-        case sizeof(uint64_t):
-            *((uint64_t*) e->addr) = e->value_uint64_t;
-            break;
-        default:
-            assert (0 && "invalid size");
-        }
+        uintptr_t addr = GETWADDR(e->wkey);
+        *((uint64_t*) addr) = WVAL(e, uint64_t, 0);
     }
     cow->size = 0;
 }
@@ -121,13 +97,13 @@ cow_realloc(cow_t* cow)
 
 
 cow_entry_t*
-cow_find(cow_t* cow, void* addr)
+cow_find(cow_t* cow, uintptr_t wkey)
 {
     int i;
     cow_entry_t* e = cow->buffer;
 
     for (i = cow->size; i > 0; --i, ++e)
-        if (e->addr == addr) return e;
+        if (e->wkey == wkey) return e;
 
     return NULL;
 }
@@ -139,11 +115,14 @@ cow_find(cow_t* cow, void* addr)
 #define COW_READ(type) inline                                           \
     type cow_read_##type(cow_t* cow, const type* addr)                  \
     {                                                                   \
-        cow_entry_t* e = cow_find(cow, (void*)addr);                    \
-        if (e) {                                                        \
-            return e->value_##type;                                     \
-        } else {                                                        \
+        cow_entry_t* e = cow_find(cow, GETWKEY(addr));                  \
+        if (e == NULL) {                                                \
             return *addr;                                               \
+        }                                                               \
+        if (TYPEMASK(addr, type) == 0) {                                \
+            return WVAL(e, type, PICKMASK(addr,type));                  \
+        } else {                                                        \
+            assert (0 && "cant handle unaligned accesses");             \
         }                                                               \
     }
 COW_READ(uint8_t)
@@ -155,15 +134,19 @@ COW_READ(uint64_t)
 #define COW_WRITE(type) inline                                          \
     void cow_write_##type(cow_t* cow, type* addr, type value)           \
     {                                                                   \
-        cow_entry_t* e = cow_find(cow, (void*) addr);                   \
+        if (TYPEMASK(addr, type) != 0) {                                \
+            assert (0 && "cant handle unaligned accesses");             \
+        }                                                               \
+        cow_entry_t* e = cow_find(cow, GETWKEY(addr));                  \
         if (!e) {                                                       \
             if (cow->size == cow->max_size) cow_realloc(cow);           \
             e = &cow->buffer[cow->size++];                              \
             assert (e);                                                 \
+            WKEY(e) = GETWKEY(addr);                                    \
+            WVAL(e, uint64_t, 0) = *(uint64_t*) GETWADDR(e->wkey);      \
         }                                                               \
-        e->addr = (void*) addr;                                         \
-        e->value_##type = value;                                        \
-            e->size = sizeof(type);                                     \
+        WVAL(e, type, PICKMASK(addr,type)) = value;                     \
+        e->next = e+1;                                                  \
     }
 COW_WRITE(uint8_t)
 COW_WRITE(uint16_t)
@@ -183,9 +166,10 @@ cow_show(cow_t* cow)
     DLOG3("----------\n");
     DLOG3("COW BUFFER %p:\n", cow);
     for (i = 0; i < cow->size; ++i) {
-        DLOG3("addr = %16p value = %ld \n",
-              cow->buffer[i].addr,
-              cow->buffer[i].value_uint8_t);
+        DLOG3("addr = %16p value = %ld x%lx \n",
+              cow->buffer[i].wkey,
+              cow->buffer[i].wvalue._uint64_t.value[0],
+              cow->buffer[i].wvalue._uint64_t.value[0]);
     }
     DLOG3("----------\n");
 }
