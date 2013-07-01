@@ -40,7 +40,8 @@ void   cow_apply(cow_t* cow);
 void   cow_show(cow_t* cow);
 
 typedef struct heap heap_t;
-void cow_check_apply(heap_t*, cow_t*, heap_t*, cow_t*);
+void cow_apply_heap(heap_t*, cow_t*, heap_t*, cow_t*);
+void cow_apply_cmp (cow_t*, cow_t*);
 
 void cow_write_uint8_t (cow_t* cow, uint8_t*  addr, uint8_t  value);
 void cow_write_uint16_t(cow_t* cow, uint16_t* addr, uint16_t value);

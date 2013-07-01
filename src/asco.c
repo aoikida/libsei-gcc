@@ -3,12 +3,6 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
 
-/* Modes:
- * - COMPLETE: complete the normal PASC
- * - DOUBLE: two cows
- * - SIMPLE: one cow
- * - ONLY INSTRUMENTATION
- */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +10,27 @@
 #include <assert.h>
 #include <asco.h>
 #include "debug.h"
+
+/* -----------------------------------------------------------------------------
+ * macro configuration
+ * -------------------------------------------------------------------------- */
+
+/* MODE = instr|heap|cow|sheap|scow
+ * - instr: instrumentation only
+ * - heap
+ * - cow
+ * - sheap:
+ * - scow:
+ */
+#define INSTR_MODE 0
+#define HEAP_MODE  1
+#define COW_MODE   2
+#define SHEAP_MODE 3
+#define SCOW_MODE  4
+
+#ifndef MODE
+#error MODE should be defined (HEAP_MODE|COW_MODE|INSTR_MODE)
+#endif
 
 /* -----------------------------------------------------------------------------
  * types and data structures
@@ -94,15 +109,18 @@ asco_commit(asco_t* asco)
     DLOG2("COMMIT: %d\n", asco->p);
     asco->p = -1;
 
-#ifndef ASCO_COMPLETE
+#if MODE == HEAP_MODE
+    cow_show(asco->cow[0]);
+    cow_show(asco->cow[1]);
+    cow_apply_heap(asco->heap[0], asco->cow[0], asco->heap[1], asco->cow[1]);
+#elif MODE == COW_MODE
+    cow_show(asco->cow[0]);
+    cow_show(asco->cow[1]);
+    cow_apply_cmp(asco->cow[0], asco->cow[1]);
+#else
     cow_t* cow = asco->cow[0];
     cow_show(cow);
     cow_apply(cow);
-#else
-    cow_show(asco->cow[0]);
-    cow_show(asco->cow[1]);
-
-    cow_check_apply(asco->heap[0], asco->cow[0], asco->heap[1], asco->cow[1]);
 #endif
 }
 
@@ -113,7 +131,8 @@ asco_commit(asco_t* asco)
 void*
 asco_malloc(asco_t* asco, size_t size)
 {
-#ifdef ASCO_COMPLETE
+
+#if MODE == HEAP_MODE
     void* ptr = heap_malloc(asco->heap[asco->p], size);
     DLOG3("asco_malloc addr: %p (size = %ld)\n", ptr, size);
     return ptr;
@@ -125,7 +144,7 @@ asco_malloc(asco_t* asco, size_t size)
 void
 asco_free(asco_t* asco, void* ptr)
 {
-#ifdef ASCO_COMPLETE
+#if MODE == HEAP_MODE
     DLOG3("asco_free addr: %p\n", ptr);
     assert (heap_in(asco->heap[asco->p], ptr));
     heap_free(asco->heap[asco->p], ptr);
@@ -147,7 +166,7 @@ asco_calloc(asco_t* asco, size_t nmemb, size_t size)
 void*
 asco_malloc2(asco_t* asco, size_t size)
 {
-#ifdef ASCO_COMPLETE
+#if MODE == HEAP_MODE
     assert (asco);
     assert (asco->p == -1 && "should not be called in a traversal");
     asco->p = 0;
@@ -177,6 +196,7 @@ asco_free2(asco_t* asco, void* ptr1, void* ptr2)
 void*
 asco_other(asco_t* asco, void* addr)
 {
+#if MODE == HEAP_MODE
     assert (asco->p == 0 || asco->p == 1);
     if (heap_in(asco->heap[asco->p], addr)) {
         size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);
@@ -188,6 +208,9 @@ asco_other(asco_t* asco, void* addr)
         void* other = (void*) heap_get(asco->heap[asco->p], rel);
         return other;
     }
+#else
+    assert (0 && "asco not compiled with HEAP_MODE");
+#endif
 }
 
 void*
@@ -208,7 +231,7 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
  * load and stores
  * -------------------------------------------------------------------------- */
 
-#if defined(ASCO_COMPLETE)
+#if MODE == HEAP_MODE
 
 #define ASCO_READ(type)                                                 \
     type asco_read_##type(asco_t* asco, const type* addr)               \
@@ -273,7 +296,7 @@ ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
-#elif defined(ASCO_DOUBLE)
+#elif MODE == COW_MODE
 
 #ifdef ASCO_HARD
 #define ASCO_FAIL assert (0 && "Unsafe!\n")
@@ -287,14 +310,7 @@ ASCO_WRITE(uint64_t)
         DLOG3("asco_read_%s(%d) addr = %p", #type, asco->p, addr);      \
         cow_t* cow = asco->cow[asco->p];                                \
         type value = cow_read_##type(cow, addr);                        \
-        if (!heap_in(asco->heap[asco->p], (void*) addr)) {              \
-            DLOG3("asco_read_%s(%d) addr = %p", #type, asco->p, addr);  \
-            DLOG3("(not inheap)= %lx, %lx\n", (uint64_t) *addr, value); \
-            assert(!heap_in(asco->heap[1 - asco->p], (void*) addr));    \
-            ASCO_FAIL;                                                  \
-        } else {                                                        \
-            DLOG3("(in heap)= %lx, %lx\n", (uint64_t) *addr, value);    \
-        }                                                               \
+        DLOG3("= %lx, %lx\n", (uint64_t) *addr, value);                 \
         return value;                                                   \
     }
 ASCO_READ(uint8_t)
@@ -317,7 +333,7 @@ ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
-#elif defined(ASCO_SIMPLE)
+#elif MODE == SINGLE_MODE
 
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
@@ -353,7 +369,7 @@ ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
-#else
+#elif MODE == INSTR_MODE
 
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
@@ -377,5 +393,8 @@ ASCO_WRITE(uint8_t)
 ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
+
+#else
+#error invalid MODE
 
 #endif

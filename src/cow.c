@@ -51,7 +51,27 @@ cow_fini(cow_t* cow)
  * -------------------------------------------------------------------------- */
 
 void
-cow_check_apply(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
+cow_apply_cmp(cow_t* cow1, cow_t* cow2)
+{
+    assert (cow1->size == cow2->size && "cow buffers differ (size)");
+    int i;
+    for (i = 0; i < cow1->size; ++i) {
+        cow_entry_t* e1 = &cow1->buffer[i];
+        cow_entry_t* e2 = &cow2->buffer[i];
+
+        assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
+
+        uint64_t v1 = WVAL(e1, uint64_t, 0);
+        uint64_t v2 = WVAL(e2, uint64_t, 0);
+        assert (v1 == v2 && "cow entries differ (value)");
+        *(uint64_t*) GETWADDR(e1->wkey) = v1;
+    }
+    cow1->size = 0;
+    cow2->size = 0;
+}
+
+void
+cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
 {
     assert (cow1->size == cow2->size && "cow buffers differ (size)");
     int i;
