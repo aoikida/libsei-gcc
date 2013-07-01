@@ -144,7 +144,7 @@ COW_READ(uint64_t)
             assert (e);                                                 \
             WKEY(e) = GETWKEY(addr);                                    \
             WVAL(e, uint64_t, 0) = *(uint64_t*) GETWADDR(e->wkey);      \
-            printf("[%s:%d] creating new entry x%x = x%x  (x%x)\n",     \
+            DLOG3("[%s:%d] creating new entry x%x = x%x  (x%x)\n",      \
                        __FILE__, __LINE__, WKEY(e),                     \
                    WVAL(e, uint64_t, 0), value);                        \
         }                                                               \
@@ -164,7 +164,7 @@ COW_WRITE(uint64_t)
 void
 cow_show(cow_t* cow)
 {
-    if (cow->size > 100) printf("cow size: %d\n", cow->size);
+    if (cow->size > 100) DLOG1("cow size: %d\n", cow->size);
     int i;
     DLOG3("----------\n");
     DLOG3("COW BUFFER %p:\n", cow);

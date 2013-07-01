@@ -11,6 +11,8 @@
 #include <setjmp.h>
 #include <errno.h>
 
+#define D(...)
+
 extern asco_t* __asco;
 
 void* tmasco_malloc(size_t size);
@@ -19,7 +21,7 @@ void* tmasco_other(void* addr);
 #define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
 #define tmasco_begin(X) { /* asco scope */         \
-    printf("Begin: %s:%d\n", __FILE__, __LINE__);  \
+    D("Begin: %s:%d\n", __FILE__, __LINE__);       \
     volatile int asco_first;                       \
     asco_first = 1;                                \
     asco##X:                                       \
@@ -28,7 +30,7 @@ void* tmasco_other(void* addr);
 
 #define tmasco_switch(X) }                         \
     if (asco_first) { /* switching */              \
-    printf("Switch: %s:%d\n", __FILE__, __LINE__);
+    D("Switch: %s:%d\n", __FILE__, __LINE__);
 
 
 #define tmasco_commit(X)                           \
@@ -36,7 +38,7 @@ void* tmasco_other(void* addr);
     asco_switch(__asco);                           \
     goto asco##X;                                  \
     } /* !switching */                             \
-    printf("Commit: %s:%d\n", __FILE__, __LINE__); \
+    D("Commit: %s:%d\n", __FILE__, __LINE__);      \
     asco_commit(__asco);                           \
     } /* !asco scope */
 
@@ -57,7 +59,7 @@ void* tmasco_other(void* addr);
 #define tmasco_commit(X)                           \
     longjmp(asco_buf, 1);                          \
     } /* !switching */                             \
-    printf("Commit: %s:%d\n", __FILE__, __LINE__); \
+    D("Commit: %s:%d\n", __FILE__, __LINE__);      \
     asco_commit(__asco);                           \
     } /* !asco scope */
 
