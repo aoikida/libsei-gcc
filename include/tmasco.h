@@ -11,6 +11,7 @@
 #include <setjmp.h>
 #include <errno.h>
 
+//#define D(...) printf(__VA_ARGS__)
 #define D(...)
 
 extern asco_t* __asco;
