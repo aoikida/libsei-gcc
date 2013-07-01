@@ -11,8 +11,11 @@
 #include <setjmp.h>
 #include <errno.h>
 
-//#define D(...) printf(__VA_ARGS__)
+#ifdef TMASCO_DEBUG
+#define D(...) printf(__VA_ARGS__)
+#else
 #define D(...)
+#endif
 
 extern asco_t* __asco;
 
@@ -21,26 +24,26 @@ void* tmasco_other(void* addr);
 
 #define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
-#define tmasco_begin(X) { /* asco scope */         \
-    D("Begin: %s:%d\n", __FILE__, __LINE__);       \
-    volatile int asco_first;                       \
-    asco_first = 1;                                \
-    asco##X:                                       \
-    asco_begin(__asco);                            \
-    __transaction_relaxed {
+#define tmasco_begin(X) { /* asco scope */           \
+    D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
+    volatile int asco_first;                         \
+    asco_first = 1;                                  \
+asco##X:                                             \
+asco_begin(__asco);                                  \
+__transaction_relaxed {
 
-#define tmasco_switch(X) }                         \
-    if (asco_first) { /* switching */              \
-    D("Switch: %s:%d\n", __FILE__, __LINE__);
+#define tmasco_switch(X) }                                \
+        if (asco_first) { /* switching */                 \
+        D("Switch(%s): %s:%d\n", #X, __FILE__, __LINE__);
 
 
-#define tmasco_commit(X)                           \
-    asco_first = 0;                                \
-    asco_switch(__asco);                           \
-    goto asco##X;                                  \
-    } /* !switching */                             \
-    D("Commit: %s:%d\n", __FILE__, __LINE__);      \
-    asco_commit(__asco);                           \
+#define tmasco_commit(X)                              \
+    asco_first = 0;                                   \
+    asco_switch(__asco);                              \
+    goto asco##X;                                     \
+    } /* !switching */                                \
+    D("Commit(%s): %s:%d\n", #X, __FILE__, __LINE__); \
+    asco_commit(__asco);                              \
     } /* !asco scope */
 
 #elif TMASCO_ENABLED2

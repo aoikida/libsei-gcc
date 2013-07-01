@@ -238,7 +238,7 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
     {                                                                   \
         assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_read_%s addr = %p", #type, addr);                   \
-        if (heap_in(asco->heap[1-asco->p], addr)) {                     \
+        if (heap_in(asco->heap[1-asco->p], (void*) addr)) {             \
             printf("ERROR, reading from other heap %p\n", addr);        \
             assert (0);                                                 \
         }                                                               \
@@ -259,9 +259,9 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
                 type* ptr2 = (type*) (uint64_t) *addr2;                 \
                 size_t rel1 = heap_rel(asco->heap[asco->p], ptr1);      \
                 size_t rel2 = heap_rel(asco->heap[1-asco->p], ptr2);    \
-                assert (1 /*rel1 == rel2*/ && "error mem check");       \
+                assert (rel1 == rel2 && "error mem check");             \
             } else {                                                    \
-                assert (1 /*0*/ && "error mem check");                  \
+                assert (0 && "error mem check");                        \
             }                                                           \
         }                                                               \
         if (0 && asco->p == 1)                                          \
