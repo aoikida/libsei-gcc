@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------------------
 
 CFLAGS  = -g -O0 -Wall
-#CFLAGS  = -O3
+CFLAGS  = -O3
 
 ifdef ASCO_DEBUG
 CFLAGS += -DDEBUG=$(ASCO_DEBUG)
@@ -17,14 +17,30 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 TARGET  = libasco.a
 TARGET2 = libtmasco.a
 
-TMSRCS  = tmasco.c tmasco_support.c
+TMSRCS  = tmasco.c #tmasco_support.c
 TMOBJS  = $(addprefix $(BUILD)/, $(TMSRCS:.c=.o))
 
 TSRCS   = cow_test.c
 TTARGET = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
-
 # $(info $(OBJS) $(TTARGET)
+
+# assume gcc as default compiler
+ifndef CC
+CC=gcc
+endif
+
+# pick TM flags for compiler
+ifeq ($(CC), gcc)
+TMFLAGS = -fgnu-tm
+endif
+ifeq ($(CC), clang)
+TMFLAGS = -ftm
+endif
+
+ifeq (,$(TMFLAGS))
+$(ERROR unsupported compiler)
+endif
 
 .PHONY: all clean test
 
@@ -36,10 +52,10 @@ $(BUILD):
 	mkdir -p $(BUILD)
 
 $(BUILD)/tmasco_%.o: src/tmasco_%.c $(OBJS)
-	gcc $(CFLAGS) -fgnu-tm -I include -c -o $@ $<
+	$(CC) $(CFLAGS) $(TMFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/%.o : src/%.c | $(BUILD)
-	gcc $(CFLAGS) $(ASCOFLG) -I include -c -o $@ $<
+	$(CC) $(CFLAGS) $(ASCOFLG) -I include -c -o $@ $<
 
 $(BUILD)/$(TARGET): $(OBJS)
 	ar rvs $@ $^
@@ -48,7 +64,7 @@ $(BUILD)/$(TARGET2): $(TMOBJS)
 	ar rvs $@ $^
 
 $(BUILD)/%.test: src/%.c $(OBJS)
-	gcc $(CFLAGS) -I include -I src -o $@ $^
+	$(CC) $(CFLAGS) -I include -I src -o $@ $^
 
 clean:
 	rm -rf $(BUILD)
