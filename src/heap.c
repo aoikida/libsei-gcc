@@ -12,7 +12,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "heap.h"
-#define ALLOC_MAX_SIZE HEAP_100MB //1024
+#define ALLOC_MAX_SIZE HEAP_1MB //1024
 
 struct allocation {
     size_t size;
@@ -68,7 +68,7 @@ heap_malloc(heap_t* heap, size_t size)
 {
     assert (size <= ALLOC_MAX_SIZE);
 
-    size_t pow_2_size = upper_power_of_two(size);
+    size_t pow_2_size = upper_power_of_two(size + sizeof(allocation_t));
     unsigned log2 = int_log2(pow_2_size);
 
     // look in free list
@@ -76,6 +76,7 @@ heap_malloc(heap_t* heap, size_t size)
         allocation_t* a = heap->free_list[log2];
         heap->free_list[log2] = a->next;
         a->next = NULL;
+        printf("resuing %p\n", a->data);
         return (void*) a->data;
     }
 
@@ -83,21 +84,26 @@ heap_malloc(heap_t* heap, size_t size)
     //memblock_t* block = heap->blocks[0];
 
     // allocate memory in the block
-    //assert (cursor_ + pow_2_size <= block->size && "should not happen");
+    assert (heap->cursor + pow_2_size < heap->size
+            && "out of memory");
+    if (heap->cursor + pow_2_size >= heap->size)
+        return NULL;
 
-    allocation_t* a = (allocation_t*) heap->data + heap->cursor;
+    allocation_t* a = (allocation_t*) ((char*)heap->data + heap->cursor);
     a->size = pow_2_size;
     a->next = NULL;
-    heap->cursor += pow_2_size + sizeof(allocation_t);
+    heap->cursor += pow_2_size; // + sizeof(allocation_t);
     // for valgrind
     bzero(a->data, size);
-
+    /* printf("alloc %p cursor=%lu pow2_size=%ld log2 = %u hsize = %lu allocation=%lu\n", */
+           /* a->data, heap->cursor, pow_2_size, log2, heap->size, sizeof(allocation_t)); */
     return (void*) a->data;
 }
 
 void
 heap_free(heap_t* heap, void* ptr)
 {
+    assert (heap_in(heap, ptr) && "freeing data not in heap");
     allocation_t* a = (allocation_t*) (((char*) ptr) - sizeof(allocation_t));
     assert (a->size <= ALLOC_MAX_SIZE);
     unsigned log2 = int_log2(a->size);
@@ -114,7 +120,8 @@ inline int
 heap_in(heap_t* heap, void* ptr)
 {
     return ((char*)ptr >= heap->data
-            && (char*) ptr < heap->data + heap->size - sizeof(allocation_t));
+            && (char*) ptr < heap->data + heap->size);
+// - sizeof(allocation_t));
 }
 
 inline size_t

@@ -9,8 +9,8 @@
 
 typedef struct allocation allocation_t;
 typedef struct heap {
-    uint32_t size;
-    uint32_t cursor;
+    uint64_t size;
+    uint64_t cursor;
     allocation_t** free_list;
     char data[];
 } heap_t;
@@ -26,6 +26,7 @@ void*   heap_get(heap_t* heap, size_t rel);
 
 #define HEAP_1MB   1024*1024
 #define HEAP_10MB  10*HEAP_1MB
+#define HEAP_50MB  50*HEAP_1MB
 #define HEAP_100MB 100*HEAP_1MB
 #define HEAP_500MB 500*HEAP_1MB
 #define HEAP_1GB   1000*HEAP_1MB

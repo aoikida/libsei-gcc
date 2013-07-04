@@ -58,7 +58,7 @@ static int inline
 ignore_addr(const void* ptr)
 {
     if (IN_STACK(ptr)) {
-        printf("Ignore address: %p\n", ptr);
+        DLOG3("Ignore address: %p\n", ptr);
         return 1;
     } else return 0;
 

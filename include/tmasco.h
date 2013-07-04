@@ -25,8 +25,21 @@ void* tmasco_other(void* addr);
 
 #define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
+#include <stdint.h>
+extern uintptr_t __asco_high;
+
+static inline uintptr_t getbp() __attribute__((always_inline));
+static inline uintptr_t getbp() {
+    //register const uintptr_t rbp asm ("rbp");
+    //return rbp;
+    uintptr_t rbp;
+    asm __volatile__ ("mov %%rbp, %0": "=m" (rbp));
+    return rbp;
+}
+
 #define tmasco_begin(X) { /* asco scope */           \
     D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
+    __asco_high = getbp();                           \
     volatile int asco_first;                         \
     asco_first = 1;                                  \
 asco##X:                                             \

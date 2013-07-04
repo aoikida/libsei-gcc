@@ -165,7 +165,7 @@ asco_malloc(asco_t* asco, size_t size)
 
 #if MODE == HEAP_MODE
     void* ptr = heap_malloc(asco->heap[asco->p], size);
-    DLOG3("asco_malloc addr: %p (size = %ld)\n", ptr, size);
+    DLOG3("asco_malloc addr: %p (size = %ld, p = %d)\n", ptr, size, asco->p);
     return ptr;
 #else
     return malloc(size);
