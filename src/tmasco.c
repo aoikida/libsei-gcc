@@ -2,15 +2,13 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
-#include <asco.h>
+
 #include <assert.h>
 #include <stdio.h>
+#include <asco.h>
 #include "debug.h"
-
-// we include libasco as source code here to facilitate inlining
-#include "asco.c"
-#include "cow.c"
-#include "heap.c"
+#include "heap.h"
+#include "cow.h"
 
 /* -----------------------------------------------------------------------------
  * tmasco state (asco object and stack boundaries)
@@ -46,9 +44,10 @@ extern char __data_start;
 extern char __bss_start;
 extern char __bss_end;
 extern char edata;
+extern void* __asco_ignore_addrs[];
 #endif
 
-extern void* __asco_ignore_addrs[];
+
 
 /* addresses inside the stack are local variables and shouldn't be
  * considered when reading and writing. Other addresses can be
@@ -58,12 +57,14 @@ static int inline ignore_addr(const void* ptr) __attribute__((always_inline));
 static int inline
 ignore_addr(const void* ptr)
 {
-    if (IN_STACK(ptr)) return 1;
-    //else return 0;
+    if (IN_STACK(ptr)) {
+        printf("Ignore address: %p\n", ptr);
+        return 1;
+    } else return 0;
 
 #if 0
     if ((uintptr_t) ptr < (uintptr_t) &edata) return 1;
-#endif
+
     if (1) {
         int i;
         for (i = 0; __asco_ignore_addrs[i]; ++i)
@@ -71,6 +72,7 @@ ignore_addr(const void* ptr)
                 return 1;
         return 0;
     }
+#endif
 }
 
 
@@ -146,7 +148,7 @@ _ITM_getTMCloneOrIrrevocable(void* ptr)
     return ptr;
 }
 
-/*
+
 void*
 _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 {
@@ -181,7 +183,6 @@ _ITM_memsetW(void* s, int c, size_t n)
 
     return s;
 }
-*/
 int _ITM_initializeProcess() { return 0; }
 
 /* -----------------------------------------------------------------------------
@@ -191,24 +192,24 @@ int _ITM_initializeProcess() { return 0; }
 void*
 tmasco_malloc(size_t size)
 {
-    assert (__asco->p == -1 && "called from transactional code");
+    assert (asco_getp(__asco) == -1 && "called from transactional code");
     return asco_malloc2(__asco, size);
 }
 
 void*
 tanger_txnal_tmasco_malloc(size_t size)
 {
-    assert (__asco->p != -1 && "called from non-transactional code");
+    assert (asco_getp(__asco) != -1 && "called from non-transactional code");
     return asco_malloc(__asco, size);
 }
 
 void*
 tmasco_other(void* ptr)
 {
-    int p = __asco->p;
-    __asco->p = 0;
+    int p = asco_getp(__asco);
+    asco_setp(__asco, 0);
     void* r = asco_other(__asco, ptr);
-    __asco->p = p;
+    asco_setp(__asco, p);
     return r;
 }
 

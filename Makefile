@@ -3,35 +3,40 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
+$(info DEBUG: $(DEBUG))
+
 # -- targets -------------------------------------------------------------------
 BUILD   = build
-
-
-# LIBASCO
-SRCS    = heap.c cow.c asco.c
-OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
+SRCS    = heap.c cow.c asco.c tmasco.c
+SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 
-# LIBTMASCO
-TMSRCS    = tmasco.c tmasco_support.c
-TMOBJS    = $(addprefix $(BUILD)/, $(TMSRCS:.c=.o))
-LIBTMASCO = libtmasco.a
+ifdef DEBUG
+OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
+else
+OBJS    = $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
+endif
 
 # TESTS
 TSRCS = cow_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
-_TARGETS = $(LIBASCO) $(LIBTMASCO)
-$(info Targets: $(_TARGETS))
+_TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-CFLAGS  = -g -O0 -Wall
-#CFLAGS  = -O3
+CFLAGS_DBG  = -g -O0 -Wall
+#CFLAGS_REL  = -g -O1 -Wall # to check inlines
+CFLAGS_REL  = -g -O3 #-flto
+ifdef DEBUG
+CFLAGS      = $(CFLAGS_DBG) -Iinclude
+else
+CFLAGS      = $(CFLAGS_REL) -Iinclude
+endif
 
 # debugging level 0-3
-ifdef ADEBUG
-CFLAGS += -DDEBUG=$(ADEBUG)
+ifdef DEBUG
+CFLAGS += -DDEBUG=$(DEBUG)
 endif
 
 # ASCO options
@@ -63,12 +68,8 @@ ifeq ($(CC), clang)
 TMFLAGS = -ftm
 endif
 
-ifeq (,$(TMFLAGS))
-$(ERROR unsupported compiler)
-endif
-
 $(info CFLAGS: $(CFLAGS))
-$(info Asco mode: $(MODE))
+$(info AFLAGS: $(AFLAGS))
 $(info Compiler: $(CC))
 $(info ----------------------)
 
@@ -82,19 +83,18 @@ test: $(TESTS)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmasco_support.o: src/tmasco_support.c $(OBJS)
-	$(CC) $(CFLAGS) $(TMFLAGS) -I include -c -o $@ $<
+$(BUILD)/tmasco_support.o: src/tmasco_support.c
+	$(CC) $(CFLAGS_DBG) $(TMFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/tmasco.o : src/tmasco.c $(addprefix src/, $(SRCS)) | $(BUILD)
-	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
+$(BUILD)/asco-inline.o: $(addprefix src/, $(SRCS)) | $(BUILD)
+	@echo > $(BUILD)/asco-inline.c
+	@echo $(foreach f, $^, "#include \"../$(f)\"\n")>> $(BUILD)/asco-inline.c
+	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $(BUILD)/asco-inline.c
 
-$(BUILD)/%.o : src/%.c | $(BUILD)
+$(BUILD)/%.o: src/%.c | $(BUILD)
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/$(LIBASCO): $(OBJS)
-	ar rvs $@ $^
-
-$(BUILD)/$(LIBTMASCO): $(TMOBJS)
 	ar rvs $@ $^
 
 $(BUILD)/%.test: src/%.c $(OBJS)

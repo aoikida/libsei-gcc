@@ -116,7 +116,7 @@ cow_realloc(cow_t* cow)
 }
 
 
-cow_entry_t*
+inline cow_entry_t*
 cow_find(cow_t* cow, uintptr_t wkey)
 {
     int i;

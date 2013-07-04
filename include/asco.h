@@ -17,8 +17,12 @@ void    asco_commit(asco_t* asco);
 void*   asco_malloc(asco_t* asco, size_t size);
 void*   asco_calloc(asco_t* asco, size_t nmemb, size_t size);
 void    asco_free(asco_t* asco, void* ptr);
+int     asco_getp(asco_t* asco);
+void    asco_setp(asco_t* asco, int p);
 
+void*   asco_malloc2(asco_t* asco, size_t size);
 void    asco_free2(asco_t* asco, void* ptr1, void* ptr2);
+void*   asco_other(asco_t* asco, void* addr);
 
 uint8_t  asco_read_uint8_t (asco_t* asco, const uint8_t*  addr);
 uint16_t asco_read_uint16_t(asco_t* asco, const uint16_t* addr);

@@ -143,6 +143,18 @@ asco_commit(asco_t* asco)
 #endif
 }
 
+inline int
+asco_getp(asco_t* asco)
+{
+    return asco->p;
+}
+
+inline void
+asco_setp(asco_t* asco, int p)
+{
+    asco->p = p;
+}
+
 /* -----------------------------------------------------------------------------
  * memory management
  * -------------------------------------------------------------------------- */
@@ -212,7 +224,7 @@ asco_free2(asco_t* asco, void* ptr1, void* ptr2)
     heap_free(asco->heap[1], ptr2);
 }
 
-void*
+inline void*
 asco_other(asco_t* asco, void* addr)
 {
 #if MODE == HEAP_MODE
@@ -252,7 +264,7 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
 
 #if MODE == HEAP_MODE
 
-#define ASCO_READ(type)                                                 \
+#define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
     {                                                                   \
         assert (asco->p == 0 || asco->p == 1);                          \
@@ -294,7 +306,7 @@ ASCO_READ(uint16_t)
 ASCO_READ(uint32_t)
 ASCO_READ(uint64_t)
 
-#define ASCO_WRITE(type)                                                \
+#define ASCO_WRITE(type) inline                                         \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
         assert (asco->p == 0 || asco->p == 1);                          \
