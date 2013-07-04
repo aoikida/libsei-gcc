@@ -28,18 +28,18 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 
 # The targets
 TARGET        = ukv-server
-TARGET_TMASCO = ukv-server.tmasco
+TARGET_ASCO = ukv-server.asco
 
 # Libraries and paths
 INCP =
 LIBP =
 LIBS = -lm
 
-INCP_TMASCO = -I../../include
-LIBP_TMASCO = -L../../build
-LIBS_TMASCO = -ltmasco $(LIBS)
+INCP_ASCO = -I../../include
+LIBP_ASCO = -L../../build
+LIBS_ASCO = -lasco $(LIBS)
 
-# TMASCO specific flags
+# ASCO specific flags
 ifeq ($(CC), clang)
 TMFLAGS = -DINC_SUPPORT -ftm
 else
@@ -49,7 +49,7 @@ endif
 
 .PHONY: all clean
 
-all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_TMASCO)
+all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_ASCO)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -61,9 +61,9 @@ $(BUILD)/%.o : %.c | $(BUILD)
 $(BUILD)/$(TARGET): $(OBJS)
 	$(CC) $(LIBP) -o $@ $^ $(LIBS)
 
-$(BUILD)/$(TARGET_TMASCO): tmasco_glue.c
-	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_TMASCO) -o $@ $< \
-	$(LIBP_TMASCO) $(LIBS_TMASCO)
+$(BUILD)/$(TARGET_ASCO): tmasco_glue.c
+	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_ASCO) -o $@ $< \
+	$(LIBP_ASCO) $(LIBS_ASCO)
 
 clean:
 	rm -rf $(BUILD)

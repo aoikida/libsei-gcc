@@ -1,7 +1,7 @@
 ukv - A dead-simple micro key-value store
 =========================================
 
-ukv is an example application for libasco and libtmasco. In the moment
+ukv is an example application for libasco and libasco. In the moment
 ukv allows a single client to connect to the server and support three
 commands: set, get and delete.
 
@@ -13,11 +13,11 @@ To compile ukv type::
   make
 
 In the ``build`` subdirectory two binaries will be created:
-``ukv-server`` and ``ukv-server.tmasco``.
+``ukv-server`` and ``ukv-server.asco``.
 
 To run the service type::
 
-  ./ukv-server[.tmasco] 10000
+  ./ukv-server[.asco] 10000
 
 And then start a telnet client::
 
