@@ -32,6 +32,14 @@ strndup(const char *s, size_t n)
     return ptr;
 }
 
+void*
+realloc(void* ptr, size_t size)
+{
+    void* p = malloc(size);
+    if (p && ptr) memcpy(p, ptr, size);
+    return p;
+}
+
 #ifdef USE_CLANG
 /* ___string_mock() calls all functions from libc string inside a
  * transaction. This forces the compiler to generate a transactional

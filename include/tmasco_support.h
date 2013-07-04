@@ -38,4 +38,6 @@ ASCO_DECL(void*, memcpy, (void* dst, const void* src, size_t size))
 ASCO_DECL(int, memcmp, (const void*, const void*, size_t size))
 ASCO_DECL(void*, memset, (void *s, int c, size_t n))
 
+ASCO_DECL(void*, realloc, (void* ptr, size_t size))
+
 #endif /* _TMASCO_SUPPORT_H_ */
