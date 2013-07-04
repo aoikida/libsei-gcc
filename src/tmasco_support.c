@@ -6,6 +6,7 @@
 #define TMASCO_IMPL
 #include <tmasco_support.h>
 
+
 /* -----------------------------------------------------------------------------
  * libc/string functions that should be transactified
  * -------------------------------------------------------------------------- */
@@ -18,6 +19,9 @@
 #include "libc/string/strcpy.c"
 #include "libc/string/strncmp.c"
 #include "libc/string/strchr.c"
+#include "libc/string/memset.c"
+#include "libc/string/memcpy.c"
+#include "libc/string/memmove.c"
 
 char*
 strndup(const char *s, size_t n)
@@ -28,20 +32,7 @@ strndup(const char *s, size_t n)
     return ptr;
 }
 
-void*
-memcpy (void* dst, const void* src, size_t size)
-{
-    char* destination = (char*) dst;
-    char* source = (char*) src;
-    size_t i = 0;
-
-    do {
-        destination[i] = source[i];
-    } while (i++ < size);
-
-    return dst;
-}
-
+#ifdef USE_CLANG
 /* ___string_mock() calls all functions from libc string inside a
  * transaction. This forces the compiler to generate a transactional
  * version from each of these functions.
@@ -93,3 +84,4 @@ ___string_mock() {
         return y;
     }
 }
+#endif

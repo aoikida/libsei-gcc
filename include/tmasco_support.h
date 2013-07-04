@@ -20,14 +20,22 @@
 
 ASCO_DECL(char*, strdup, (const char *s))
 ASCO_DECL(char*, strndup, (const char *s, size_t n))
-ASCO_DECL(void*, memcpy, (void* dst, const void* src, size_t size))
+
 ASCO_DECL(size_t, strlen, (const char*))
-ASCO_DECL(int, memcmp, (const void*, const void*, size_t size))
+
 ASCO_DECL(int, strcmp, (const char*, const char*))
 ASCO_DECL(int, strncmp, (const char*, const char*, size_t))
+
 ASCO_DECL(char*, strcpy, (char *dest, const char *src))
 ASCO_DECL(char*, strncpy, (char *dest, const char *src, size_t n))
+
 ASCO_DECL(char*, strdup, (const char *s))
 ASCO_DECL(char*, strndup, (const char *s, size_t n))
+
+ASCO_DECL(char*, strchr, (const char *s, int c))
+
+ASCO_DECL(void*, memcpy, (void* dst, const void* src, size_t size))
+ASCO_DECL(int, memcmp, (const void*, const void*, size_t size))
+ASCO_DECL(void*, memset, (void *s, int c, size_t n))
 
 #endif /* _TMASCO_SUPPORT_H_ */

@@ -1,2 +1,3 @@
-#define MEMCPY
+#define MEMCOPY
 #include "bcopy.c"
+#undef MEMCOPY

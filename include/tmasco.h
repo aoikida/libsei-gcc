@@ -18,6 +18,7 @@
 #endif
 
 extern asco_t* __asco;
+//extern uintptr_t**  __asco_ignore_addrs;
 
 void* tmasco_malloc(size_t size);
 void* tmasco_other(void* addr);
@@ -30,7 +31,7 @@ void* tmasco_other(void* addr);
     asco_first = 1;                                  \
 asco##X:                                             \
 asco_begin(__asco);                                  \
-__transaction_relaxed {
+__transaction_atomic {
 
 #define tmasco_switch(X) }                                \
         if (asco_first) { /* switching */                 \

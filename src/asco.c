@@ -32,6 +32,18 @@
 #error MODE should be defined (HEAP_MODE|COW_MODE|INSTR_MODE)
 #endif
 
+#ifndef ASCO_IGNORE_ERROR
+#define ASCO_FAIL(...) do {                                     \
+        fprintf(stderr, "asco detected error (%s:%d): ",        \
+                __FILE__, __LINE__);                            \
+        fprintf(stderr, __VA_ARGS__);                           \
+        fprintf(stderr, "\n");                                  \
+        assert (0); /* exit(EXIT_FAILURE); */                   \
+    } while(0);
+#else
+#define ASCO_FAIL(...)
+#endif
+
 /* -----------------------------------------------------------------------------
  * types and data structures
  * -------------------------------------------------------------------------- */
@@ -57,8 +69,13 @@ asco_init()
     asco->cow[0] = cow_init(100000);
     asco->cow[1] = cow_init(100000);
 
+#if MODE == HEAP_MODE
     asco->heap[0] = heap_init(HEAP_500MB);
     asco->heap[1] = heap_init(HEAP_500MB);
+#else
+    asco->heap[0] = NULL;
+    asco->heap[1] = NULL;
+#endif
     asco->p = -1;
 
     DLOG3("asco_init addr: %p (heap = {%p, %p})\n", asco,
@@ -73,8 +90,10 @@ asco_fini(asco_t* asco)
     assert(asco);
     cow_fini(asco->cow[0]);
     cow_fini(asco->cow[1]);
+#if MODE == HEAP_MODE
     heap_fini(asco->heap[0]);
     heap_fini(asco->heap[1]);
+#endif
 }
 
 
@@ -239,12 +258,13 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
         assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_read_%s addr = %p", #type, addr);                   \
         if (heap_in(asco->heap[1-asco->p], (void*) addr)) {             \
-            printf("ERROR, reading from other heap %p\n", addr);        \
+            ASCO_FAIL("ERROR, reading from other heap %p\n", addr);     \
             assert (0);                                                 \
         }                                                               \
         if (!heap_in(asco->heap[asco->p], (void*) addr)) {              \
             DLOG3("(not in heap) = %ld x%lx \n", (uint64_t) *addr,      \
                   (uint64_t) *addr);                                    \
+            /* ASCO_FAIL("ERROR, reading from no heap"); */             \
             return *addr;                                               \
         }                                                               \
         DLOG3("(in heap) = %ld x%lx\n", (uint64_t) *addr,               \
@@ -297,12 +317,6 @@ ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
 #elif MODE == COW_MODE
-
-#ifdef ASCO_HARD
-#define ASCO_FAIL assert (0 && "Unsafe!\n")
-#else
-#define ASCO_FAIL
-#endif
 
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \

@@ -13,7 +13,7 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 LIBASCO = libasco.a
 
 # LIBTMASCO
-TMSRCS    = tmasco.c #tmasco_support.c
+TMSRCS    = tmasco.c tmasco_support.c
 TMOBJS    = $(addprefix $(BUILD)/, $(TMSRCS:.c=.o))
 LIBTMASCO = libtmasco.a
 
@@ -53,13 +53,12 @@ MODE=heap
 endif
 
 # compiler
+TMFLAGS = -fgnu-tm
 ifndef CC
 CC = gcc
 endif
+
 # pick TM flags for compiler
-ifeq ($(CC), gcc)
-TMFLAGS = -fgnu-tm
-endif
 ifeq ($(CC), clang)
 TMFLAGS = -ftm
 endif
@@ -83,8 +82,11 @@ test: $(TESTS)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmasco_%.o: src/tmasco_%.c $(OBJS)
+$(BUILD)/tmasco_support.o: src/tmasco_support.c $(OBJS)
 	$(CC) $(CFLAGS) $(TMFLAGS) -I include -c -o $@ $<
+
+$(BUILD)/tmasco.o : src/tmasco.c $(addprefix src/, $(SRCS)) | $(BUILD)
+	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/%.o : src/%.c | $(BUILD)
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
