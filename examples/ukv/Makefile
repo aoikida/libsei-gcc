@@ -27,7 +27,7 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 # $(info $(OBJS))
 
 # The targets
-TARGET        = ukv-server
+TARGET      = ukv-server
 TARGET_ASCO = ukv-server.asco
 
 # Libraries and paths
@@ -41,10 +41,10 @@ LIBS_ASCO = -lasco $(LIBS)
 
 # ASCO specific flags
 ifeq ($(CC), clang)
-TMFLAGS = -DINC_SUPPORT -ftm
+TMFLAGS = -DINC_SUPPORT -ftm -DTMASCO_ENABLED
 else
 CC = gcc
-TMFLAGS = -DNDEBUG -fgnu-tm
+TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
 endif
 
 .PHONY: all clean

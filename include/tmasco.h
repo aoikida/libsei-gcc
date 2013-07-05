@@ -23,7 +23,6 @@ extern asco_t* __asco;
 void* tmasco_malloc(size_t size);
 void* tmasco_other(void* addr);
 
-#define TMASCO_ENABLED
 #ifdef TMASCO_ENABLED
 #include <stdint.h>
 extern uintptr_t __asco_high;
