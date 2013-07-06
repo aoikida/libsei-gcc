@@ -4,9 +4,47 @@
  * -------------------------------------------------------------------------- */
 #include <stdio.h>
 #include <assert.h>
+
+/* -----------------------------------------------------------------------------
+ * types and data structures
+ * -------------------------------------------------------------------------- */
+
 #include "cow.h"
 #include "heap.h"
 #include "debug.h"
+#ifdef ASCO_STACK_INFO
+#include "sinfo.h"
+#endif
+
+typedef union {
+    struct {
+        uint64_t value[1];
+    } _uint64_t;
+    struct {
+        uint32_t value[2];
+    } _uint32_t;
+    struct {
+        uint16_t value[4];
+    } _uint16_t;
+    struct {
+        uint8_t value[8];
+    } _uint8_t;
+} cow_word_t;
+
+typedef struct cow_entry {
+    uintptr_t  wkey;
+    cow_word_t wvalue;
+    struct cow_entry* next;
+#ifdef ASCO_STACK_INFO
+    sinfo_t* sinfo;
+#endif
+} cow_entry_t;
+
+struct cow_buffer {
+    cow_entry_t* buffer;
+    int size;
+    int max_size;
+};
 
 /* -----------------------------------------------------------------------------
  * helper macros
@@ -20,6 +58,7 @@
 
 #define WKEY(e) (e->wkey)
 #define WVAL(e, type, idx) (e->wvalue._##type.value[idx])
+
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -35,7 +74,6 @@ cow_init(int max_size)
     cow->size = 0;
     cow->buffer = (cow_entry_t*) malloc(max_size*sizeof(cow_entry_t));
     assert (cow->buffer);
-
     return cow;
 }
 
@@ -59,12 +97,24 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         cow_entry_t* e1 = &cow1->buffer[i];
         cow_entry_t* e2 = &cow2->buffer[i];
 
-        assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
+        //assert (WKEY(e1) != WKEY(e2) && "entries point to same addresses");
+        assert (WKEY(e1) == WKEY(e2) && "entries point to different addresses");
 
         uint64_t v1 = WVAL(e1, uint64_t, 0);
         uint64_t v2 = WVAL(e2, uint64_t, 0);
         assert (v1 == v2 && "cow entries differ (value)");
         *(uint64_t*) GETWADDR(e1->wkey) = v1;
+
+#ifdef ASCO_STACK_INFO
+        if (e1->sinfo) {
+            sinfo_fini(e1->sinfo);
+            e1->sinfo = NULL;
+        }
+        if (e2->sinfo) {
+            sinfo_fini(e2->sinfo);
+            e2->sinfo = NULL;
+        }
+#endif
     }
     cow1->size = 0;
     cow2->size = 0;
@@ -88,6 +138,17 @@ cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
                 && "cow entries differ (value)");
         *(uint64_t*) GETWADDR(e1->wkey) = v1;
         *(uint64_t*) GETWADDR(e2->wkey) = v2;
+
+#ifdef ASCO_STACK_INFO
+        if (e1->sinfo) {
+            sinfo_fini(e1->sinfo);
+            e1->sinfo = NULL;
+        }
+        if (e2->sinfo) {
+            sinfo_fini(e2->sinfo);
+            e2->sinfo = NULL;
+        }
+#endif
     }
     cow1->size = 0;
     cow2->size = 0;
@@ -101,6 +162,12 @@ cow_apply(cow_t* cow)
         cow_entry_t* e = &cow->buffer[i];
         uintptr_t addr = GETWADDR(e->wkey);
         *((uint64_t*) addr) = WVAL(e, uint64_t, 0);
+#ifdef ASCO_STACK_INFO
+        if (e->sinfo) {
+            sinfo_fini(e->sinfo);
+            e->sinfo = NULL;
+        }
+#endif
     }
     cow->size = 0;
 }
@@ -150,6 +217,14 @@ COW_READ(uint16_t)
 COW_READ(uint32_t)
 COW_READ(uint64_t)
 
+#ifdef ASCO_STACK_INFO
+#define SINFO_UPDATE(e, addr) do {                                    \
+        if (e->sinfo == NULL) e->sinfo = sinfo_init((void*) addr);    \
+        else sinfo_update(e->sinfo, (void*) addr);                    \
+    } while(0)
+#else
+#define SINFO_UPDATE(e, addr)
+#endif
 
 #define COW_WRITE(type) inline                                          \
     void cow_write_##type(cow_t* cow, type* addr, type value)           \
@@ -169,6 +244,7 @@ COW_READ(uint64_t)
                    WVAL(e, uint64_t, 0), value);                        \
         }                                                               \
         WVAL(e, type, PICKMASK(addr,type)) = value;                     \
+        SINFO_UPDATE(e, GETWADDR(e->wkey));                             \
         e->next = e+1;                                                  \
     }
 COW_WRITE(uint8_t)

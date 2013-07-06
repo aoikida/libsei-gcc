@@ -7,33 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h> // size_t
 
-typedef union {
-    struct {
-        uint64_t value[1];
-    } _uint64_t;
-    struct {
-        uint32_t value[2];
-    } _uint32_t;
-    struct {
-        uint16_t value[4];
-    } _uint16_t;
-    struct {
-        uint8_t value[8];
-    } _uint8_t;
-} cow_word_t;
-
-typedef struct cow_entry {
-    uintptr_t  wkey;
-    cow_word_t wvalue;
-    struct cow_entry* next;
-} cow_entry_t;
-
-typedef struct cow_buffer {
-    cow_entry_t* buffer;
-    int size;
-    int max_size;
-} cow_t;
-
+typedef struct cow_buffer cow_t;
 cow_t* cow_init(int max_size);
 void   cow_fini(cow_t* cow);
 void   cow_apply(cow_t* cow);

@@ -51,10 +51,21 @@
 #include "heap.h"
 #include "cow.h"
 
+#if MODE == COW_MODE
+#include "tbin.h"
+#include "talloc.h"
+#endif
+
 struct asco {
-    heap_t* heap[2]; /* the heap of each process */
-    cow_t*  cow[2];  /* a copy-on-write buffer   */
-    int p;           /* the actual process       */
+    int       p;       /* the actual process (0 or 1) */
+    heap_t*   heap[2]; /* the heap of each process    */
+    cow_t*    cow[2];  /* a copy-on-write buffer      */
+
+#if MODE == COW_MODE
+    tbin_t*   tbin;    /* trash bin for delayed frees */
+    talloc_t* talloc;  /* traversal allocarot         */
+#endif
+
 };
 
 /* -----------------------------------------------------------------------------
@@ -72,6 +83,11 @@ asco_init()
 #if MODE == HEAP_MODE
     asco->heap[0] = heap_init(HEAP_500MB);
     asco->heap[1] = heap_init(HEAP_500MB);
+#elif MODE == COW_MODE
+    asco->tbin    = tbin_init(100);
+    asco->talloc  = talloc_init();
+    asco->heap[0] = NULL;
+    asco->heap[1] = NULL;
 #else
     asco->heap[0] = NULL;
     asco->heap[1] = NULL;
@@ -93,6 +109,9 @@ asco_fini(asco_t* asco)
 #if MODE == HEAP_MODE
     heap_fini(asco->heap[0]);
     heap_fini(asco->heap[1]);
+#elif MODE == COW_MODE
+    tbin_fini(asco->tbin);
+    talloc_fini(asco->talloc);
 #endif
 }
 
@@ -120,6 +139,9 @@ asco_switch(asco_t* asco)
     DLOG2("Switch: %d\n", asco->p);
     asco->p = 1;
     DLOG2("Switched: %d\n", asco->p);
+#if MODE == COW_MODE
+    talloc_switch(asco->talloc);
+#endif
 }
 
 void
@@ -136,6 +158,8 @@ asco_commit(asco_t* asco)
     cow_show(asco->cow[0]);
     cow_show(asco->cow[1]);
     cow_apply_cmp(asco->cow[0], asco->cow[1]);
+    tbin_flush(asco->tbin);
+    talloc_clean(asco->talloc);
 #else
     cow_t* cow = asco->cow[0];
     cow_show(cow);
@@ -167,6 +191,8 @@ asco_malloc(asco_t* asco, size_t size)
     void* ptr = heap_malloc(asco->heap[asco->p], size);
     DLOG3("asco_malloc addr: %p (size = %ld, p = %d)\n", ptr, size, asco->p);
     return ptr;
+#elif MODE == COW_MODE
+    return talloc_malloc(asco->talloc, size);
 #else
     return malloc(size);
 #endif
@@ -179,6 +205,8 @@ asco_free(asco_t* asco, void* ptr)
     DLOG3("asco_free addr: %p\n", ptr);
     assert (heap_in(asco->heap[asco->p], ptr));
     heap_free(asco->heap[asco->p], ptr);
+#elif MODE == COW_MODE
+    tbin_add(asco->tbin, ptr, asco->p);
 #else
     free(ptr);
 #endif
@@ -209,6 +237,8 @@ asco_malloc2(asco_t* asco, size_t size)
     asco->p = -1;
     DLOG3("asco_malloc2 addrs:(%p, %p)\n", ptr1, ptr2);
     return ptr1;
+#elif MODE == COW_MODE
+    return malloc(size);
 #else
     return asco_malloc(asco, size);
 #endif
@@ -262,6 +292,8 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
  * load and stores
  * -------------------------------------------------------------------------- */
 
+
+/* -- HEAP_MODE ------------------------------------------------------------- */
 #if MODE == HEAP_MODE
 
 #define ASCO_READ(type) inline                                          \
@@ -328,6 +360,7 @@ ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
+/* -- COW_MODE -------------------------------------------------------------- */
 #elif MODE == COW_MODE
 
 #define ASCO_READ(type) inline                                          \
@@ -395,6 +428,7 @@ ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
 
+/* -- INSTR_MODE ------------------------------------------------------------ */
 #elif MODE == INSTR_MODE
 
 #define ASCO_READ(type) inline                                          \

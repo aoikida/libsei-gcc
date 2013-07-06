@@ -7,7 +7,7 @@ $(info DEBUG: $(DEBUG))
 
 # -- targets -------------------------------------------------------------------
 BUILD   = build
-SRCS    = heap.c cow.c asco.c tmasco.c
+SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 
@@ -25,13 +25,15 @@ _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -g -O0 -Wall
+#CFLAGS_DBG  = -g -O0 -Wall
+CFLAGS_DBG  = -g -O0 -Wall -DASCO_STACK_INFO
 #CFLAGS_REL  = -g -O1 -Wall # to check inlines
 CFLAGS_REL  = -g -O3 #-flto
+
 ifdef DEBUG
-CFLAGS      = $(CFLAGS_DBG) -Iinclude
+override CFLAGS += $(CFLAGS_DBG) -Iinclude
 else
-CFLAGS      = $(CFLAGS_REL) -Iinclude
+override CFLAGS += $(CFLAGS_REL) -Iinclude
 endif
 
 # debugging level 0-3
