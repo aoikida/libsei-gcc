@@ -1,20 +1,29 @@
-ASCO & TMASCO
-=============
+libasco
+=======
 
 
 Compile the library::
 
-  % make
+  % make [OPTIONS]
 
-..
-   Then copy ``build/libasco.a`` to your somewhere in your LD_LIBRARY_PATH
-   and copy ``include/asco.h`` to an include directory used by your
-   compiler.
 
+Then copy ``build/libasco.a`` to your somewhere in your
+LD_LIBRARY_PATH and copy ``include/*.h`` to an include directory used
+by your compiler.
+
+Options are:
+* ``DEBUG=X``: `X` might be a value between 0 and 3, where 0 means no
+  logging and 3 means very verbose. If ``DEBUG`` is not given, the
+  library is compiled with inlining and ``-O3``.
+
+* ``MODE=heap|cow``: ``heap`` use two heaps and ``cow`` uses only
+  copy-on-write buffers.
+
+.. and ``instr`` only instruments the code.
 
 
 Example:
--------
+--------
 
 See ``examples/ukv``.
 
