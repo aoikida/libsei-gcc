@@ -84,10 +84,10 @@ asco_init()
     asco->heap[0] = heap_init(HEAP_500MB);
     asco->heap[1] = heap_init(HEAP_500MB);
 #elif MODE == COW_MODE
-    asco->tbin    = tbin_init(100);
-    asco->talloc  = talloc_init();
-    asco->heap[0] = NULL;
+    asco->heap[0] = heap_init(HEAP_500MB);
     asco->heap[1] = NULL;
+    asco->tbin    = tbin_init(100, asco->heap[0]);
+    asco->talloc  = talloc_init(asco->heap[0]);
 #else
     asco->heap[0] = NULL;
     asco->heap[1] = NULL;
@@ -110,6 +110,7 @@ asco_fini(asco_t* asco)
     heap_fini(asco->heap[0]);
     heap_fini(asco->heap[1]);
 #elif MODE == COW_MODE
+    heap_fini(asco->heap[0]);
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
 #endif
@@ -183,7 +184,7 @@ asco_setp(asco_t* asco, int p)
  * memory management
  * -------------------------------------------------------------------------- */
 
-void*
+inline void*
 asco_malloc(asco_t* asco, size_t size)
 {
 
@@ -198,7 +199,7 @@ asco_malloc(asco_t* asco, size_t size)
 #endif
 }
 
-void
+inline void
 asco_free(asco_t* asco, void* ptr)
 {
 #if MODE == HEAP_MODE

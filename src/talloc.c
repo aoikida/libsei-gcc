@@ -17,6 +17,7 @@
 #define TALLOC_MAX_ALLOCS 100
 
 #include "talloc.h"
+#include "heap.h"
 #ifdef ASCO_STACK_INFO
 #include "sinfo.h"
 #endif
@@ -30,6 +31,7 @@ typedef struct {
 
 struct talloc {
     int p;
+    heap_t* heap;
     talloc_allocation_t allocations[TALLOC_MAX_ALLOCS];
     size_t size[2];
 };
@@ -39,7 +41,7 @@ struct talloc {
  * -------------------------------------------------------------------------- */
 
 talloc_t*
-talloc_init()
+talloc_init(heap_t* heap)
 {
     talloc_t* talloc = (talloc_t*) malloc(sizeof(talloc_t));
     assert (talloc && "out of memory");
@@ -48,6 +50,8 @@ talloc_init()
 
     talloc->size[0] = 0;
     talloc->size[1] = 0;
+
+    talloc->heap = heap;
 
     return talloc;
 }
@@ -63,7 +67,7 @@ talloc_fini(talloc_t* talloc)
  * interface methods
  * -------------------------------------------------------------------------- */
 
-void*
+inline void*
 talloc_malloc(talloc_t* talloc, size_t size)
 {
     assert (talloc);
@@ -72,7 +76,10 @@ talloc_malloc(talloc_t* talloc, size_t size)
     if (talloc->p == 0) {
         assert (talloc->size[0] + 1 < TALLOC_MAX_ALLOCS && "cant allocate");
         a = &talloc->allocations[talloc->size[0]++];
-        a->addr = malloc(size);
+        if (talloc->heap)
+            a->addr = heap_malloc(talloc->heap, size);
+        else
+            a->addr = malloc(size);
         assert (a->addr && "out of memory");
 #ifdef ASCO_STACK_INFO
         a->sinfo[0] = sinfo_init(a->addr);
