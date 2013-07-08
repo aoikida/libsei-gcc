@@ -93,19 +93,19 @@ _ITM_beginTransaction(uint32_t properties,...)
 void _ITM_commitTransaction() {}
 
 
-void*
+inline void*
 _ITM_malloc(size_t size)
 {
     return asco_malloc(__asco, size);
 }
 
-void
+inline void
 _ITM_free(void* ptr)
 {
     asco_free(__asco, ptr);
 }
 
-void*
+inline void*
 _ITM_calloc(size_t nmemb, size_t size)
 {
     return asco_malloc(__asco, nmemb*size);
