@@ -36,6 +36,9 @@ static inline uintptr_t getbp() {
     return rbp;
 }
 
+#define __asco_begin(x) tmasco_begin(x)
+#define __asco_end(x)   tmasco_switch(x); tmasco_commit(x)
+
 #define tmasco_begin(X) { /* asco scope */           \
     D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
     __asco_high = getbp();                           \
