@@ -4,7 +4,7 @@
  * -------------------------------------------------------------------------- */
 #ifndef _ASCO_H_
 #define _ASCO_H_
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct asco asco_t;

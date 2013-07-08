@@ -8,20 +8,25 @@
 
 
 /* -----------------------------------------------------------------------------
- * libc/string functions that should be transactified
+ * libc functions that should be transactified
  * -------------------------------------------------------------------------- */
 
+#include "libc/string/memchr.c"
+#include "libc/string/memcmp.c"
+#include "libc/string/memcpy.c"
+#include "libc/string/memmove.c"
+#include "libc/string/memset.c"
 #include "libc/string/strlen.c"
 #include "libc/string/strdup.c"
-#include "libc/string/memcmp.c"
 #include "libc/string/strcmp.c"
 #include "libc/string/strncpy.c"
 #include "libc/string/strcpy.c"
 #include "libc/string/strncmp.c"
 #include "libc/string/strchr.c"
-#include "libc/string/memset.c"
-#include "libc/string/memcpy.c"
-#include "libc/string/memmove.c"
+#include "libc/stdlib/strtol.c"
+#include "libc/stdlib/strtoll.c"
+#include "libc/stdlib/strtoul.c"
+#include "libc/stdlib/strtoull.c"
 
 char*
 strndup(const char *s, size_t n)

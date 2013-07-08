@@ -34,10 +34,18 @@ ASCO_DECL(char*, strndup, (const char *s, size_t n))
 
 ASCO_DECL(char*, strchr, (const char *s, int c))
 
+ASCO_DECL(void*, memchr, (const void *s, int c, size_t n))
 ASCO_DECL(void*, memcpy, (void* dst, const void* src, size_t size))
 ASCO_DECL(int, memcmp, (const void*, const void*, size_t size))
 ASCO_DECL(void*, memset, (void *s, int c, size_t n))
+ASCO_DECL(void*, memmove, (void *dest, const void *src, size_t n))
 
 ASCO_DECL(void*, realloc, (void* ptr, size_t size))
+
+ASCO_DECL(long, strtol, (const char *nptr, char **endptr, int base))
+ASCO_DECL(long long, strtoll, (const char *nptr, char **endptr, int base))
+ASCO_DECL(unsigned long, strtoul, (const char *nptr, char **endptr, int base))
+ASCO_DECL(unsigned long long, strtoull,
+          (const char *nptr, char **endptr, int base))
 
 #endif /* _TMASCO_SUPPORT_H_ */
