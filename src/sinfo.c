@@ -80,7 +80,11 @@ sinfo_show(sinfo_t* sinfo)
         strncpy(addr, p1+1, p2-p1-1);
         addr[p2-p1-1] = '\0';
         sprintf(cmd, "addr2line -e %s %s", STR(ASCO_STACK_INFO_CMD), addr);
-        system(cmd);
+        int r = system(cmd);
+        if (r != 0) {
+            perror("addr2line");
+            exit(EXIT_FAILURE);
+        }
 #else
         printf("\t%s\n", sinfo->strace[i]);
 #endif
