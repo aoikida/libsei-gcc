@@ -73,8 +73,8 @@ struct cow_buffer {
 #define PICKMASK(addr, type) (((uintptr_t) addr & 0x07) >> (sizeof(type) >> 1))
 
 #define WKEY(e) (e->wkey)
-#define WVAL(e, type, idx) (e->wvalue._##type.value[idx])
-
+#define WVAL(e) (e->wvalue._uint64_t.value[0])
+#define WVAX(e, type, addr) (e->wvalue._##type.value[PICKMASK(addr,type)])
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -129,8 +129,8 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         //assert (WKEY(e1) != WKEY(e2) && "entries point to same addresses");
         assert (WKEY(e1) == WKEY(e2) && "entries point to different addresses");
 
-        uint64_t v1 = WVAL(e1, uint64_t, 0);
-        uint64_t v2 = WVAL(e2, uint64_t, 0);
+        uint64_t v1 = WVAL(e1);
+        uint64_t v2 = WVAL(e2);
         assert (v1 == v2 && "cow entries differ (value)");
         *(uint64_t*) GETWADDR(e1->wkey) = v1;
 
@@ -181,8 +181,8 @@ cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
 
         assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
 
-        uint64_t v1 = WVAL(e1, uint64_t, 0);
-        uint64_t v2 = WVAL(e2, uint64_t, 0);
+        uint64_t v1 = WVAL(e1);
+        uint64_t v2 = WVAL(e2);
         assert ((v1 == v2
                  || heap_rel(heap1, (void*) v1) == heap_rel(heap2, (void*) v2))
                 && "cow entries differ (value)");
@@ -232,7 +232,7 @@ cow_apply(cow_t* cow)
     for (i = 0; i < cow->size; ++i) {
         cow_entry_t* e = &cow->buffer[i];
         uintptr_t addr = GETWADDR(e->wkey);
-        *((uint64_t*) addr) = WVAL(e, uint64_t, 0);
+        *((uint64_t*) addr) = WVAL(e);
 #ifdef ASCO_STACK_INFO
         if (e->sinfo) {
             sinfo_fini(e->sinfo);
@@ -289,7 +289,7 @@ cow_find(cow_t* cow, uintptr_t wkey)
             return *addr;                                               \
         }                                                               \
         if (TYPEMASK(addr, type) == 0) {                                \
-            return WVAL(e, type, PICKMASK(addr,type));                  \
+            return WVAX(e, type, addr);                                 \
         } else {                                                        \
             assert (0 && "cant handle unaligned accesses");             \
         }                                                               \
@@ -320,12 +320,11 @@ COW_READ(uint64_t)
             e = &cow->buffer[cow->size++];                              \
             assert (e);                                                 \
             WKEY(e) = GETWKEY(addr);                                    \
-            WVAL(e, uint64_t, 0) = *(uint64_t*) GETWADDR(e->wkey);      \
+            WVAL(e) = *(uint64_t*) GETWADDR(e->wkey);                   \
             DLOG3("[%s:%d] creating new entry x%x = x%x  (x%x)\n",      \
-                       __FILE__, __LINE__, WKEY(e),                     \
-                   WVAL(e, uint64_t, 0), value);                        \
+                  __FILE__, __LINE__, WKEY(e), WVAL(e), value);         \
         }                                                               \
-        WVAL(e, type, PICKMASK(addr,type)) = value;                     \
+        WVAX(e, type, addr) = value;                                    \
         SINFO_UPDATE(e, GETWADDR(e->wkey));                             \
         e->next = e+1;                                                  \
     }
