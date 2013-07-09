@@ -44,6 +44,22 @@ struct cow_buffer {
     cow_entry_t* buffer;
     int size;
     int max_size;
+
+#ifdef COW_STATS
+    struct {
+        uint64_t miss;
+        uint64_t size;
+        uint64_t iter;
+        uint64_t lkup;
+        uint64_t count;
+    } stats;
+
+    struct {
+        uint64_t miss;
+        uint64_t iter;
+        uint64_t lkup;
+    } stats_tr;
+#endif
 };
 
 /* -----------------------------------------------------------------------------
@@ -74,6 +90,18 @@ cow_init(int max_size)
     cow->size = 0;
     cow->buffer = (cow_entry_t*) malloc(max_size*sizeof(cow_entry_t));
     assert (cow->buffer);
+
+#ifdef COW_STATS
+    cow->stats.size = 0;
+    cow->stats.iter = 0;
+    cow->stats.miss = 0;
+    cow->stats.lkup = 0;
+    cow->stats.count = 0;
+    cow->stats_tr.miss = 0;
+    cow->stats_tr.iter = 0;
+    cow->stats_tr.lkup = 0;
+#endif
+
     return cow;
 }
 
@@ -92,6 +120,7 @@ void
 cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 {
     assert (cow1->size == cow2->size && "cow buffers differ (size)");
+
     int i;
     for (i = 0; i < cow1->size; ++i) {
         cow_entry_t* e1 = &cow1->buffer[i];
@@ -116,6 +145,27 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         }
 #endif
     }
+
+#ifdef COW_STATS
+    // stats
+    cow1->stats.size   += cow1->size;
+    cow1->stats.miss   += cow1->stats_tr.miss;
+    cow1->stats.iter   += cow1->stats_tr.iter;
+    cow1->stats.lkup   += cow1->stats_tr.lkup;
+    cow1->stats_tr.miss = 0;
+    cow1->stats_tr.iter = 0;
+    cow1->stats_tr.lkup = 0;
+    ++cow1->stats.count;
+
+    if (cow1->stats.count % 1000 == 0) {
+        printf("mean cow size = %f\n", cow1->stats.size*1.0/cow1->stats.count);
+        printf("mean cow miss = %f\n", cow1->stats.miss*1.0/cow1->stats.count);
+        printf("mean cow iter = %f\n", cow1->stats.iter*1.0/cow1->stats.count);
+        printf("mean cow lkup = %f\n", cow1->stats.lkup*1.0/cow1->stats.count);
+    }
+#endif
+
+    // cleanup
     cow1->size = 0;
     cow2->size = 0;
 }
@@ -150,6 +200,27 @@ cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
         }
 #endif
     }
+
+#ifdef COW_STATS
+    // stats
+    cow1->stats.size   += cow1->size;
+    cow1->stats.miss   += cow1->stats_tr.miss;
+    cow1->stats.iter   += cow1->stats_tr.iter;
+    cow1->stats.lkup   += cow1->stats_tr.lkup;
+    cow1->stats_tr.miss = 0;
+    cow1->stats_tr.iter = 0;
+    cow1->stats_tr.lkup = 0;
+    ++cow1->stats.count;
+
+    if (cow1->stats.count % 1000 == 0) {
+        printf("mean cow size = %f\n", cow1->stats.size*1.0/cow1->stats.count);
+        printf("mean cow miss = %f\n", cow1->stats.miss*1.0/cow1->stats.count);
+        printf("mean cow iter = %f\n", cow1->stats.iter*1.0/cow1->stats.count);
+        printf("mean cow lkup = %f\n", cow1->stats.lkup*1.0/cow1->stats.count);
+    }
+#endif
+
+    // cleaup
     cow1->size = 0;
     cow2->size = 0;
 }
@@ -189,9 +260,20 @@ cow_find(cow_t* cow, uintptr_t wkey)
     int i;
     cow_entry_t* e = cow->buffer;
 
-    for (i = cow->size; i > 0; --i, ++e)
-        if (e->wkey == wkey) return e;
+#ifdef COW_STATS
+    ++cow->stats_tr.lkup;
+#endif
 
+    for (i = cow->size; i > 0; --i, ++e) {
+#ifdef COW_STATS
+        ++cow->stats_tr.iter;
+#endif
+        if (e->wkey == wkey) return e;
+    }
+
+#ifdef COW_STATS
+    ++cow->stats_tr.miss;
+#endif
     return NULL;
 }
 
