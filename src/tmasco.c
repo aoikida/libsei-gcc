@@ -10,6 +10,10 @@
 #include "heap.h"
 #include "cow.h"
 
+#ifndef TMASCO_ENABLED
+#include "tmasco_instr.c"
+#else /* TMASCO_ENABLED */
+
 /* -----------------------------------------------------------------------------
  * tmasco state (asco object and stack boundaries)
  * -------------------------------------------------------------------------- */
@@ -258,3 +262,5 @@ tanger_stm_realloc(void* ptr, size_t size)
     assert (ptr == NULL && "not supported");
     return asco_malloc(__asco, size);
 }
+
+#endif /* TMASCO_ENABLED */

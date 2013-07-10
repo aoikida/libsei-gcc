@@ -23,6 +23,9 @@ extern asco_t* __asco;
 void* tmasco_malloc(size_t size);
 void* tmasco_other(void* addr);
 
+#define __asco_begin(x) tmasco_begin(x)
+#define __asco_end(x)   tmasco_switch(x); tmasco_commit(x)
+
 #ifdef TMASCO_ENABLED
 #include <stdint.h>
 extern uintptr_t __asco_high;
@@ -35,9 +38,6 @@ static inline uintptr_t getbp() {
     asm __volatile__ ("mov %%rbp, %0": "=m" (rbp));
     return rbp;
 }
-
-#define __asco_begin(x) tmasco_begin(x)
-#define __asco_end(x)   tmasco_switch(x); tmasco_commit(x)
 
 #define tmasco_begin(X) { /* asco scope */           \
     D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
@@ -85,9 +85,9 @@ __transaction_atomic {
 
 #else
 
-#define tmasco_begin()  asco_begin(__asco); __transaction_relaxed {
-#define tmasco_switch() }
-#define tmasco_commit() asco_commit(__asco);
+#define tmasco_begin(X)  __transaction_atomic {
+#define tmasco_switch(X) }
+#define tmasco_commit(X)
 
 #endif
 
