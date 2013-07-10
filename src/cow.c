@@ -17,6 +17,9 @@
 #include "sinfo.h"
 #endif
 
+#define COW_POW 2
+#define COW_MAX (1<<COW_POW)
+
 typedef union {
     struct {
         uint64_t value[1];
@@ -42,8 +45,8 @@ typedef struct cow_entry {
 } cow_entry_t;
 
 struct cow_buffer {
-    cow_entry_t* buffer;
-    int size;
+    cow_entry_t* table[COW_MAX];
+    int          sizes[COW_MAX];
     int max_size;
 
 #ifdef COW_STATS
@@ -56,6 +59,7 @@ struct cow_buffer {
     } stats;
 
     struct {
+        uint64_t size;
         uint64_t miss;
         uint64_t iter;
         uint64_t lkup;
@@ -66,6 +70,8 @@ struct cow_buffer {
 /* -----------------------------------------------------------------------------
  * helper macros
  * -------------------------------------------------------------------------- */
+
+#define HASH(k) (k % COW_MAX)
 
 #define GETWKEY(addr)        (((uintptr_t) addr) >> 3)
 #define GETWADDR(wkey)       (((uintptr_t) wkey) << 3)
@@ -93,9 +99,15 @@ cow_init(int max_size)
     assert(cow);
 
     cow->max_size = max_size;
-    cow->size = 0;
-    cow->buffer = (cow_entry_t*) malloc(max_size*sizeof(cow_entry_t));
-    assert (cow->buffer);
+
+    int i;
+    for (i = 0; i < COW_MAX; ++i) {
+        cow->table[i] = (cow_entry_t*) malloc(max_size*sizeof(cow_entry_t));
+        assert (cow->table[i]);
+        bzero(cow->table[i], sizeof(cow_entry_t));
+        cow->sizes[i] = 0;
+    }
+
 
 #ifdef COW_STATS
     cow->stats.size = 0;
@@ -106,6 +118,7 @@ cow_init(int max_size)
     cow->stats_tr.miss = 0;
     cow->stats_tr.iter = 0;
     cow->stats_tr.lkup = 0;
+    cow->stats_tr.size = 0;
 #endif
 
     return cow;
@@ -114,7 +127,9 @@ cow_init(int max_size)
 void
 cow_fini(cow_t* cow)
 {
-    free(cow->buffer);
+    int i;
+    for (i = 0; i < COW_MAX; ++i)
+        free(cow->table[i]);
     free(cow);
 }
 
@@ -125,48 +140,60 @@ cow_fini(cow_t* cow)
 void
 cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 {
-    assert (cow1->size == cow2->size && "cow buffers differ (size)");
-
     int i;
-    for (i = 0; i < cow1->size; ++i) {
-        cow_entry_t* e1 = &cow1->buffer[i];
-        cow_entry_t* e2 = &cow2->buffer[i];
+    for (i = 0; i < COW_MAX; ++i) {
+        assert (cow1->sizes[i] == cow2->sizes[i] && "different sizes");
 
-        //assert (WKEY(e1) != WKEY(e2) && "entries point to same addresses");
-        assert (WKEY(e1) == WKEY(e2) && "entries point to different addresses");
+        if (cow1->sizes[i] == 0) continue;
+
+        int j;
+        for (j = 0; j < cow1->sizes[i]; ++j) {
+            cow_entry_t* e1 = &cow1->table[i][j];
+            cow_entry_t* e2 = &cow2->table[i][j];
+
+            assert (WKEY(e1) == WKEY(e2)
+                    && "entries point to different addresses");
+
 
 #ifndef COWBACK
-        uint64_t v1 = WVAL(e1);
-        uint64_t v2 = WVAL(e2);
-        assert (v1 == v2 && "cow entries differ (value)");
-        *(uint64_t*) GETWADDR(e1->wkey) = v1;
+            uint64_t v1 = WVAL(e1);
+            uint64_t v2 = WVAL(e2);
+            assert (v1 == v2 && "cow entries differ (value)");
+            *(uint64_t*) GETWADDR(e1->wkey) = v1;
 #else  /* ! COWBACK */
-        uint64_t v1   = WVAL(e1);
-        uint64_t v2   = *((uint64_t*) GETWADDR(e1->wkey));
-        assert (v1 == v2 && "cow entries differ (value)");
+            uint64_t v1   = WVAL(e1);
+            uint64_t v2   = *((uint64_t*) GETWADDR(e1->wkey));
+            assert (v1 == v2 && "cow entries differ (value)");
 #endif /* ! COWBACK */
 
 #ifdef ASCO_STACK_INFO
-        if (e1->sinfo) {
-            sinfo_fini(e1->sinfo);
-            e1->sinfo = NULL;
-        }
-        if (e2->sinfo) {
-            sinfo_fini(e2->sinfo);
-            e2->sinfo = NULL;
-        }
+            if (e1->sinfo) {
+                sinfo_fini(e1->sinfo);
+                e1->sinfo = NULL;
+            }
+            if (e2->sinfo) {
+                sinfo_fini(e2->sinfo);
+                e2->sinfo = NULL;
+            }
 #endif
+        }
+
+#ifdef COW_STATS
+        cow1->stats_tr.size += cow1->sizes[i];
+#endif
+        // cleanup
+        cow1->sizes[i] = cow2->sizes[i] = 0;
     }
 
 #ifdef COW_STATS
-    // stats
-    cow1->stats.size   += cow1->size;
+    cow1->stats.size   += cow1->stats_tr.size;
     cow1->stats.miss   += cow1->stats_tr.miss;
     cow1->stats.iter   += cow1->stats_tr.iter;
     cow1->stats.lkup   += cow1->stats_tr.lkup;
     cow1->stats_tr.miss = 0;
     cow1->stats_tr.iter = 0;
     cow1->stats_tr.lkup = 0;
+    cow1->stats_tr.size = 0;
     ++cow1->stats.count;
 
     if (cow1->stats.count % 1000 == 0) {
@@ -176,52 +203,64 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         printf("mean cow lkup = %f\n", cow1->stats.lkup*1.0/cow1->stats.count);
     }
 #endif
-
-    // cleanup
-    cow1->size = 0;
-    cow2->size = 0;
 }
 
 void
 cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
 {
-    assert (cow1->size == cow2->size && "cow buffers differ (size)");
     int i;
-    for (i = 0; i < cow1->size; ++i) {
-        cow_entry_t* e1 = &cow1->buffer[i];
-        cow_entry_t* e2 = &cow2->buffer[i];
+    for (i = 0; i < COW_MAX; ++i) {
+        assert (cow1->sizes[i] == cow2->sizes[i] && "different sizes");
 
-        assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
+        if (cow1->sizes[i] == 0) continue;
 
-        uint64_t v1 = WVAL(e1);
-        uint64_t v2 = WVAL(e2);
-        assert ((v1 == v2
-                 || heap_rel(heap1, (void*) v1) == heap_rel(heap2, (void*) v2))
-                && "cow entries differ (value)");
-        *(uint64_t*) GETWADDR(e1->wkey) = v1;
-        *(uint64_t*) GETWADDR(e2->wkey) = v2;
+        int j;
+        for (j = 0; j < cow1->sizes[i]; ++j) {
+            cow_entry_t* e1 = &cow1->table[i][j];
+            cow_entry_t* e2 = &cow2->table[i][j];
+
+            assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
+
+            uint64_t v1 = WVAL(e1);
+            uint64_t v2 = WVAL(e2);
+            assert ((v1 == v2
+                     || heap_rel(heap1, (void*) v1) == \
+                     heap_rel(heap2, (void*) v2))
+                    && "cow entries differ (value)");
+            *(uint64_t*) GETWADDR(e1->wkey) = v1;
+            *(uint64_t*) GETWADDR(e2->wkey) = v2;
+
 
 #ifdef ASCO_STACK_INFO
-        if (e1->sinfo) {
-            sinfo_fini(e1->sinfo);
-            e1->sinfo = NULL;
-        }
-        if (e2->sinfo) {
-            sinfo_fini(e2->sinfo);
-            e2->sinfo = NULL;
-        }
+            if (e1->sinfo) {
+                sinfo_fini(e1->sinfo);
+                e1->sinfo = NULL;
+            }
+            if (e2->sinfo) {
+                sinfo_fini(e2->sinfo);
+                e2->sinfo = NULL;
+            }
 #endif
+        }
+
+#ifdef COW_STATS
+        cow1->stats_tr.size += cow1->sizes[i];
+#endif
+
+        // cleanup
+        cow1->sizes[i] = cow2->sizes[i] = 0;
     }
 
 #ifdef COW_STATS
     // stats
-    cow1->stats.size   += cow1->size;
+    cow1->stats.size   += cow1->stats_tr.size;
     cow1->stats.miss   += cow1->stats_tr.miss;
     cow1->stats.iter   += cow1->stats_tr.iter;
     cow1->stats.lkup   += cow1->stats_tr.lkup;
     cow1->stats_tr.miss = 0;
     cow1->stats_tr.iter = 0;
     cow1->stats_tr.lkup = 0;
+    cow1->stats_tr.size = 0;
     ++cow1->stats.count;
 
     if (cow1->stats.count % 1000 == 0) {
@@ -231,28 +270,27 @@ cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
         printf("mean cow lkup = %f\n", cow1->stats.lkup*1.0/cow1->stats.count);
     }
 #endif
-
-    // cleaup
-    cow1->size = 0;
-    cow2->size = 0;
 }
 
 void
 cow_apply(cow_t* cow)
 {
     int i;
-    for (i = 0; i < cow->size; ++i) {
-        cow_entry_t* e = &cow->buffer[i];
-        uintptr_t addr = GETWADDR(e->wkey);
-        *((uint64_t*) addr) = WVAL(e);
+    for (i = 0; i < COW_MAX; ++i) {
+        int j;
+        for (j = 0; j < cow->sizes[i]; ++j) {
+            cow_entry_t* e = &cow->table[i][j];
+            uintptr_t addr = GETWADDR(e->wkey);
+            *((uint64_t*) addr) = WVAL(e);
 #ifdef ASCO_STACK_INFO
-        if (e->sinfo) {
-            sinfo_fini(e->sinfo);
-            e->sinfo = NULL;
-        }
+            if (e->sinfo) {
+                sinfo_fini(e->sinfo);
+                e->sinfo = NULL;
+            }
 #endif
+        }
+        cow->sizes[i] = 0;
     }
-    cow->size = 0;
 }
 
 void
@@ -263,12 +301,15 @@ cow_swap(cow_t* cow)
 #endif
 
     int i;
-    for (i = 0; i < cow->size; ++i) {
-        cow_entry_t* e = &cow->buffer[i];
-        uintptr_t addr = GETWADDR(e->wkey);
-        uint64_t val   = *((uint64_t*) addr);
-        *((uint64_t*) addr) = WVAL(e);
-        WVAL(e)        = val;
+    for (i = 0; i < COW_MAX; ++i) {
+        int j;
+        for (j = 0; j < cow->sizes[i]; ++j) {
+            cow_entry_t* e = &cow->table[i][j];
+            uintptr_t addr = GETWADDR(e->wkey);
+            uint64_t val   = *((uint64_t*) addr);
+            *((uint64_t*) addr) = WVAL(e);
+            WVAL(e)        = val;
+        }
     }
 }
 
@@ -283,13 +324,13 @@ inline cow_entry_t*
 cow_find(cow_t* cow, uintptr_t wkey)
 {
     int i;
-    cow_entry_t* e = cow->buffer;
-
 #ifdef COW_STATS
     ++cow->stats_tr.lkup;
 #endif
 
-    for (i = cow->size; i > 0; --i, ++e) {
+    for (i = 0; i < cow->sizes[HASH(wkey)]; ++i) {
+        cow_entry_t* e = &cow->table[HASH(wkey)][i];
+
 #ifdef COW_STATS
         ++cow->stats_tr.iter;
 #endif
@@ -348,8 +389,8 @@ COW_READ(uint64_t)
         }                                                               \
         cow_entry_t* e = cow_find(cow, GETWKEY(addr));                  \
         if (!e) {                                                       \
-            if (cow->size == cow->max_size) cow_realloc(cow);           \
-            e = &cow->buffer[cow->size++];                              \
+            uint64_t key = HASH(GETWKEY(addr));                         \
+            e = &cow->table[key][cow->sizes[key]++];                    \
             assert (e);                                                 \
             WKEY(e) = GETWKEY(addr);                                    \
             WVAL(e) = *(uint64_t*) GETWADDR(e->wkey);                   \
@@ -373,15 +414,17 @@ COW_WRITE(uint64_t)
 void
 cow_show(cow_t* cow)
 {
-    if (cow->size > 100) DLOG1("cow size: %d\n", cow->size);
     int i;
     DLOG3("----------\n");
     DLOG3("COW BUFFER %p:\n", cow);
-    for (i = 0; i < cow->size; ++i) {
+    for (i = 0; i < COW_MAX; ++i) {
+        int j;
+        for (j = 0; j < cow->sizes[i]; ++j) {
         DLOG3("addr = %16p value = %ld x%lx \n",
-              cow->buffer[i].wkey,
-              cow->buffer[i].wvalue._uint64_t.value[0],
-              cow->buffer[i].wvalue._uint64_t.value[0]);
+              cow->table[i][j].wkey,
+              cow->table[i][j].wvalue._uint64_t.value[0],
+              cow->table[i][j].wvalue._uint64_t.value[0]);
+        }
     }
     DLOG3("----------\n");
 }
