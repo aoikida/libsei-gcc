@@ -4,6 +4,7 @@
  * -------------------------------------------------------------------------- */
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 /* -----------------------------------------------------------------------------
  * types and data structures
@@ -74,7 +75,12 @@ struct cow_buffer {
 
 #define WKEY(e) (e->wkey)
 #define WVAL(e) (e->wvalue._uint64_t.value[0])
+
+#ifndef COWBACK
 #define WVAX(e, type, addr) (e->wvalue._##type.value[PICKMASK(addr,type)])
+#else
+#define WVAX(e, type, addr) (*addr)
+#endif
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -129,10 +135,16 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         //assert (WKEY(e1) != WKEY(e2) && "entries point to same addresses");
         assert (WKEY(e1) == WKEY(e2) && "entries point to different addresses");
 
+#ifndef COWBACK
         uint64_t v1 = WVAL(e1);
         uint64_t v2 = WVAL(e2);
         assert (v1 == v2 && "cow entries differ (value)");
         *(uint64_t*) GETWADDR(e1->wkey) = v1;
+#else  /* ! COWBACK */
+        uint64_t v1   = WVAL(e1);
+        uint64_t v2   = *((uint64_t*) GETWADDR(e1->wkey));
+        assert (v1 == v2 && "cow entries differ (value)");
+#endif /* ! COWBACK */
 
 #ifdef ASCO_STACK_INFO
         if (e1->sinfo) {
@@ -243,14 +255,27 @@ cow_apply(cow_t* cow)
     cow->size = 0;
 }
 
+void
+cow_swap(cow_t* cow)
+{
+#ifndef COWBACK
+    assert (0 && "only supported with COWBACK");
+#endif
+
+    int i;
+    for (i = 0; i < cow->size; ++i) {
+        cow_entry_t* e = &cow->buffer[i];
+        uintptr_t addr = GETWADDR(e->wkey);
+        uint64_t val   = *((uint64_t*) addr);
+        *((uint64_t*) addr) = WVAL(e);
+        WVAL(e)        = val;
+    }
+}
+
 static inline void
 cow_realloc(cow_t* cow)
 {
-    assert (0);
-    cow->max_size *= 2;
-    cow->buffer = (cow_entry_t*) realloc(cow->buffer,
-                                         cow->max_size*sizeof(cow_entry_t));
-    assert (cow->buffer);
+    assert (0 && "not implemented");
 }
 
 
@@ -280,7 +305,13 @@ cow_find(cow_t* cow, uintptr_t wkey)
 /* -----------------------------------------------------------------------------
  * reading and writing
  * -------------------------------------------------------------------------- */
-
+#ifdef COWBACK
+#define COW_READ(type) inline                                           \
+    type cow_read_##type(cow_t* cow, const type* addr)                  \
+    {                                                                   \
+        return *addr;                                                   \
+    }
+#else
 #define COW_READ(type) inline                                           \
     type cow_read_##type(cow_t* cow, const type* addr)                  \
     {                                                                   \
@@ -294,6 +325,7 @@ cow_find(cow_t* cow, uintptr_t wkey)
             assert (0 && "cant handle unaligned accesses");             \
         }                                                               \
     }
+#endif
 COW_READ(uint8_t)
 COW_READ(uint16_t)
 COW_READ(uint32_t)

@@ -110,14 +110,20 @@ _ITM_calloc(size_t nmemb, size_t size)
 {
     return asco_malloc(__asco, nmemb*size);
 }
-
+#ifndef COWBACK
 #define ITM_READ(type,  suffix) inline                  \
     type _ITM_R##suffix(const type* addr)               \
     {                                                   \
         if (ignore_addr(addr)) return *addr;            \
         else return asco_read_##type(__asco, addr);     \
     }
-
+#else
+#define ITM_READ(type,  suffix) inline                  \
+    type _ITM_R##suffix(const type* addr)               \
+    {                                                   \
+        return *addr;                                   \
+    }
+#endif
 ITM_READ(uint8_t,  U1)
 ITM_READ(uint16_t, U2)
 ITM_READ(uint32_t, U4)

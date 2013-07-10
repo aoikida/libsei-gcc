@@ -141,6 +141,9 @@ asco_switch(asco_t* asco)
     asco->p = 1;
     DLOG2("Switched: %d\n", asco->p);
 #if MODE == COW_MODE
+#ifdef COWBACK
+    cow_swap(asco->cow[0]);
+#endif
     talloc_switch(asco->talloc);
 #endif
 }

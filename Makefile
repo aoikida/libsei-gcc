@@ -52,7 +52,7 @@ ifeq ($(MODE), heap)
 AFLAGS += -DMODE=1
 endif
 ifeq ($(MODE), cow)
-AFLAGS += -DMODE=2
+AFLAGS += -DMODE=2 -DCOWBACK
 endif
 else # !MODE
 AFLAGS += -DMODE=1
