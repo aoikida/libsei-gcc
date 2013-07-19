@@ -17,7 +17,7 @@
 #include "sinfo.h"
 #endif
 
-#define COW_POW 2
+#define COW_POW 4
 #define COW_MAX (1<<COW_POW)
 
 typedef union {
