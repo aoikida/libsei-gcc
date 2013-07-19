@@ -76,7 +76,6 @@ heap_malloc(heap_t* heap, size_t size)
         allocation_t* a = heap->free_list[log2];
         heap->free_list[log2] = a->next;
         a->next = NULL;
-        printf("resuing %p\n", a->data);
         return (void*) a->data;
     }
 
