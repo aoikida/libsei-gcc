@@ -51,3 +51,10 @@ See ``examples/ukv``.
 
    So in the moment the easiest way to to use ``tmasco`` is to compile all
    modules as a single big module, in our example ``glue.c``.
+
+
+References
+----------
+
+* `Practical Hardening of Crash-Tolerant Systems
+<https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems>`_ - Correia et al.
