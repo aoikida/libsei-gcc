@@ -168,30 +168,71 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 
     do {
         //destination[i] = source[i];
+#ifdef COWBACK
+        asco_write_uint8_t(__asco, (void*) (destination + i),
+                           *(uint8_t*) (source + i));
+#else
         asco_write_uint8_t(__asco, (void*) (destination + i),
                            asco_read_uint8_t(__asco, (void*) (source + i)));
+#endif
     } while (i++ < size);
 
     return (void*) destination;
 }
 
 void*
+_ZGTt6memcpy(void* dst, const void* src, size_t size)
+{
+    return _ITM_memcpyRtWt(dst, src, size);
+}
+
+void*
 _ITM_memmoveRtWt(void* dst, const void* src, size_t size)
 {
     assert(0 && "not supported yet");
-    return _ITM_memcpyRtWt(dst, src, size);
+    return NULL;
+}
+
+void*
+_ZGTt7realloc(void* ptr, size_t size)
+{
+    void* p = _ITM_malloc(size);
+    if (p && ptr) _ITM_memcpyRtWt(p, ptr, size);
+    if (ptr) _ITM_free(ptr);
+    return p;
 }
 
 void*
 _ITM_memsetW(void* s, int c, size_t n)
 {
-    char* ptr = (char*) s;
-    uint32_t i = 0;
+    uintptr_t p    = (uintptr_t) s;
+    uintptr_t p64  = p & ~(0x07);
+    uintptr_t e    = p + n;
+    uintptr_t e64  = e & ~(0x07);
+    uint64_t  b    = (uint64_t) (char) c;
+    uint64_t  v    = b << 56 | b << 48 | b << 40 | b << 32 \
+        | b << 24 | b << 16 | b << 8 | b;
 
-    for (i = 0; i < n; ++i)
-        asco_write_uint8_t(__asco, (void*) (ptr + i), c);
+    if (p64 < p) p64 += 0x08;
+
+    while (p < e && p != p64)
+        asco_write_uint8_t(__asco, (void*) (p++), c);
+
+    while (p < e64) {
+        asco_write_uint64_t(__asco, (void*) (p), c);
+        p += 8;
+    }
+
+    while (p < e)
+        asco_write_uint8_t(__asco, (void*) (p++), c);
 
     return s;
+}
+
+void*
+_ZGTt6memset(void* s, int c, size_t n)
+{
+    return _ITM_memsetW(s,c,n);
 }
 int _ITM_initializeProcess() { return 0; }
 

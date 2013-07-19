@@ -13,9 +13,11 @@
 
 #include "libc/string/memchr.c"
 #include "libc/string/memcmp.c"
+//#include "libc/string/memmove.c"
+#ifndef TMASCO_ENABLED
 #include "libc/string/memcpy.c"
-#include "libc/string/memmove.c"
 #include "libc/string/memset.c"
+#endif
 #include "libc/string/strlen.c"
 #include "libc/string/strdup.c"
 #include "libc/string/strcmp.c"
@@ -35,14 +37,6 @@ strndup(const char *s, size_t n)
     strncpy(ptr, s, n);
     ptr[n] = '\0';
     return ptr;
-}
-
-void*
-realloc(void* ptr, size_t size)
-{
-    void* p = malloc(size);
-    if (p && ptr) memcpy(p, ptr, size);
-    return p;
 }
 
 #ifdef USE_CLANG
