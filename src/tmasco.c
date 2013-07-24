@@ -229,7 +229,7 @@ _ITM_memsetW(void* s, int c, size_t n)
         asco_write_uint8_t(__tmasco.asco, (void*) (p++), c);
 
     while (p < e64) {
-        asco_write_uint64_t(__tmasco.asco, (void*) (p), c);
+        asco_write_uint64_t(__tmasco.asco, (void*) (p), v);
         p += 8;
     }
 
