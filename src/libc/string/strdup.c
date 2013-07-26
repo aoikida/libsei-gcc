@@ -35,6 +35,7 @@
 #include <stdlib.h>
 //#include <string.h>
 
+char * strdup(const char *str) __attribute((transaction_safe));
 char *
 strdup(const char *str)
 {

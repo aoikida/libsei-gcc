@@ -86,7 +86,7 @@ $(BUILD):
 	mkdir -p $(BUILD)
 
 $(BUILD)/tmasco_support.o: src/tmasco_support.c
-	$(CC) $(CFLAGS_DBG) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
+	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/asco-inline.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 	@echo > $(BUILD)/asco-inline.c

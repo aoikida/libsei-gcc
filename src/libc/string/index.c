@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  */
 
-#include <string.h>
+//#include <string.h>
 
 char *
 #ifdef STRCHR

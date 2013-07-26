@@ -30,7 +30,7 @@
  */
 
 #if !defined(_KERNEL) && !defined(_STANDALONE)
-#include <string.h>
+//#include <string.h>
 #else
 #include <lib/libkern/libkern.h>
 #endif
