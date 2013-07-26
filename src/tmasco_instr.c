@@ -30,6 +30,24 @@ ITM_WRITE(uint16_t, U2)
 ITM_WRITE(uint32_t, U4)
 ITM_WRITE(uint64_t, U8)
 
+void
+_ITM_WM128(void* txn, __uint128_t* addr, __uint128_t value)
+{
+    *addr = value;
+}
+
+__uint128_t
+_ITM_RM128(void* txn, __uint128_t* addr)
+{
+    return *addr;
+}
+
+void*
+_ZGTt7realloc(void* ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
 void _ITM_changeTransactionMode(int flag) {}
 void* _ITM_getTMCloneOrIrrevocable(void* ptr) { return ptr;}
 void* _ITM_memcpyRtWt(void* dst, const void* src, size_t size)

@@ -154,6 +154,36 @@ ITM_WRITE(uint16_t, U2)
 ITM_WRITE(uint32_t, U4)
 ITM_WRITE(uint64_t, U8)
 
+// if x86_64
+typedef union { __uint128_t sse; uint64_t v[2];} m128;
+void
+_ITM_WM128(void* txn, __uint128_t* a, __uint128_t v)
+{
+    m128 x;
+    uint64_t* y;
+
+    x.sse = v;
+    y = (uint64_t*) a;
+
+    _ITM_WU8(y, x.v[0]);
+    _ITM_WU8(y+1, x.v[1]);
+
+}
+
+__uint128_t
+_ITM_RM128(void* txn, __uint128_t* a)
+{
+    m128 x;
+    uint64_t* y;
+
+    y = (uint64_t*) a;
+
+    x.v[0] = _ITM_RU8(y);
+    x.v[1] = _ITM_RU8(y+1);
+
+    return x.sse;
+}
+
 void
 _ITM_changeTransactionMode(int flag)
 {
