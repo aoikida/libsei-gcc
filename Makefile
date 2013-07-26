@@ -38,7 +38,7 @@ endif
 
 # debugging level 0-3
 ifdef DEBUG
-CFLAGS += -DDEBUG=$(DEBUG)
+override CFLAGS += -DDEBUG=$(DEBUG)
 endif
 
 # ASCO options
