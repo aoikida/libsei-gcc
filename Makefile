@@ -7,7 +7,7 @@ $(info DEBUG: $(DEBUG))
 
 # -- targets -------------------------------------------------------------------
 BUILD   = build
-SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c
+SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 
@@ -22,7 +22,7 @@ OBJS   += $(BUILD)/tmasco_asm.o
 endif
 
 # TESTS
-TSRCS = cow_test.c
+TSRCS = cow_test.c abuf_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
 _TARGETS = $(LIBASCO)
@@ -56,6 +56,9 @@ AFLAGS += -DMODE=1
 endif
 ifeq ($(MODE), cow)
 AFLAGS += -DMODE=2 -DCOWBACK
+endif
+ifeq ($(MODE), fcow)
+AFLAGS += -DMODE=4 -DCOWBACK
 endif
 else # !MODE
 AFLAGS += -DMODE=1

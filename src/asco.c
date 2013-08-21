@@ -18,7 +18,7 @@
 #define HEAP_MODE  1
 #define COW_MODE   2
 #define SHEAP_MODE 3
-#define SCOW_MODE  4
+#define FCOW_MODE  4
 
 #ifndef MODE
 #error MODE should be defined (HEAP_MODE|COW_MODE|INSTR_MODE)
@@ -44,6 +44,8 @@
 # include "asco-heap_mode.c"
 #elif MODE == COW_MODE
 # include "asco-cow_mode.c"
+#elif MODE == FCOW_MODE
+# include "asco-fcow_mode.c"
 #elif MODE == INSTR_MODE
 #else
 # error invalid MODE

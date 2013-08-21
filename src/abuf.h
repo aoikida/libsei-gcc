@@ -1,0 +1,31 @@
+/* -----------------------------------------------------------------------------
+ * Copyright (c) 2013 Diogo Behrens
+ * Distributed under the MIT license. See accompanying file LICENSE.
+ * -------------------------------------------------------------------------- */
+#ifndef _ASCO_ABUF_H_
+#define _ASCO_ABUF_H_
+#include <stdint.h>
+#include <stdlib.h>
+
+typedef struct abuf abuf_t;
+abuf_t* abuf_init(int max_size);
+void    abuf_fini(abuf_t* abuf);
+int     abuf_size(abuf_t* abuf);
+void    abuf_clean(abuf_t* abuf);
+void    abuf_cmp(abuf_t* a1, abuf_t* a2);
+
+void    abuf_swap(abuf_t* abuf);
+void    abuf_cmp_heap(abuf_t* a1, abuf_t* a2);
+
+
+void abuf_push_uint8_t (abuf_t* abuf, uint8_t*  addr, uint8_t  value);
+void abuf_push_uint16_t(abuf_t* abuf, uint16_t* addr, uint16_t value);
+void abuf_push_uint32_t(abuf_t* abuf, uint32_t* addr, uint32_t value);
+void abuf_push_uint64_t(abuf_t* abuf, uint64_t* addr, uint64_t value);
+
+uint8_t  abuf_pop_uint8_t (abuf_t* abuf, const uint8_t*  addr);
+uint16_t abuf_pop_uint16_t(abuf_t* abuf, const uint16_t* addr);
+uint32_t abuf_pop_uint32_t(abuf_t* abuf, const uint32_t* addr);
+uint64_t abuf_pop_uint64_t(abuf_t* abuf, const uint64_t* addr);
+
+#endif /* _ASCO_ABUF_H_ */
