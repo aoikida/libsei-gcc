@@ -6,7 +6,7 @@
 $(info DEBUG: $(DEBUG))
 
 # -- targets -------------------------------------------------------------------
-BUILD   = build
+BUILD  ?= build
 SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a

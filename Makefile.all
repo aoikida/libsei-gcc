@@ -1,0 +1,25 @@
+
+# -*- Makefile -*-
+
+all: libasco-cow.a libasco-fcow.a
+
+lib:
+	mkdir -p lib
+
+libasco-cow.a: | lib
+	make BUILD=build-cow clean
+	make BUILD=build-cow MODE=cow USE_TMASCO_ASM=1
+	mv build-cow/libasco.a lib/libasco-cow.a
+
+libasco-fcow.a: | lib
+	make BUILD=build-fcow clean
+	make BUILD=build-fcow MODE=fcow USE_TMASCO_ASM=1
+	mv build-fcow/libasco.a lib/libasco-fcow.a
+
+libasco-heap.a: | lib
+	make BUILD=build-heap clean
+	make BUILD=build-heap MODE=heap
+	mv build-heap/libasco.a lib/libasco-heap.a
+
+clean:
+	rm -rf build-{cow,fcow,heap} lib
