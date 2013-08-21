@@ -57,4 +57,4 @@ References
 ----------
 
 * `Practical Hardening of Crash-Tolerant Systems
-<https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems>`_ - Correia et al.
+  <https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems>`_ - Correia et al.

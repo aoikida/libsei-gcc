@@ -62,9 +62,12 @@ asco_fini(asco_t* asco)
     cow_fini(asco->cow[0]);
     cow_fini(asco->cow[1]);
 
-    heap_fini(asco->heap);
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
+
+#ifdef COW_USEHEAP
+    heap_fini(asco->heap);
+#endif
 }
 
 
