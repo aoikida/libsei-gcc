@@ -22,7 +22,7 @@
 
 struct asco {
     int       p;       /* the actual process (0 or 1) */
-    heap_t*   heap[2]; /* the heap of each process    */
+    heap_t*   heap;    /* optional heap               */
     cow_t*    cow[2];  /* a copy-on-write buffer      */
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocarot         */
@@ -40,15 +40,17 @@ asco_init()
     asco->cow[0] = cow_init(100000);
     asco->cow[1] = cow_init(100000);
 
-    asco->heap[0] = heap_init(HEAP_500MB);
-    asco->heap[1] = NULL;
-    asco->tbin    = tbin_init(100, asco->heap[0]);
-    asco->talloc  = talloc_init(asco->heap[0]);
+#ifdef COW_USEHEAP
+    asco->heap   = heap_init(HEAP_1GB);
+#else
+    asco->heap   = NULL;
+#endif
+    asco->tbin   = tbin_init(100, asco->heap);
+    asco->talloc = talloc_init(asco->heap);
 
     asco->p = -1;
 
-    DLOG3("asco_init addr: %p (heap = {%p, %p})\n", asco,
-          asco->heap[0], asco->heap[1]);
+    DLOG3("asco_init addr: %p (heap = {%p})\n", asco, asco->heap);
 
     return asco;
 }
@@ -60,7 +62,7 @@ asco_fini(asco_t* asco)
     cow_fini(asco->cow[0]);
     cow_fini(asco->cow[1]);
 
-    heap_fini(asco->heap[0]);
+    heap_fini(asco->heap);
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
 }
@@ -155,31 +157,21 @@ asco_malloc2(asco_t* asco, size_t size)
 void
 asco_free2(asco_t* asco, void* ptr1, void* ptr2)
 {
-    assert (asco);
-    assert (asco->p == -1 && "should not be called in a traversal");
-    DLOG3("asco_free2 addrs:(%p, %p)\n", ptr1, ptr2);
-    heap_free(asco->heap[0], ptr1);
-    heap_free(asco->heap[1], ptr2);
+    assert (0 && "asco not compiled with HEAP_MODE");
 }
 
 inline void*
 asco_other(asco_t* asco, void* addr)
 {
     assert (0 && "asco not compiled with HEAP_MODE");
+    return NULL;
 }
 
 void*
 asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
 {
-    assert (asco);
-    assert (asco->p == -1 && "should not be called in a traversal");
-
-    asco->p = 0;
-    memcpy(dest, src, n);
-    memcpy(asco_other(asco, dest), src, n);
-    asco->p = -1;
-    DLOG3("asco_memcpy2 addrs:(%p, %p)\n", dest, asco_other(asco, dest));
-    return dest;
+    assert (0 && "asco not compiled with HEAP_MODE");
+    return NULL;
 }
 
 /* -----------------------------------------------------------------------------
