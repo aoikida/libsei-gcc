@@ -28,7 +28,7 @@ void* tmasco_other(void* addr);
 #define __asco_commit(x) __tmasco_commit(x)
 #define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
 
-#ifdef TMASCO_ENABLED
+#if defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
 #include <stdint.h>
 
 static inline uintptr_t getbp() __attribute__((always_inline));

@@ -18,10 +18,22 @@
  * tmasco state (asco object and stack boundaries)
  * -------------------------------------------------------------------------- */
 
+typedef struct {
+    uint64_t rbp;
+    uint64_t rbx;
+    uint64_t r12;
+    uint64_t r13;
+    uint64_t r14;
+    uint64_t r15;
+    uint64_t rsp;
+    uint64_t ret;
+} tmasco_ctx_t;
+
 struct {
     asco_t* asco;
     uintptr_t low;
     uintptr_t high;
+    tmasco_ctx_t ctx;
 } __tmasco;
 
 /* initialize library and allocate an asco object. This is called once
@@ -88,11 +100,18 @@ ignore_addr(const void* ptr)
 #endif
 }
 
+/* -----------------------------------------------------------------------------
+ * prototypes
+ * -------------------------------------------------------------------------- */
+
+void inline tmasco_commit();
+
 
 /* -----------------------------------------------------------------------------
  * _ITM_ interface
  * -------------------------------------------------------------------------- */
 
+#ifndef TMASCO_ASM
 uint32_t
 _ITM_beginTransaction(uint32_t properties,...)
 {
@@ -102,8 +121,17 @@ _ITM_beginTransaction(uint32_t properties,...)
      */
     return 0x01;
 }
-
 void _ITM_commitTransaction() {}
+#else
+
+void
+_ITM_commitTransaction()
+{
+    tmasco_commit();
+}
+#endif
+
+
 
 
 inline void*
@@ -124,35 +152,48 @@ _ITM_calloc(size_t nmemb, size_t size)
     return asco_malloc(__tmasco.asco, nmemb*size);
 }
 #ifndef COWBACK
-#define ITM_READ(type,  suffix) inline                          \
-    type _ITM_R##suffix(const type* addr)                       \
+#define ITM_READ(type, prefix, suffix) inline                   \
+    type _ITM_##prefix##R##suffix(const type* addr)             \
     {                                                           \
         if (ignore_addr(addr)) return *addr;                    \
         else return asco_read_##type(__tmasco.asco, addr);      \
     }
 #else
-#define ITM_READ(type,  suffix) inline                  \
-    type _ITM_R##suffix(const type* addr)               \
-    {                                                   \
-        return *addr;                                   \
+#define ITM_READ(type, prefix, suffix) inline                   \
+    type _ITM_##prefix##R##suffix(const type* addr)             \
+    {                                                           \
+        return *addr;                                           \
     }
 #endif
-ITM_READ(uint8_t,  U1)
-ITM_READ(uint16_t, U2)
-ITM_READ(uint32_t, U4)
-ITM_READ(uint64_t, U8)
 
-#define ITM_WRITE(type, suffix) inline                         \
-    void _ITM_W##suffix(type* addr, type value)                \
+#define ITM_READ_ALL(type, suffix)                              \
+    ITM_READ(type,   , suffix)                                  \
+    ITM_READ(type, Rf, suffix)                                  \
+    ITM_READ(type, Ra, suffix)                                  \
+    ITM_READ(type, Wa, suffix)
+
+ITM_READ_ALL(uint8_t,  U1)
+ITM_READ_ALL(uint16_t, U2)
+ITM_READ_ALL(uint32_t, U4)
+ITM_READ_ALL(uint64_t, U8)
+
+#define ITM_WRITE(type, prefix, suffix) inline                 \
+    void _ITM_##prefix##W##suffix(type* addr, type value)      \
     {                                                          \
         if (ignore_addr(addr)) *addr = value;                  \
         else asco_write_##type(__tmasco.asco, addr, value);    \
     }
 
-ITM_WRITE(uint8_t,  U1)
-ITM_WRITE(uint16_t, U2)
-ITM_WRITE(uint32_t, U4)
-ITM_WRITE(uint64_t, U8)
+#define ITM_WRITE_ALL(type, suffix)                            \
+    ITM_WRITE(type,   , suffix)                                \
+    ITM_WRITE(type, Rf, suffix)                                \
+    ITM_WRITE(type, Ra, suffix)                                \
+    ITM_WRITE(type, Wa, suffix)
+
+ITM_WRITE_ALL(uint8_t,  U1)
+ITM_WRITE_ALL(uint16_t, U2)
+ITM_WRITE_ALL(uint32_t, U4)
+ITM_WRITE_ALL(uint64_t, U8)
 
 // if x86_64
 typedef union { __uint128_t sse; uint64_t v[2];} m128;
@@ -306,6 +347,7 @@ tmasco_other(void* ptr)
     return r;
 }
 
+#ifndef TMASCO_ASM
 void
 tmasco_begin(uintptr_t bp)
 {
@@ -332,6 +374,26 @@ tmasco_commit()
     asco_commit(__tmasco.asco);
 }
 
+#else /* TMASCO_ASM */
+
+uint32_t
+tmasco_begin(tmasco_ctx_t* ctx)
+{
+    memcpy(&__tmasco.ctx, ctx, sizeof(tmasco_ctx_t));
+    __tmasco.high = __tmasco.ctx.rbp;
+    asco_begin(__tmasco.asco);
+}
+
+void
+tmasco_commit()
+{
+    if (!asco_getp(__tmasco.asco)) {
+        asco_switch(__tmasco.asco);
+        tmasco_switch(&__tmasco.ctx, 0x01);
+    }
+    asco_commit(__tmasco.asco);
+}
+#endif
 /* -----------------------------------------------------------------------------
  * clang-tm methods
  * -------------------------------------------------------------------------- */

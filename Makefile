@@ -17,6 +17,10 @@ else
 OBJS    = $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
 endif
 
+ifdef USE_TMASCO_ASM
+OBJS   += $(BUILD)/tmasco_asm.o
+endif
+
 # TESTS
 TSRCS = cow_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
@@ -27,8 +31,7 @@ TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 # -- configuration -------------------------------------------------------------
 #CFLAGS_DBG  = -g -O0 -Wall
 CFLAGS_DBG  = -g -O0 -Wall -DASCO_STACK_INFO
-#CFLAGS_REL  = -g -O1 -Wall # to check inlines
-CFLAGS_REL  = -g -O3 #-flto
+CFLAGS_REL  = -g -O3
 
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
@@ -59,6 +62,11 @@ AFLAGS += -DMODE=1
 MODE=heap
 endif
 
+ifdef USE_TMASCO_ASM
+AFLAGS += -DTMASCO_ASM
+endif
+
+
 # compiler
 TMFLAGS = -fgnu-tm
 ifndef CC
@@ -84,6 +92,9 @@ test: $(TESTS)
 
 $(BUILD):
 	mkdir -p $(BUILD)
+
+$(BUILD)/tmasco_asm.o: src/tmasco_asm.S
+	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/tmasco_support.o: src/tmasco_support.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
