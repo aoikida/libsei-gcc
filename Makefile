@@ -29,8 +29,7 @@ _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-#CFLAGS_DBG  = -g -O0 -Wall
-CFLAGS_DBG  = -g -O0 -Wall -DASCO_STACK_INFO
+CFLAGS_DBG  = -g -O0 -Wall #-DASCO_STACK_INFO
 CFLAGS_REL  = -g -O3
 
 ifdef DEBUG
