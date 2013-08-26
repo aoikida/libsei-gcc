@@ -105,7 +105,7 @@ ignore_addr(const void* ptr)
  * -------------------------------------------------------------------------- */
 
 void inline tmasco_commit();
-
+void tmasco_switch();
 
 /* -----------------------------------------------------------------------------
  * _ITM_ interface
@@ -382,6 +382,7 @@ tmasco_begin(tmasco_ctx_t* ctx)
     memcpy(&__tmasco.ctx, ctx, sizeof(tmasco_ctx_t));
     __tmasco.high = __tmasco.ctx.rbp;
     asco_begin(__tmasco.asco);
+    return 0x01;
 }
 
 void

@@ -3,8 +3,6 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-$(info DEBUG: $(DEBUG))
-
 # -- targets -------------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c
@@ -29,8 +27,8 @@ _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -g -O0 -Wall #-DASCO_STACK_INFO
-CFLAGS_REL  = -g -O3
+CFLAGS_DBG  = -g -O0 -Wall -Werror #-DASCO_STACK_INFO
+CFLAGS_REL  = -g -O3 -Wall -Werror
 
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
@@ -46,7 +44,6 @@ endif
 # ASCO options
 AFLAGS = -DTMASCO_ENABLED
 ifdef MODE
-$(info Compiling asco mode = $(MODE))
 ifeq ($(MODE), instr)
 AFLAGS = -DMODE=0
 endif
@@ -80,9 +77,11 @@ ifeq ($(CC), clang)
 TMFLAGS = -ftm
 endif
 
+$(info MODE  : $(MODE))
+$(info DEBUG : $(DEBUG))
 $(info CFLAGS: $(CFLAGS))
 $(info AFLAGS: $(AFLAGS))
-$(info Compiler: $(CC))
+$(info CC    : $(CC))
 $(info ----------------------)
 
 # -- rules ---------------------------------------------------------------------
