@@ -33,7 +33,7 @@ TARGET_ASCO = ukv-server.asco
 # Libraries and paths
 INCP =
 LIBP =
-LIBS = -lm
+LIBS = -lm -ldl
 
 INCP_ASCO = -I../../include
 LIBP_ASCO = -L../../build
