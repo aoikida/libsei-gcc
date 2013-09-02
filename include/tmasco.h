@@ -28,6 +28,14 @@ void* tmasco_other(void* addr);
 #define __asco_commit(x) __tmasco_commit(x)
 #define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
 
+#ifdef TMASCO_ENABLED
+#define TMASCO_PURE __attribute__((transaction_pure));
+#define TMASCO_SAFE __attribute__((transaction_safe));
+#else
+#define TMASCO_PURE
+#define TMASCO_SAFE
+#endif
+
 #if defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
 #include <stdint.h>
 
@@ -57,10 +65,16 @@ __transaction_atomic {
     tmasco_commit();                                  \
     } /* !asco scope */
 
-#else
+#elif defined(TMASCO_ENABLED)
 
 #define __tmasco_begin(X)  __transaction_atomic {
 #define __tmasco_switch(X) }
+#define __tmasco_commit(X)
+
+#else
+
+#define __tmasco_begin(X)
+#define __tmasco_switch(X)
 #define __tmasco_commit(X)
 
 #endif

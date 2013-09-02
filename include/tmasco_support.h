@@ -18,6 +18,12 @@
 
 #define ASCO_DECL(RETURN, FUNC, ARGS) ASCO_PREF RETURN FUNC ARGS ASCO_ATTR;
 
+void __assert_fail (const char *__assertion, const char *__file,
+                    unsigned int __line, const char *__function)
+    __attribute__((transaction_pure));
+//size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+//    TMASCO_PURE;
+
 ASCO_DECL(char*, strdup, (const char *s))
 ASCO_DECL(char*, strndup, (const char *s, size_t n))
 
