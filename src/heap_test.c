@@ -8,10 +8,10 @@
 void
 test1()
 {
-    heap_t* heap = heap_init(0);
-    void* p = heap_malloc(heap, 1024);
+    heap_t* heap = heap_init(2048);
+    void* p = heap_malloc(heap, 512);
     heap_free(heap, p);
-    void* t = heap_malloc(heap, 1024);
+    void* t = heap_malloc(heap, 512);
     assert (t == p);
     heap_free(heap, p);
     heap_fini(heap);

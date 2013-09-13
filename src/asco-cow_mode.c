@@ -37,8 +37,8 @@ asco_init()
 {
     asco_t* asco = (asco_t*) malloc(sizeof(asco_t));
     assert(asco);
-    asco->cow[0] = cow_init(100000);
-    asco->cow[1] = cow_init(100000);
+    asco->cow[0] = cow_init(0, 100000);
+    asco->cow[1] = cow_init(0, 100000);
 
 #ifdef COW_USEHEAP
     asco->heap   = heap_init(HEAP_1GB);

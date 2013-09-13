@@ -21,7 +21,7 @@ void*   heap_malloc(heap_t* heap, size_t size);
 void    heap_free(heap_t* heap, void* ptr);
 void    heap_fini(heap_t* heap);
 int     heap_in(heap_t* heap, void* ptr);
-size_t  heap_rel(heap_t* heap, void* ptr);
+size_t  heap_rel(const heap_t* heap, const void* ptr);
 void*   heap_get(heap_t* heap, size_t rel);
 
 #define HEAP_1MB   1024*1024
@@ -30,5 +30,13 @@ void*   heap_get(heap_t* heap, size_t rel);
 #define HEAP_100MB 100*HEAP_1MB
 #define HEAP_500MB 500*HEAP_1MB
 #define HEAP_1GB   1000*HEAP_1MB
+
+#ifndef HEAP_SIZE
+#define HEAP_SIZE HEAP_500MB
+#endif
+
+#ifndef COW_SIZE
+#define COW_SIZE 100000
+#endif
 
 #endif /* _ASCO_HEAP_H_ */

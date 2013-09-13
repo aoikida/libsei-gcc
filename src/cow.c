@@ -2,6 +2,7 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -48,6 +49,7 @@ struct cow_buffer {
     cow_entry_t* table[COW_MAX];
     int          sizes[COW_MAX];
     int max_size;
+    heap_t *heap;
 
 #ifdef COW_STATS
     struct {
@@ -67,38 +69,24 @@ struct cow_buffer {
 #endif
 };
 
-/* -----------------------------------------------------------------------------
- * helper macros
- * -------------------------------------------------------------------------- */
-
-#define HASH(k) (k % COW_MAX)
-
-#define GETWKEY(addr)        (((uintptr_t) addr) >> 3)
-#define GETWADDR(wkey)       (((uintptr_t) wkey) << 3)
-
-#define TYPEMASK(addr, type) ( (uintptr_t) addr & (sizeof(type) - 1))
-#define PICKMASK(addr, type) (((uintptr_t) addr & 0x07) >> (sizeof(type) >> 1))
-
-#define WKEY(e) (e->wkey)
-#define WVAL(e) (e->wvalue._uint64_t.value[0])
-
-#ifndef COWBACK
-#define WVAX(e, type, addr) (e->wvalue._##type.value[PICKMASK(addr,type)])
-#else
-#define WVAX(e, type, addr) (*addr)
-#endif
+#include "cow_helpers.h"
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
  * -------------------------------------------------------------------------- */
 
 cow_t*
-cow_init(int max_size)
+cow_init(heap_t *heap, int max_size)
 {
+#if MODE == 1  // HEAP_MODE only
+    assert(heap && "For heap mode the cow needs its heap pointer!");
+#endif
+
     cow_t* cow = (cow_t*) malloc(sizeof(cow_t));
     assert(cow);
 
     cow->max_size = max_size;
+    cow->heap = heap;
 
     int i;
     for (i = 0; i < COW_MAX; ++i) {
@@ -151,18 +139,18 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            assert (WKEY(e1) == WKEY(e2)
+            assert(e1->wkey == e2->wkey
                     && "entries point to different addresses");
 
 
 #ifndef COWBACK
-            uint64_t v1 = WVAL(e1);
-            uint64_t v2 = WVAL(e2);
-            assert (v1 == v2 && "cow entries differ (value)");
-            *(uint64_t*) GETWADDR(e1->wkey) = v1;
+            addr_t v1 = WVAL(e1);
+            addr_t v2 = WVAL(e2);
+            assert(v1 == v2 && "cow entries differ (value)");
+            *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
 #else  /* ! COWBACK */
-            uint64_t v1   = WVAL(e1);
-            uint64_t v2   = *((uint64_t*) GETWADDR(e1->wkey));
+            addr_t v1 = WVAL(e1);
+            addr_t v2 = *((addr_t*) GETWADDR(cow1->heap, e1->wkey));
             assert (v1 == v2 && "cow entries differ (value)");
 #endif /* ! COWBACK */
 
@@ -206,7 +194,7 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 }
 
 void
-cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
+cow_apply_heap(cow_t* cow1, cow_t* cow2)
 {
     int i;
     for (i = 0; i < COW_MAX; ++i) {
@@ -219,17 +207,18 @@ cow_apply_heap(heap_t* heap1, cow_t* cow1, heap_t* heap2, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            assert (WKEY(e1) != WKEY(e2) && "cow entries point to same address");
+            assert(GETWADDR(cow1->heap, e1->wkey) != GETWADDR(cow2->heap, e2->wkey) 
+                    && "cow entries point to same address");
 
-            uint64_t v1 = WVAL(e1);
-            uint64_t v2 = WVAL(e2);
-            assert ((v1 == v2
-                     || heap_rel(heap1, (void*) v1) == \
-                     heap_rel(heap2, (void*) v2))
-                    && "cow entries differ (value)");
-            *(uint64_t*) GETWADDR(e1->wkey) = v1;
-            *(uint64_t*) GETWADDR(e2->wkey) = v2;
+            addr_t v1 = WVAL(e1);
+            addr_t v2 = WVAL(e2);
+            if (v1 != v2) {
+                assert( heap_rel(cow1->heap, (void*) v1) == heap_rel(cow2->heap, (void*) v2)
+                        && "cow values differ but they do not appear to be pointers");
+            }
 
+            *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
+            *(addr_t*) GETWADDR(cow2->heap, e2->wkey) = v2;
 
 #ifdef ASCO_STACK_INFO
             if (e1->sinfo) {
@@ -280,8 +269,8 @@ cow_apply(cow_t* cow)
         int j;
         for (j = 0; j < cow->sizes[i]; ++j) {
             cow_entry_t* e = &cow->table[i][j];
-            uintptr_t addr = GETWADDR(e->wkey);
-            *((uint64_t*) addr) = WVAL(e);
+            uintptr_t addr = GETWADDR(cow->heap, e->wkey);
+            *((addr_t*) addr) = WVAL(e);
 #ifdef ASCO_STACK_INFO
             if (e->sinfo) {
                 sinfo_fini(e->sinfo);
@@ -305,10 +294,10 @@ cow_swap(cow_t* cow)
         int j;
         for (j = 0; j < cow->sizes[i]; ++j) {
             cow_entry_t* e = &cow->table[i][j];
-            uintptr_t addr = GETWADDR(e->wkey);
-            uint64_t val   = *((uint64_t*) addr);
-            *((uint64_t*) addr) = WVAL(e);
-            WVAL(e)        = val;
+            uintptr_t addr = GETWADDR(cow->heap, e->wkey);
+            addr_t val = *((addr_t*) addr);
+            *((addr_t*) addr) = WVAL(e);
+            WVAL(e) = val;
         }
     }
 }
@@ -319,8 +308,7 @@ cow_realloc(cow_t* cow)
     assert (0 && "not implemented");
 }
 
-
-inline cow_entry_t*
+cow_entry_t*
 cow_find(cow_t* cow, uintptr_t wkey)
 {
     int i;
@@ -356,10 +344,12 @@ cow_find(cow_t* cow, uintptr_t wkey)
 #define COW_READ(type) inline                                           \
     type cow_read_##type(cow_t* cow, const type* addr)                  \
     {                                                                   \
-        cow_entry_t* e = cow_find(cow, GETWKEY(addr));                  \
+        cow_entry_t* e = cow_find(cow, GETWKEY(cow->heap, addr));       \
         if (e == NULL) {                                                \
             return *addr;                                               \
         }                                                               \
+        DLOG3("read: entry wkey=%p wvalue=0x%"PRIx64"\n", (void*)e->wkey\
+                , e->wvalue._uint64_t.value[0]);                        \
         if (TYPEMASK(addr, type) == 0) {                                \
             return WVAX(e, type, addr);                                 \
         } else {                                                        \
@@ -384,21 +374,26 @@ COW_READ(uint64_t)
 #define COW_WRITE(type) inline                                          \
     void cow_write_##type(cow_t* cow, type* addr, type value)           \
     {                                                                   \
-        if (TYPEMASK(addr, type) != 0) {                                \
+                                                                        \
+        if(((uintptr_t) addr & (sizeof(type) - 1)) != 0) {              \
             assert (0 && "cant handle unaligned accesses");             \
         }                                                               \
-        cow_entry_t* e = cow_find(cow, GETWKEY(addr));                  \
+        cow_entry_t* e = cow_find(cow, GETWKEY(cow->heap, addr));       \
         if (!e) {                                                       \
-            uint64_t key = HASH(GETWKEY(addr));                         \
+            int key = HASH(GETWKEY(cow->heap, addr));                   \
+            DLOG3("key=%d\n",key);                                      \
             e = &cow->table[key][cow->sizes[key]++];                    \
             assert (e);                                                 \
-            WKEY(e) = GETWKEY(addr);                                    \
-            WVAL(e) = *(uint64_t*) GETWADDR(e->wkey);                   \
+            e->wkey = GETWKEY(cow->heap, addr);                         \
+            WVAL(e) = *(addr_t*) GETWADDR(cow->heap, e->wkey);          \
             DLOG3("[%s:%d] creating new entry x%x = x%x  (x%x)\n",      \
-                  __FILE__, __LINE__, WKEY(e), WVAL(e), value);         \
+                            __FILE__, __LINE__, (unsigned int) e->wkey, \
+                         (unsigned int) WVAL(e), (unsigned int) value); \
         }                                                               \
         WVAX(e, type, addr) = value;                                    \
-        SINFO_UPDATE(e, GETWADDR(e->wkey));                             \
+        DLOG3("write: entry wkey=%p wvalue=0x%"PRIx64"\n",              \
+                (void*)e->wkey, e->wvalue._uint64_t.value[0]);          \
+        SINFO_UPDATE(e, GETWADDR(cow->heap, e->wkey));                  \
         e->next = e+1;                                                  \
     }
 COW_WRITE(uint8_t)
@@ -420,10 +415,10 @@ cow_show(cow_t* cow)
     for (i = 0; i < COW_MAX; ++i) {
         int j;
         for (j = 0; j < cow->sizes[i]; ++j) {
-        DLOG3("addr = %16p value = %ld x%lx \n",
-              cow->table[i][j].wkey,
-              cow->table[i][j].wvalue._uint64_t.value[0],
-              cow->table[i][j].wvalue._uint64_t.value[0]);
+            DLOG3("addr = %p value = %"PRIu64" x%"PRIx64" \n",
+                    (void*) cow->table[i][j].wkey,
+                    cow->table[i][j].wvalue._uint64_t.value[0],
+                    cow->table[i][j].wvalue._uint64_t.value[0]);
         }
     }
     DLOG3("----------\n");

@@ -7,15 +7,16 @@
 #include <stdint.h>
 #include <stdlib.h> // size_t
 
+typedef struct heap heap_t;
 typedef struct cow_buffer cow_t;
-cow_t* cow_init(int max_size);
+
+cow_t* cow_init(heap_t* heap, int max_size);
 void   cow_fini(cow_t* cow);
 void   cow_apply(cow_t* cow);
 void   cow_show(cow_t* cow);
 void   cow_swap(cow_t* cow);
 
-typedef struct heap heap_t;
-void cow_apply_heap(heap_t*, cow_t*, heap_t*, cow_t*);
+void cow_apply_heap(cow_t*, cow_t*);
 void cow_apply_cmp (cow_t*, cow_t*);
 
 void cow_write_uint8_t (cow_t* cow, uint8_t*  addr, uint8_t  value);

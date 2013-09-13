@@ -12,7 +12,9 @@
  * -------------------------------------------------------------------------- */
 
 #include "heap.h"
+#ifndef ALLOC_MAX_SIZE
 #define ALLOC_MAX_SIZE HEAP_1MB //1024
+#endif
 
 struct allocation {
     size_t size;
@@ -124,7 +126,7 @@ heap_in(heap_t* heap, void* ptr)
 }
 
 inline size_t
-heap_rel(heap_t* heap, void* ptr)
+heap_rel(const heap_t* heap, const void* ptr)
 {
     return ((char*) ptr) - heap->data;
 }
