@@ -236,9 +236,9 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
                 type* ptr2 = (type*) (addr_t) *addr2;                 \
                 size_t rel1 = heap_rel(asco->heap[asco->p], ptr1);      \
                 size_t rel2 = heap_rel(asco->heap[1-asco->p], ptr2);    \
-                fail_if (rel1 == rel2, "error mem check");              \
+                fail_ifn(rel1 == rel2, "error mem check");              \
             } else {                                                    \
-                fail_if (0, "error mem check");                         \
+                fail_ifn(0, "error mem check");                         \
             }                                                           \
         }                                                               \
         if (0 && asco->p == 1)                                          \

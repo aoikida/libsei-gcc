@@ -131,7 +131,7 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 {
     int i;
     for (i = 0; i < COW_MAX; ++i) {
-        fail_if (cow1->sizes[i] == cow2->sizes[i], "cows with different sizes");
+        fail_ifn(cow1->sizes[i] == cow2->sizes[i], "cows with different sizes");
 
         if (cow1->sizes[i] == 0) continue;
 
@@ -140,19 +140,19 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            fail_if(e1->wkey == e2->wkey,
-                    "entries point to different addresses");
+            fail_ifn(e1->wkey == e2->wkey,
+                     "entries point to different addresses");
 
 
 #ifndef COWBACK
             addr_t v1 = WVAL(e1);
             addr_t v2 = WVAL(e2);
-            fail_if(v1 == v2, "cow entries differ (value)");
+            fail_ifn(v1 == v2, "cow entries differ (value)");
             *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
 #else  /* ! COWBACK */
             addr_t v1 = WVAL(e1);
             addr_t v2 = *((addr_t*) GETWADDR(cow1->heap, e1->wkey));
-            fail_if (v1 == v2, "cow entries differ (value)");
+            fail_ifn(v1 == v2, "cow entries differ (value)");
 #endif /* ! COWBACK */
 
 #ifdef ASCO_STACK_INFO
@@ -199,7 +199,7 @@ cow_apply_heap(cow_t* cow1, cow_t* cow2)
 {
     int i;
     for (i = 0; i < COW_MAX; ++i) {
-        fail_if (cow1->sizes[i] == cow2->sizes[i], "different sizes");
+        fail_ifn(cow1->sizes[i] == cow2->sizes[i], "different sizes");
 
         if (cow1->sizes[i] == 0) continue;
 
@@ -208,14 +208,14 @@ cow_apply_heap(cow_t* cow1, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            fail_if (GETWADDR(cow1->heap, e1->wkey) !=
+            fail_ifn(GETWADDR(cow1->heap, e1->wkey) !=
                      GETWADDR(cow2->heap, e2->wkey),
                      "cow entries point to same address");
 
             addr_t v1 = WVAL(e1);
             addr_t v2 = WVAL(e2);
             if (v1 != v2) {
-                fail_if (heap_rel(cow1->heap, (void*) v1) ==
+                fail_ifn(heap_rel(cow1->heap, (void*) v1) ==
                          heap_rel(cow2->heap, (void*) v2),
                          "cow values differ and are not pointers");
             }
@@ -357,6 +357,7 @@ cow_find(cow_t* cow, uintptr_t wkey)
             return WVAX(e, type, addr);                                 \
         } else {                                                        \
             assert (0 && "cant handle unaligned accesses");             \
+            fail_ifn(0, "cant handle unaligned accesses");              \
         }                                                               \
     }
 #endif

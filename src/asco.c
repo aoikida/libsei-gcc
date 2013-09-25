@@ -24,18 +24,6 @@
 #error MODE should be defined (HEAP_MODE|COW_MODE|INSTR_MODE)
 #endif
 
-#ifndef ASCO_IGNORE_ERROR
-#define ASCO_FAIL(...) do {                                     \
-        fprintf(stderr, "asco detected error (%s:%d): ",        \
-                __FILE__, __LINE__);                            \
-        fprintf(stderr, __VA_ARGS__);                           \
-        fprintf(stderr, "\n");                                  \
-        assert (0); /* exit(EXIT_FAILURE); */                   \
-    } while(0);
-#else
-#define ASCO_FAIL(...)
-#endif
-
 /* -----------------------------------------------------------------------------
  * algorithm selection
  * -------------------------------------------------------------------------- */

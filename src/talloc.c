@@ -110,7 +110,7 @@ talloc_clean(talloc_t* talloc)
 {
    assert (talloc);
    assert (talloc->p == 1);
-   fail_if (talloc->size[0] == talloc->size[1],
+   fail_ifn(talloc->size[0] == talloc->size[1],
             "number of allocations in traversals differ");
 
 #ifdef ASCO_STACK_INFO

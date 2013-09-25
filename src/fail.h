@@ -6,15 +6,25 @@
 #define _ASCO_FAIL_H_
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
-#define ASCO_EXIT exit(EXIT_FAILURE)
+#if defined(ASCO_IGNORE_ERROR)
+# define ASCO_EXIT
+#elif defined(DEBUG)
+# define ASCO_EXIT assert(0 && "ERROR DETECTED")
+#else
+# define ASCO_EXIT exit(EXIT_FAILURE)
+#endif
 
-#define fail_if(cond, msg)                              \
-    if (!(cond)) {                                      \
-        fprintf(stderr, "ASCO ERROR: %s\n", msg);       \
-        ASCO_EXIT;                                      \
-    }
 
-//#define fail_if(cond, msg)
+#define ASCO_FAIL(...) do {                                     \
+        fprintf(stderr, "ERROR DETECTED (%s:%d) *** ",          \
+                __FILE__, __LINE__);                            \
+        fprintf(stderr, __VA_ARGS__);                           \
+        fprintf(stderr, "\n");                                  \
+        ASCO_EXIT;                                              \
+    } while(0);
+
+#define fail_ifn(cond, msg) if (!(cond)) { ASCO_FAIL(msg); }
 
 #endif /* _ASCO_FAIL_H_ */

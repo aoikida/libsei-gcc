@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <asco.h>
 #include "debug.h"
+#include "fail.h"
 
 /* -----------------------------------------------------------------------------
  * types and data structures
@@ -269,7 +270,7 @@ asco_switch(asco_t* asco)
 #endif
     cfc_alog(&asco->cf[0]);
     int r = cfc_amog(&asco->cf[0]);
-    fail_if (r, "control flow error");
+    fail_ifn(r, "control flow error");
 }
 
 void
@@ -279,7 +280,7 @@ asco_commit(asco_t* asco)
     asco->p = -1;
 
     int r = cfc_amog(&asco->cf[1]);
-    fail_if (r, "control flow error");
+    fail_ifn(r, "control flow error");
     cfc_alog(&asco->cf[1]);
 
 #ifndef COW_APPEND_ONLY

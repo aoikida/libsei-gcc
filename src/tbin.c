@@ -84,14 +84,14 @@ inline void
 tbin_flush(tbin_t* tbin)
 {
     assert (tbin);
-    fail_if (tbin->nitems[0] == tbin->nitems[1],
+    fail_ifn(tbin->nitems[0] == tbin->nitems[1],
              "number of items differ");
 
     tbin_item_t* it = &tbin->items[0];
     int i = 0;
     for (; i < tbin->nitems[0]; ++i, ++it) {
-        fail_if (it->ptr[0] && it->ptr[1], "only one pointers passed");
-        fail_if (it->ptr[0] == it->ptr[1], "pointers differ");
+        fail_ifn(it->ptr[0] && it->ptr[1], "only one pointers passed");
+        fail_ifn(it->ptr[0] == it->ptr[1], "pointers differ");
         if (tbin->heap && heap_in(tbin->heap, it->ptr[0]))
             heap_free(tbin->heap, it->ptr[0]);
         else
