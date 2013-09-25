@@ -8,7 +8,9 @@
 typedef struct cow_entry cow_entry_t;
 cow_entry_t* cow_find(cow_t* cow, uintptr_t wkey);
 
-void test_cow_find() {
+void
+test_cow_find()
+{
     heap_t *heap = heap_init(2048);
     cow_t *cow = cow_init(heap, 100);
 
@@ -23,7 +25,9 @@ void test_cow_find() {
     assert(cow_find(cow, GETWKEY(heap, &x[1])));
 }
 
-void test_key_macros() {
+void
+test_key_macros()
+{
     heap_t *heap = heap_init(2048);
     cow_t *cow = cow_init(heap, 100);
 
@@ -36,7 +40,9 @@ void test_key_macros() {
     assert(GETWKEY(heap, GETWADDR(heap, key1)) == key1);
 }
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv)
+{
     if (argc == 1) {
         test_cow_find();
     } else {

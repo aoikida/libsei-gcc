@@ -31,6 +31,10 @@ typedef uint64_t addr_t;
 typedef uint32_t addr_t;
 #endif
 
+#ifndef HEAP_SIZE
+#define HEAP_SIZE HEAP_500MB
+#endif
+
 /* -----------------------------------------------------------------------------
  * constructor/destructor
  * -------------------------------------------------------------------------- */
