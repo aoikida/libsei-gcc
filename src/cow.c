@@ -11,6 +11,7 @@
  * types and data structures
  * -------------------------------------------------------------------------- */
 
+#include "fail.h"
 #include "cow.h"
 #include "heap.h"
 #include "debug.h"
@@ -130,7 +131,7 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 {
     int i;
     for (i = 0; i < COW_MAX; ++i) {
-        assert (cow1->sizes[i] == cow2->sizes[i] && "different sizes");
+        fail_if (cow1->sizes[i] == cow2->sizes[i], "cows with different sizes");
 
         if (cow1->sizes[i] == 0) continue;
 
@@ -139,19 +140,19 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            assert(e1->wkey == e2->wkey
-                    && "entries point to different addresses");
+            fail_if(e1->wkey == e2->wkey,
+                    "entries point to different addresses");
 
 
 #ifndef COWBACK
             addr_t v1 = WVAL(e1);
             addr_t v2 = WVAL(e2);
-            assert(v1 == v2 && "cow entries differ (value)");
+            fail_if(v1 == v2, "cow entries differ (value)");
             *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
 #else  /* ! COWBACK */
             addr_t v1 = WVAL(e1);
             addr_t v2 = *((addr_t*) GETWADDR(cow1->heap, e1->wkey));
-            assert (v1 == v2 && "cow entries differ (value)");
+            fail_if (v1 == v2, "cow entries differ (value)");
 #endif /* ! COWBACK */
 
 #ifdef ASCO_STACK_INFO
@@ -198,7 +199,7 @@ cow_apply_heap(cow_t* cow1, cow_t* cow2)
 {
     int i;
     for (i = 0; i < COW_MAX; ++i) {
-        assert (cow1->sizes[i] == cow2->sizes[i] && "different sizes");
+        fail_if (cow1->sizes[i] == cow2->sizes[i], "different sizes");
 
         if (cow1->sizes[i] == 0) continue;
 
@@ -207,14 +208,16 @@ cow_apply_heap(cow_t* cow1, cow_t* cow2)
             cow_entry_t* e1 = &cow1->table[i][j];
             cow_entry_t* e2 = &cow2->table[i][j];
 
-            assert(GETWADDR(cow1->heap, e1->wkey) != GETWADDR(cow2->heap, e2->wkey) 
-                    && "cow entries point to same address");
+            fail_if (GETWADDR(cow1->heap, e1->wkey) !=
+                     GETWADDR(cow2->heap, e2->wkey),
+                     "cow entries point to same address");
 
             addr_t v1 = WVAL(e1);
             addr_t v2 = WVAL(e2);
             if (v1 != v2) {
-                assert( heap_rel(cow1->heap, (void*) v1) == heap_rel(cow2->heap, (void*) v2)
-                        && "cow values differ but they do not appear to be pointers");
+                fail_if (heap_rel(cow1->heap, (void*) v1) ==
+                         heap_rel(cow2->heap, (void*) v2),
+                         "cow values differ and are not pointers");
             }
 
             *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;

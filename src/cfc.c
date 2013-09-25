@@ -15,6 +15,7 @@ cfc_reset(cfc_t* cfc)
 void
 cfc_alog (cfc_t* cfc)
 {
+    assert(cfc);
     cfc->LScf = cfc->LRcf = SET;
 }
 

@@ -167,7 +167,7 @@ abuf_size(abuf_t* abuf)
     {                                                                   \
         assert (abuf->poped < abuf->pushed && "no entry to be read");   \
         abuf_entry_t* e = &abuf->buf[abuf->poped++];                    \
-        assert (e->addr == addr && "reading wrong address");            \
+        fail_if (e->addr == addr, "reading wrong address");             \
         assert (e->size == sizeof(type) && "reading wrong size");       \
         DLOG3("[%s:%d] reading address %p = x%x (x%x)\n",               \
               __FILE__, __LINE__, e->addr, ABUF_WVAL(e), *addr);        \
@@ -221,15 +221,15 @@ abuf_push(abuf_t* abuf, void* addr, uint64_t value)
 void
 abuf_cmp(abuf_t* a1, abuf_t* a2)
 {
-    assert (a1->pushed == a2->pushed);
-    assert (a1->poped == a2->poped);
-    assert (a1->poped == 0);
+    fail_if (a1->pushed == a2->pushed, "differ nb elements");
+    fail_if (a1->poped == a2->poped, "differ nb poped elements");
+    assert (a1->poped == 0 && "elements were poped");
     while (a1->poped < a1->pushed) {
         abuf_entry_t* e1 = &a1->buf[a1->poped++];
         abuf_entry_t* e2 = &a2->buf[a2->poped++];
         assert (e1->size == e2->size);
-        assert (e1->addr == e2->addr);
-        assert (ABUF_WVAL(e1) == ABUF_WVAL(e2));
+        fail_if (e1->addr == e2->addr, "addresses differ");
+        fail_if (ABUF_WVAL(e1) == ABUF_WVAL(e2), "values differ");
     }
 }
 
@@ -256,7 +256,7 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
         abuf_entry_t* e2 = &a2->buf[a2->poped++];
 
         assert (e1->size == e2->size);
-        assert (e1->addr == e2->addr);
+        fail_if (e1->addr == e2->addr, "addresses differ");
 
         switch (e1->size) {
         case sizeof(uint8_t):
@@ -287,7 +287,7 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
         for (j = a1->pushed-1; j >= 0; --j) {
             //++loop;
             if (addr == a1->buf[j].addr) {
-                assert (ce != &a1->buf[j] && "not duplicate! error detected");
+                fail_if (ce != &a1->buf[j], "not duplicate! error detected");
                 break;
             }
         }

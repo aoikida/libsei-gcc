@@ -269,7 +269,7 @@ asco_switch(asco_t* asco)
 #endif
     cfc_alog(&asco->cf[0]);
     int r = cfc_amog(&asco->cf[0]);
-    assert (r && "control flow error");
+    fail_if (r, "control flow error");
 }
 
 void
@@ -279,7 +279,7 @@ asco_commit(asco_t* asco)
     asco->p = -1;
 
     int r = cfc_amog(&asco->cf[1]);
-    assert (r && "control flow error");
+    fail_if (r, "control flow error");
     cfc_alog(&asco->cf[1]);
 
 #ifndef COW_APPEND_ONLY
@@ -366,6 +366,7 @@ void*
 asco_calloc(asco_t* asco, size_t nmemb, size_t size)
 {
     assert (0 && "not implemented");
+    return NULL;
 }
 
 /* -----------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include "fail.h"
 
 /* -----------------------------------------------------------------------------
  * types, data structures and definitions
@@ -83,12 +84,14 @@ void
 tbin_flush(tbin_t* tbin)
 {
     assert (tbin);
-    assert (tbin->nitems[0] == tbin->nitems[1] && "number of items differ");
+    fail_if (tbin->nitems[0] == tbin->nitems[1],
+             "number of items differ");
+
     tbin_item_t* it = &tbin->items[0];
     int i = 0;
     for (; i < tbin->nitems[0]; ++i, ++it) {
-        assert (it->ptr[0] && it->ptr[1] && "only one pointers passed");
-        assert (it->ptr[0] == it->ptr[1] && "pointers differ");
+        fail_if (it->ptr[0] && it->ptr[1], "only one pointers passed");
+        fail_if (it->ptr[0] == it->ptr[1], "pointers differ");
         if (tbin->heap && heap_in(tbin->heap, it->ptr[0]))
             heap_free(tbin->heap, it->ptr[0]);
         else
