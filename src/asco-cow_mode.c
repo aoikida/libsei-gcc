@@ -19,14 +19,76 @@
 #include "cow.h"
 #include "tbin.h"
 #include "talloc.h"
+#include "ilog.h"
+#include "now.h"
 
 struct asco {
     int       p;       /* the actual process (0 or 1) */
     heap_t*   heap;    /* optional heap               */
     cow_t*    cow[2];  /* a copy-on-write buffer      */
     tbin_t*   tbin;    /* trash bin for delayed frees */
-    talloc_t* talloc;  /* traversal allocarot         */
+    talloc_t* talloc;  /* traversal allocator         */
+
+#ifdef ASCO_STATS
+    ilog_t*   ilog;    /* stats logger                */
+
+    struct {
+        unsigned int ntrav;      /* traversal count   */
+        unsigned int nmalloc;    /* malloc count      */
+        unsigned int nfree;      /* malloc count      */
+        unsigned int nwuint8_t;  /* write 8 count     */
+        unsigned int nwuint16_t; /* write 16 count    */
+        unsigned int nwuint32_t; /* write 32 count    */
+        unsigned int nwuint64_t; /* write 64 count    */
+    } stats;           /* general statistics          */
+#endif
 };
+
+/* -----------------------------------------------------------------------------
+ * stats helpers
+ * -------------------------------------------------------------------------- */
+
+#ifdef ASCO_STATS
+#define ASCO_STATS_RESET() do {                   \
+        asco->stats.ntrav      = 0;               \
+        asco->stats.nmalloc    = 0;               \
+        asco->stats.nfree      = 0;               \
+        asco->stats.nwuint8_t  = 0;               \
+        asco->stats.nwuint16_t = 0;               \
+        asco->stats.nwuint32_t = 0;               \
+        asco->stats.nwuint64_t = 0;               \
+    } while (0)
+#define ASCO_STATS_INIT() do {               \
+        asco->ilog = ilog_init("stats.log"); \
+        ASCO_STATS_RESET();                  \
+    } while (0)
+#define ASCO_STATS_FINI() do { ilog_fini(asco->ilog); } while (0)
+#define ASCO_STATS_INC(X) (++asco->stats.X)
+#define ASCO_STATS_REPORT() do {                                        \
+        static uint64_t _now = 0;                                       \
+        if (now() - _now > NOW_1S) {                                    \
+            char buffer[1024];                                          \
+            sprintf(buffer, "%u %u %u %u %u %u %u",                     \
+                    asco->stats.ntrav,                                  \
+                    asco->stats.nmalloc,                                \
+                    asco->stats.nfree,                                  \
+                    asco->stats.nwuint8_t,                              \
+                    asco->stats.nwuint16_t,                             \
+                    asco->stats.nwuint32_t,                             \
+                    asco->stats.nwuint64_t                              \
+                );                                                      \
+            ilog_push(asco->ilog, __FILE__, buffer);                    \
+            _now = now();                                               \
+            ASCO_STATS_RESET();                                         \
+        }                                                               \
+    } while (0)
+#else
+#define ASCO_STATS_INIT()
+#define ASCO_STATS_FINI()
+#define ASCO_STATS_RESET()
+#define ASCO_STATS_INC(X)
+#define ASCO_STATS_REPORT()
+#endif
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -48,6 +110,9 @@ asco_init()
     asco->tbin   = tbin_init(100, asco->heap);
     asco->talloc = talloc_init(asco->heap);
 
+    ASCO_STATS_INIT();
+
+    // initialize with invalid execution number
     asco->p = -1;
 
     DLOG3("asco_init addr: %p (heap = {%p})\n", asco, asco->heap);
@@ -68,6 +133,8 @@ asco_fini(asco_t* asco)
 #ifdef COW_USEHEAP
     heap_fini(asco->heap);
 #endif
+
+    ASCO_STATS_FINI();
 }
 
 
@@ -111,6 +178,8 @@ asco_commit(asco_t* asco)
     cow_apply_cmp(asco->cow[0], asco->cow[1]);
     tbin_flush(asco->tbin);
     talloc_clean(asco->talloc);
+    ASCO_STATS_INC(ntrav);
+    ASCO_STATS_REPORT();
 }
 
 inline int
@@ -132,12 +201,14 @@ asco_setp(asco_t* asco, int p)
 inline void*
 asco_malloc(asco_t* asco, size_t size)
 {
+    ASCO_STATS_INC(nmalloc);
     return talloc_malloc(asco->talloc, size);
 }
 
 inline void
 asco_free(asco_t* asco, void* ptr)
 {
+    ASCO_STATS_INC(nfree);
     tbin_add(asco->tbin, ptr, asco->p);
 }
 
@@ -198,6 +269,7 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type) inline                                         \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
+        ASCO_STATS_INC(nw##type);                                       \
         assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
               addr, (uint64_t) value);                                  \
