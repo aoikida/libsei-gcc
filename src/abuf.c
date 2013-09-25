@@ -39,7 +39,10 @@ typedef struct abuf_entry {
     uint64_t size;
     void* addr;
 
+#ifdef DEBUG
     struct abuf_entry* next;
+#endif
+
 #ifdef ASCO_STACK_INFO
     sinfo_t* sipop;
     sinfo_t* sipush;
@@ -126,7 +129,7 @@ abuf_fini(abuf_t* abuf)
  * interface methods
  * -------------------------------------------------------------------------- */
 
-void
+inline void
 abuf_clean(abuf_t* abuf)
 {
 #ifdef ASCO_STACK_INFO
@@ -141,7 +144,7 @@ abuf_clean(abuf_t* abuf)
     abuf->poped  = 0;
 }
 
-int
+inline int
 abuf_size(abuf_t* abuf)
 {
     return abuf->pushed - abuf->poped;
@@ -179,14 +182,20 @@ ABUF_POP(uint16_t)
 ABUF_POP(uint32_t)
 ABUF_POP(uint64_t)
 
+#ifndef NDEBUG
+#define SAVE_NEXT e->next = e + sizeof(abuf_entry_t)
+#else
+#define SAVE_NEXT
+#endif
+
 #define ABUF_PUSH(type) inline                                          \
     void abuf_push_##type(abuf_t* abuf, type* addr, type value)         \
     {                                                                   \
         assert (abuf->pushed < abuf->max_size-1 && "no space left");    \
         abuf_entry_t* e = &abuf->buf[abuf->pushed++];                   \
-        e->size = sizeof(type);                                         \
         e->addr = addr;                                                 \
-        e->next  = e + sizeof(abuf_entry_t);                            \
+        e->size = sizeof(type);                                         \
+        SAVE_NEXT;                                                      \
         if (sizeof(type) != sizeof(uint64_t)) ABUF_WVAL(e) = 0;         \
         ABUF_WVAX(e, type, addr) = value;                               \
         ABUF_SINFO_PUSH(e, addr);                                       \
@@ -197,7 +206,7 @@ ABUF_PUSH(uint32_t)
 ABUF_PUSH(uint64_t)
 
 
-void*
+inline void*
 abuf_pop(abuf_t* abuf, uint64_t* value)
 {
     assert (abuf->poped < abuf->pushed && "no entry to be read");
@@ -211,14 +220,14 @@ abuf_pop(abuf_t* abuf, uint64_t* value)
     return e->addr;
 }
 
-void
+inline void
 abuf_push(abuf_t* abuf, void* addr, uint64_t value)
 {
     abuf_push_uint64_t(abuf, (uint64_t*) addr, value);
 }
 
 
-void
+inline void
 abuf_cmp(abuf_t* a1, abuf_t* a2)
 {
     fail_if (a1->pushed == a2->pushed, "differ nb elements");
@@ -241,7 +250,7 @@ abuf_cmp(abuf_t* a1, abuf_t* a2)
         }                                               \
     } while (0)
 
-void
+inline void
 abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
 {
     abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
@@ -304,7 +313,7 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
         *taddr = value;                                 \
     } while(0)
 
-void
+inline void
 abuf_swap(abuf_t* abuf)
 {
     assert (abuf->poped == 0);

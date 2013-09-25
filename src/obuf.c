@@ -79,7 +79,7 @@ obuf_close(obuf_t* obuf)
     obuf->p = 1 - obuf->p;
 }
 
-void
+inline void
 obuf_push(obuf_t* obuf, const void* ptr, size_t size)
 {
     obuf_queue_t* queue = &obuf->queue[obuf->p];
@@ -91,7 +91,7 @@ obuf_push(obuf_t* obuf, const void* ptr, size_t size)
     e->size += size;
 }
 
-void
+inline void
 obuf_done(obuf_t* obuf)
 {
     obuf_queue_t* queue = &obuf->queue[obuf->p];
@@ -112,7 +112,7 @@ obuf_done(obuf_t* obuf)
     assert (queue->tail - queue->head <= MAX_MSGS);
 }
 
-uint32_t
+inline uint32_t
 obuf_pop(obuf_t* obuf)
 {
     assert (obuf->queue[0].head < obuf->queue[0].tail);
@@ -138,7 +138,7 @@ obuf_pop(obuf_t* obuf)
 }
 
 
-int
+inline int
 obuf_size(obuf_t* obuf)
 {
     assert (obuf->queue[0].head == obuf->queue[1].head);

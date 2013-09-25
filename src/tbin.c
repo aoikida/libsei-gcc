@@ -80,7 +80,7 @@ tbin_add(tbin_t* tbin, void* ptr, int p)
 #endif
 }
 
-void
+inline void
 tbin_flush(tbin_t* tbin)
 {
     assert (tbin);

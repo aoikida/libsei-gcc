@@ -95,7 +95,7 @@ talloc_malloc(talloc_t* talloc, size_t size)
     return a->addr;
 }
 
-void
+inline void
 talloc_switch(talloc_t* talloc)
 {
    assert (talloc);
@@ -105,7 +105,7 @@ talloc_switch(talloc_t* talloc)
 }
 
 
-void
+inline void
 talloc_clean(talloc_t* talloc)
 {
    assert (talloc);

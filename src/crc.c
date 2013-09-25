@@ -35,7 +35,7 @@ crc_compute(const char* block, size_t len)
  * low-level methods
  * -------------------------------------------------------------------------- */
 
-uint32_t
+inline uint32_t
 crc_init()
 {
     return 0xFFFFFFFF;
@@ -69,7 +69,7 @@ crc_append_len(uint32_t crc, size_t len)
 #endif
 }
 
-uint32_t
+inline uint32_t
 crc_close(uint32_t crc)
 {
 #ifdef CRC_NONE

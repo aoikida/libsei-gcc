@@ -5,21 +5,21 @@
 #include <assert.h>
 #include "cfc.h"
 
-void
+inline void
 cfc_reset(cfc_t* cfc)
 {
     assert(cfc);
     cfc->Scf = cfc->Rcf = cfc->LScf = cfc->LRcf = RESET;
 }
 
-void
+inline void
 cfc_alog (cfc_t* cfc)
 {
     assert(cfc);
     cfc->LScf = cfc->LRcf = SET;
 }
 
-int
+inline int
 cfc_amog (cfc_t* cfc)
 {
     assert(cfc);
@@ -31,7 +31,7 @@ cfc_amog (cfc_t* cfc)
     }
 }
 
-int
+inline int
 cfc_check(cfc_t* cfc)
 {
     assert(cfc);
