@@ -76,12 +76,12 @@ struct abuf {
 #define ABUF_MAX_CONFLICTS 200
 
 #define ABUF_TYPEMASK(addr, type) ( (uintptr_t) addr & (sizeof(type) - 1))
-#define ABUF_PICKMASK(addr, type) (((uintptr_t) addr & 0x07) \
-                                  >> (sizeof(type) >> 1))
+#define ABUF_PICKMASK(addr, type) (((uintptr_t) addr & 0x07)    \
+                                   >> (sizeof(type) >> 1))
 #define ABUF_WVAL(e) (e->wvalue._uint64_t.value[0])
 
-#define ABUF_WVAX(e, type, addr) (e->wvalue._##type.value\
-                                 [ABUF_PICKMASK(addr,type)])
+#define ABUF_WVAX(e, type, addr) (e->wvalue._##type.value       \
+                                  [ABUF_PICKMASK(addr,type)])
 
 /* -----------------------------------------------------------------------------
  * constructor/destructor
@@ -148,13 +148,13 @@ abuf_size(abuf_t* abuf)
 }
 
 #ifdef ASCO_STACK_INFO
-#define ABUF_SINFO_POP(e, addr) do {                                   \
-        if (e->sipop == NULL) e->sipop = sinfo_init((void*) addr);     \
-        else sinfo_update(e->sipop, (void*) addr);                     \
+#define ABUF_SINFO_POP(e, addr) do {                                    \
+        if (e->sipop == NULL) e->sipop = sinfo_init((void*) addr);      \
+        else sinfo_update(e->sipop, (void*) addr);                      \
     } while(0)
-#define ABUF_SINFO_PUSH(e, addr) do {                                \
-        if (e->sipush == NULL) e->sipush = sinfo_init((void*) addr); \
-        else sinfo_update(e->sipush, (void*) addr);                  \
+#define ABUF_SINFO_PUSH(e, addr) do {                                   \
+        if (e->sipush == NULL) e->sipush = sinfo_init((void*) addr);    \
+        else sinfo_update(e->sipush, (void*) addr);                     \
     } while(0)
 #else
 #define ABUF_SINFO_POP(e, addr)
@@ -211,20 +211,19 @@ abuf_cmp(abuf_t* a1, abuf_t* a2)
     }
 }
 
-#define ABUF_CONFLICT(e, type) do {                   \
-        type* addr = e->addr;                         \
-        if (*addr != ABUF_WVAX(e, type, addr)) {      \
-            assert (nentry <= ABUF_MAX_CONFLICTS);    \
-            entry[nentry++] = e;                      \
-        }                                             \
+#define ABUF_CONFLICT(e, type) do {                     \
+        type* addr = e->addr;                           \
+        if (*addr != ABUF_WVAX(e, type, addr)) {        \
+            assert (nentry <= ABUF_MAX_CONFLICTS);      \
+            entry[nentry++] = e;                        \
+        }                                               \
     } while (0)
 
 void
 abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
 {
-    return;
     abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
-    int nentry = 0;
+    int nentry = 0; // number of potential conflicts
 
     assert (a1->pushed == a2->pushed);
     assert (a1->poped == a2->poped);
@@ -255,9 +254,9 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
         }
     }
 
-    if (1 || nentry == 0) return;
+    if (nentry == 0) return;
+
     // check conflicting entries
-    //int loop = 0;
     int i, j;
     for (i = 0; i < nentry; ++i) {
         abuf_entry_t* ce = entry[i];
@@ -277,10 +276,10 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
 
 
 #define ABUF_SWAP(e, type) do {                         \
-    type* taddr = (type*) e->addr;                      \
-    type value = ABUF_WVAX(e, type, e->addr);           \
-    ABUF_WVAX(e, type, e->addr) = *taddr;               \
-    *taddr = value;                                     \
+        type* taddr = (type*) e->addr;                  \
+        type value = ABUF_WVAX(e, type, e->addr);       \
+        ABUF_WVAX(e, type, e->addr) = *taddr;           \
+        *taddr = value;                                 \
     } while(0)
 
 void

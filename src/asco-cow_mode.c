@@ -16,12 +16,21 @@
  * -------------------------------------------------------------------------- */
 
 #include "heap.h"
-#include "cow.h"
+
 #include "tbin.h"
 #include "talloc.h"
 #include "obuf.h"
 #include "ibuf.h"
 #include "cfc.h"
+
+#ifdef COW_APPEND_ONLY
+# ifndef COWBACK
+#  error COW_APPEND_ONLY can only work with COWBACK
+# endif
+# include "abuf.h"
+#else
+# include "cow.h"
+#endif
 
 #ifdef ASCO_STATS
 #include "ilog.h"
@@ -32,7 +41,11 @@
 struct asco {
     int       p;       /* the actual process (0 or 1) */
     heap_t*   heap;    /* optional heap               */
+#ifndef COW_APPEND_ONLY
     cow_t*    cow[2];  /* a copy-on-write buffer      */
+#else
+    abuf_t*   cow[2];  /* a copy-on-write buffer      */
+#endif
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocator         */
     obuf_t*   obuf;    /* output buffer (messages)    */
@@ -116,8 +129,13 @@ asco_init()
 {
     asco_t* asco = (asco_t*) malloc(sizeof(asco_t));
     assert(asco);
+#ifndef COW_APPEND_ONLY
     asco->cow[0] = cow_init(0, 100000);
     asco->cow[1] = cow_init(0, 100000);
+#else
+    asco->cow[0] = abuf_init(100000);
+    asco->cow[1] = abuf_init(100000);
+#endif
 
 #ifdef COW_USEHEAP
     asco->heap   = heap_init(HEAP_1GB);
@@ -143,8 +161,13 @@ void
 asco_fini(asco_t* asco)
 {
     assert(asco);
+#ifndef COW_APPEND_ONLY
     cow_fini(asco->cow[0]);
     cow_fini(asco->cow[1]);
+#else
+    abuf_fini(asco->cow[0]);
+    abuf_fini(asco->cow[1]);
+#endif
 
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
@@ -189,7 +212,7 @@ asco_begin(asco_t* asco)
     if (asco->p == -1) {
         DLOG2("First execution\n");
         asco->p = 0;
-        assert (obuf_size(asco->obuf) == 0);
+        //assert (obuf_size(asco->obuf) == 0);
         cfc_reset(&asco->cf[0]);
         cfc_reset(&asco->cf[1]);
     }
@@ -210,7 +233,11 @@ asco_switch(asco_t* asco)
     ibuf_switch(asco->ibuf);
 
 #ifdef COWBACK
+#ifdef COW_APPEND_ONLY
+    abuf_swap(asco->cow[0]);
+#else
     cow_swap(asco->cow[0]);
+#endif
 #endif
     cfc_alog(&asco->cf[0]);
     int r = cfc_amog(&asco->cf[0]);
@@ -227,9 +254,16 @@ asco_commit(asco_t* asco)
     assert (r && "control flow error");
     cfc_alog(&asco->cf[1]);
 
+#ifndef COW_APPEND_ONLY
     cow_show(asco->cow[0]);
     cow_show(asco->cow[1]);
     cow_apply_cmp(asco->cow[0], asco->cow[1]);
+#else
+    abuf_cmp_heap(asco->cow[0], asco->cow[1]);
+    abuf_clean(asco->cow[0]);
+    abuf_clean(asco->cow[1]);
+#endif
+
     tbin_flush(asco->tbin);
     talloc_clean(asco->talloc);
     obuf_close(asco->obuf);
@@ -317,6 +351,7 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
  * load and stores
  * -------------------------------------------------------------------------- */
 
+#ifndef COW_APPEND_ONLY
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
     {                                                                   \
@@ -345,6 +380,34 @@ ASCO_WRITE(uint8_t)
 ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
+#else
+
+#define ASCO_READ(type) inline                                          \
+    type asco_read_##type(asco_t* asco, const type* addr)               \
+    {                                                                   \
+        DLOG3("asco_read_%s(%d) %p = %lx", #type, asco->p, addr,        \
+              (uint64_t) *addr);                                        \
+        return *addr;                                                   \
+    }
+ASCO_READ(uint8_t)
+ASCO_READ(uint16_t)
+ASCO_READ(uint32_t)
+ASCO_READ(uint64_t)
+
+#define ASCO_WRITE(type) inline                                         \
+    void asco_write_##type(asco_t* asco, type* addr, type value)        \
+    {                                                                   \
+        assert (asco->p == 0 || asco->p == 1);                          \
+        DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
+              addr, (uint64_t) value);                                  \
+        abuf_push_##type(asco->cow[asco->p], addr, *addr);              \
+        *addr = value;                                                  \
+    }
+ASCO_WRITE(uint8_t)
+ASCO_WRITE(uint16_t)
+ASCO_WRITE(uint32_t)
+ASCO_WRITE(uint64_t)
+#endif
 
 /* -----------------------------------------------------------------------------
  * output messages
