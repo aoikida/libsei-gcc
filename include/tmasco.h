@@ -5,6 +5,23 @@
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
 
+#ifndef TMASCO_NOASM
+#define TMASCO_ASM
+#endif
+
+#ifdef TMASCO_INSTR
+#define TMASCO_ENABLED
+#define TMASCO_DISABLE_OUTPUT_CHECKS
+#define TMASCO_DISABLE_INPUT_CHECKS
+#define TMASCO_DISABLE_PROTECTION
+#endif
+
+#ifndef TMASCO_ENABLED
+#define TMASCO_DISABLE_OUTPUT_CHECKS
+#define TMASCO_DISABLE_INPUT_CHECKS
+#define TMASCO_DISABLE_PROTECTION
+#endif
+
 #include <tmasco_support.h>
 #include <stdint.h>
 #include <setjmp.h>
@@ -47,18 +64,33 @@ uint32_t tmasco_output_next();
 #define __asco_output_next() tmasco_output_next()
 #endif
 
+#ifdef TMASCO_DISABLE_PROTECTION
+#define __asco_unprotect(ptr, size)
+#else
 void  tmasco_unprotect(void* addr, size_t size);
 #define __asco_unprotect(ptr, size) tmasco_unprotect(ptr,size)
+#endif
 
+#ifdef TMASCO_DISABLE_INPUT_CHECKS
+#define __asco_prepare(ptr, size, crc, ro)
+#define __asco_prepare_nm(ptr)
+#else
 #define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
 #define __asco_prepare_nm(ptr) tmasco_prepare_nm()
+#endif
 
 #define __asco_begin(x)  __tmasco_begin(x)
 #define __asco_switch(x) __tmasco_switch(x)
 #define __asco_commit(x) __tmasco_commit(x)
 #define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
 
-#if defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
+#if defined(TMASCO_INSTR)
+
+#define __tmasco_begin(X)  __transaction_atomic {
+#define __tmasco_switch(X) }
+#define __tmasco_commit(X)
+
+#elif defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
 #include <stdint.h>
 
 static inline uintptr_t getbp() __attribute__((always_inline));

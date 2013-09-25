@@ -3,34 +3,6 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-# -- targets -------------------------------------------------------------------
-BUILD  ?= build
-SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
-	cpu_stats.c obuf.c crc.c ibuf.c cfc.c
-SUPPORT = tmasco_support.c
-LIBASCO = libasco.a
-
-ifdef DEBUG
-OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
-else
-OBJS    = $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
-endif
-
-ifdef USE_TMASCO_ASM
-OBJS   += $(BUILD)/tmasco_asm.o
-endif
-
-ifdef COW_ASMREAD
-OBJS   += $(BUILD)/tmasco_read.o
-endif
-
-# TESTS
-TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
-TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
-
-_TARGETS = $(LIBASCO)
-TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
-
 # -- configuration -------------------------------------------------------------
 CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO #-DASCO_STACK_INFO_CMD=
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror -DNDEBUG #-DASCO_STATS
@@ -54,6 +26,7 @@ AFLAGS = -DMODE=0
 endif
 ifeq ($(MODE), heap)
 AFLAGS += -DMODE=1
+TMASCO_NOASM = 1
 endif
 ifeq ($(MODE), cow)
 AFLAGS += -DMODE=2 -DCOWBACK
@@ -66,7 +39,7 @@ AFLAGS += -DMODE=1
 MODE=heap
 endif
 
-ifdef USE_TMASCO_ASM
+ifndef TMASCO_NOASM
 AFLAGS += -DTMASCO_ASM
 endif
 
@@ -92,6 +65,34 @@ $(info CFLAGS: $(CFLAGS))
 $(info AFLAGS: $(AFLAGS))
 $(info CC    : $(CC))
 $(info ----------------------)
+
+# -- targets -------------------------------------------------------------------
+BUILD  ?= build
+SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
+	cpu_stats.c obuf.c crc.c ibuf.c cfc.c
+SUPPORT = tmasco_support.c
+LIBASCO = libasco.a
+
+ifdef DEBUG
+OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
+else
+OBJS    = $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
+endif
+
+ifndef TMASCO_NOASM
+OBJS   += $(BUILD)/tmasco_asm.o
+endif
+
+ifdef COW_ASMREAD
+OBJS   += $(BUILD)/tmasco_read.o
+endif
+
+# TESTS
+TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
+TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
+
+_TARGETS = $(LIBASCO)
+TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- rules ---------------------------------------------------------------------
 .PHONY: all clean test

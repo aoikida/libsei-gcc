@@ -1,39 +1,66 @@
 # -*- Makefile -*-
 
-all: libasco-cow.a libasco-cowa.a libasco-cowh.a libasco-cowah.a\
-	libasco-cowp.a
+#libasco-cowh.a libasco-cowah.a libasco-cowp.a
+TARGETS = \
+	libasco-cow.a\
+	libasco-cow-opt.a\
+	libasco-cowa.a\
+	libasco-cowa-opt.a\
+	libasco-instr.a\
+	libasco-instr-opt.a
+
+all: $(TARGETS)
 
 lib:
 	mkdir -p lib
 
 libasco-cow.a: | lib
-	make BUILD=build-cow clean
-	make BUILD=build-cow MODE=cow USE_TMASCO_ASM=1
+	make BUILD=build-cow clean all MODE=cow
 	mv build-cow/libasco.a lib/libasco-cow.a
 
+libasco-cow-opt.a: | lib
+	make BUILD=build-cow-opt clean all MODE=cow \
+		COW_ASMREAD=1 \
+		CFLAGS="-DCOW_ROPURE"
+	mv build-cow-opt/libasco.a lib/libasco-cow-opt.a
+
 libasco-cowa.a: | lib
-	make BUILD=build-cowa clean
-	make BUILD=build-cowa MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY"
+	make BUILD=build-cowa clean all MODE=cow \
+		CFLAGS="-DCOW_APPEND_ONLY"
 	mv build-cowa/libasco.a lib/libasco-cowa.a
 
+libasco-cowa-opt.a: | lib
+	make BUILD=build-cowa-opt clean all MODE=cow \
+		COW_ASMREAD=1 \
+		CFLAGS="-DCOW_APPEND_ONLY -DCOW_ROPURE"
+	mv build-cowa-opt/libasco.a lib/libasco-cowa-opt.a
+
 libasco-cowah.a: | lib
-	make BUILD=build-cowah clean
-	make BUILD=build-cowah MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP"
+	make BUILD=build-cowah clean all MODE=cow \
+		CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP"
 	mv build-cowah/libasco.a lib/libasco-cowah.a
 
 libasco-cowh.a: | lib
-	make BUILD=build-cowh clean
-	make BUILD=build-cowh MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_USEHEAP"
+	make BUILD=build-cowh clean all MODE=cow \
+		CFLAGS="-DCOW_USEHEAP"
 	mv build-cowh/libasco.a lib/libasco-cowh.a
 
 libasco-cowp.a: | lib
-	make BUILD=build-cowp clean
-	make BUILD=build-cowp MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DHEAP_PROTECT -DCOW_USEHEAP"
+	make BUILD=build-cowp clean all MODE=cow \
+		CFLAGS="-DHEAP_PROTECT -DCOW_USEHEAP"
 	mv build-cowp/libasco.a lib/libasco-cowp.a
 
+libasco-instr.a: | lib
+	make BUILD=build-instr clean all MODE=instr
+	mv build-instr/libasco.a lib/libasco-instr.a
+
+libasco-instr-opt.a: | lib
+	make BUILD=build-instr-opt clean all MODE=instr \
+		COW_ASMREAD=1 #CFLAGS="-DCOW_ROPURE"
+	mv build-instr-opt/libasco.a lib/libasco-instr-opt.a
+
 libasco-heap.a: | lib
-	make BUILD=build-heap clean
-	make BUILD=build-heap MODE=heap
+	make BUILD=build-heap clean all MODE=heap
 	mv build-heap/libasco.a lib/libasco-heap.a
 
 clean:
