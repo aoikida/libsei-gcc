@@ -5,10 +5,18 @@
 #include "crc.h"
 
 /* -----------------------------------------------------------------------------
- * types and data structures
+ * implementation
  * -------------------------------------------------------------------------- */
+#include "crc32c/crc32c.c"
+#include "crc32c/crc32c_hardware.c"
 
+crc32c_f* crc32c;
 
+static void __attribute__((constructor))
+crc_module_init()
+{
+    crc32c = crc32c_impl();
+}
 
 /* -----------------------------------------------------------------------------
  * high-level methods
@@ -43,7 +51,7 @@ crc_append(uint32_t crc, const char* block, size_t len)
 #elif defined(CRC_NONE)
     return 0;
 #else // CRC default
-    return 0;
+    return crc32c(crc, block, len);
 #endif
 
 }
@@ -51,13 +59,24 @@ crc_append(uint32_t crc, const char* block, size_t len)
 uint32_t
 crc_append_len(uint32_t crc, size_t len)
 {
+#if defined(CRC_CHECKSUM)
     return crc ^ len;
+#elif defined(CRC_NONE)
+    return 0;
+#else
+    // TODO: add length to CRC
+    return crc;
+#endif
 }
 
 uint32_t
 crc_close(uint32_t crc)
 {
+#ifdef CRC_NONE
+    return 0;
+#else
     return ~crc;
+#endif
 }
 
 /* -----------------------------------------------------------------------------

@@ -28,8 +28,8 @@ _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -g -O0 -Wall -Werror #-DASCO_STACK_INFO
-CFLAGS_REL  = -g -O3 -Wall -Werror #-DASCO_STATS
+CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO
+CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror #-DASCO_STATS
 
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
