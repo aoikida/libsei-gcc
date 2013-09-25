@@ -2,101 +2,76 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------- */
+#include <tmasco.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <asco.h>
 
 #include "types.h"
 #include "foo.h"
 
-output_t*
-handler(input_t* input, output_t* output)
-{
-    __transaction_atomic {
-        if (!output)
-            // If state (ie, output) == NULL, allocate it. This will
-            // be executed only the first time entry is called.
-            output = malloc(sizeof(output_t));
-        output->a = input->a;
-        foo(output);
-        return output;
-    }
-}
+int printf(const char *format, ...) TMASCO_PURE;
+extern uint32_t crc_compute(const char* block, size_t len);
 
-asco_t* asco = NULL;
+output_t*
+handler(state_t* state, input_t* input, uint32_t crc, uint32_t* crco)
+{
+    // This will be used as output and state in this example both
+    // start as empty.
+    output_t* output = NULL;
+
+    // at this point we received the message (input, crc)
+    // prepare traversal
+    __asco_prepare(input, sizeof(input_t), crc, 1);
+
+    // asco_begin says next heap is p.
+    __asco_begin(handler);
+
+    // Call event handler with input and state.
+    output = foo(state, input);
+
+    // jump back to begin() in first execution
+    __asco_end(handler);
+
+    // get message CRC
+    *crco = __asco_output_next();
+
+    return output;
+}
 
 int
 main()
 {
-    // Call asco_init to intialize the 2 heaps (for p and q).
-    asco = asco_init();
-
     // input variable
     input_t input;
 
-    // This will be used as output and state in this example both
-    // start as empty.
-    output_t* output1 = NULL;
-    output_t* output2 = NULL;
+    // state
+    state_t* state = (state_t*) malloc(sizeof(state_t));
+    state->sum = 0;
 
     // loop for 10 input values
-    for (input.a = 1; input.a <= 10; input.a++) {
-        // asco_begin says next heap is p.
-        asco_begin(asco);
+    for (input.a = 1; input.a <= 1; input.a++) {
+        // we receive a message and its CRC
 
-        // Call event handler with input and old state (output1).
-        output1 = handler(&input, output1);
+        uint32_t crc = crc_compute((const char*)&input, sizeof(input_t));
+        uint32_t crco; // crc of output
 
-        // Show output1 before applying COW back to the heap.
-        printf("Before apply %d = %d\n", input.a, output1->a);
+        output_t* output = handler(state, &input, crc, &crco);
 
-        // Switch to q.
-        asco_switch(asco);
+        // check CRC (this should be done on the receiver)
+        uint32_t crcc = crc_compute((const char*)output, sizeof(output_t));
+        assert ((!TMASCO_ENABLED || crcc == crco) && "crcs differ!");
 
-        // Call event handler with input and old state (output2).
-        output2 = handler(&input, output2);
+        // Show state and messages
+        printf("DONE! %d %d %d\n", state->sum, input.a, output->a);
 
-        // Show output2 before applying COW back to the heap. Note
-        // that both heaps use a COW buffer.
-        printf("After switch %d = %d\n", input.a, output2->a);
-
-        // Apply the COWs to the heaps. Check whether values in COW
-        // are the same.
-        asco_commit(asco);
-        printf("After apply %d = %d = %d\n", input.a, output1->a, output2->a);
-
-        // Since output messages were allocated in the heaps, one
-        // could think that the comparison between COWs in
-        // asco_commit() would be sufficient to check that both
-        // outputs are the same. I guess that this is not enough if
-        // the message content was not modified during the handler
-        // execution. Perhaps it is a default message placed in the
-        // heap. Therefore we should compare both outputs here as well.
-        output_t* t1 = output1;
-        output_t* t2 = output2;
-        for (; t1 && t2; t1 = t1->next, t2 = t2->next)
-            assert (t1->a == t2->a);
+        // we need to free output in a traversal with no message
+        __asco_prepare_nm();
+        __asco_begin(free);
+        free(output);
+        __asco_end(free);
     }
 
-    // Delete heaps.
-    asco_fini(asco);
+    free(state);
     return 0;
 }
-
-
-/* This is the output of the last iteration:
-
-
-   Before apply 10 = 9
-   After switch 10 = 9
-   ----------
-   COW BUFFER 0:                           << PASC-lib output
-   addr =   0x7f3fe848d030 value = 10      << PASC-lib output
-   ----------
-   ----------
-   COW BUFFER 0:                           << PASC-lib output
-   addr =   0x7f3fe7a8c030 value = 10      << PASC-lib output
-   ----------
-   After apply 10 = 10 = 10
- */
