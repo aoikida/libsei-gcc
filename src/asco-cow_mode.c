@@ -21,6 +21,7 @@
 #include "talloc.h"
 #include "obuf.h"
 #include "ibuf.h"
+#include "cfc.h"
 
 #ifdef ASCO_STATS
 #include "ilog.h"
@@ -36,6 +37,7 @@ struct asco {
     talloc_t* talloc;  /* traversal allocator         */
     obuf_t*   obuf;    /* output buffer (messages)    */
     ibuf_t*   ibuf;    /* input message buffer        */
+    cfc_t     cf[2];   /* control flags               */
 
 #ifdef ASCO_STATS
     ilog_t*   ilog;    /* stats logger                */
@@ -188,6 +190,8 @@ asco_begin(asco_t* asco)
         DLOG2("First execution\n");
         asco->p = 0;
         assert (obuf_size(asco->obuf) == 0);
+        cfc_reset(&asco->cf[0]);
+        cfc_reset(&asco->cf[1]);
     }
 
     if (asco->p == 1) {
@@ -208,6 +212,9 @@ asco_switch(asco_t* asco)
 #ifdef COWBACK
     cow_swap(asco->cow[0]);
 #endif
+    cfc_alog(&asco->cf[0]);
+    int r = cfc_amog(&asco->cf[0]);
+    assert (r && "control flow error");
 }
 
 void
@@ -216,14 +223,25 @@ asco_commit(asco_t* asco)
     DLOG2("COMMIT: %d\n", asco->p);
     asco->p = -1;
 
+    int r = cfc_amog(&asco->cf[1]);
+    assert (r && "control flow error");
+    cfc_alog(&asco->cf[1]);
+
     cow_show(asco->cow[0]);
     cow_show(asco->cow[1]);
     cow_apply_cmp(asco->cow[0], asco->cow[1]);
     tbin_flush(asco->tbin);
     talloc_clean(asco->talloc);
     obuf_close(asco->obuf);
-    int r = ibuf_correct(asco->ibuf);
+
+    r = cfc_check(&asco->cf[0]);
+    assert (r && "control flow error");
+    r = cfc_check(&asco->cf[1]);
+    assert (r && "control flow error");
+
+    r = ibuf_correct(asco->ibuf);
     assert (r == 1 && "input message modified");
+
 
     ASCO_STATS_INC(ntrav);
     ASCO_STATS_REPORT();

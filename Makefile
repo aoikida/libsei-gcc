@@ -6,7 +6,7 @@
 # -- targets -------------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
-	cpu_stats.c obuf.c crc.c ibuf.c
+	cpu_stats.c obuf.c crc.c ibuf.c cfc.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 
@@ -21,7 +21,7 @@ OBJS   += $(BUILD)/tmasco_asm.o
 endif
 
 # TESTS
-TSRCS = cow_test.c abuf_test.c obuf_test.c
+TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
 _TARGETS = $(LIBASCO)
