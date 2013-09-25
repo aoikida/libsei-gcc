@@ -72,7 +72,9 @@ tmasco_fini()
 static inline uintptr_t getsp() __attribute__((always_inline));
 static inline uintptr_t getsp() {
     register const uintptr_t rsp asm ("rsp");
+#ifndef NDEBUG
     __tmasco.low = rsp; // this update is only necessary for debugging
+#endif
     return rsp;
 }
 
@@ -168,24 +170,29 @@ _ITM_calloc(size_t nmemb, size_t size)
 }
 #ifndef COWBACK
 #define ITM_READ(type, prefix, suffix) inline                   \
-    type _ITM_##prefix##R##suffix(const type* addr)             \
+    type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
         if (ignore_addr(addr)) return *addr;                    \
         else return asco_read_##type(__tmasco.asco, addr);      \
     }
 #else
-#define ITM_READ(type, prefix, suffix) inline                   \
-    type _ITM_##prefix##R##suffix(const type* addr)             \
+#ifdef COW_ASMREAD
+#  define ITM_READ(type, prefix, suffix) inline                 \
+    type _ITM_R##prefix##suffix(const type* addr);
+#else
+#  define ITM_READ(type, prefix, suffix) inline                 \
+    type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
         return *addr;                                           \
     }
+#endif /* COW_ASMREAD */
 #endif
 
 #define ITM_READ_ALL(type, suffix)                              \
     ITM_READ(type,   , suffix)                                  \
-    ITM_READ(type, Rf, suffix)                                  \
-    ITM_READ(type, Ra, suffix)                                  \
-    ITM_READ(type, Wa, suffix)
+    ITM_READ(type, aR, suffix)                                  \
+    ITM_READ(type, aW, suffix)                                  \
+    ITM_READ(type, fW, suffix)
 
 ITM_READ_ALL(uint8_t,  U1)
 ITM_READ_ALL(uint16_t, U2)
@@ -193,7 +200,7 @@ ITM_READ_ALL(uint32_t, U4)
 ITM_READ_ALL(uint64_t, U8)
 
 #define ITM_WRITE(type, prefix, suffix) inline                 \
-    void _ITM_##prefix##W##suffix(type* addr, type value)      \
+    void _ITM_W##prefix##suffix(type* addr, type value)        \
     {                                                          \
         if (ignore_addr(addr)) *addr = value;                  \
         else asco_write_##type(__tmasco.asco, addr, value);    \
@@ -201,9 +208,8 @@ ITM_READ_ALL(uint64_t, U8)
 
 #define ITM_WRITE_ALL(type, suffix)                            \
     ITM_WRITE(type,   , suffix)                                \
-    ITM_WRITE(type, Rf, suffix)                                \
-    ITM_WRITE(type, Ra, suffix)                                \
-    ITM_WRITE(type, Wa, suffix)
+    ITM_WRITE(type, aR, suffix)                                \
+    ITM_WRITE(type, aW, suffix)
 
 ITM_WRITE_ALL(uint8_t,  U1)
 ITM_WRITE_ALL(uint16_t, U2)

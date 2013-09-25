@@ -20,6 +20,10 @@ ifdef USE_TMASCO_ASM
 OBJS   += $(BUILD)/tmasco_asm.o
 endif
 
+ifdef COW_ASMREAD
+OBJS   += $(BUILD)/tmasco_read.o
+endif
+
 # TESTS
 TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
@@ -28,8 +32,8 @@ _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO
-CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror #-DASCO_STATS
+CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO #-DASCO_STACK_INFO_CMD=
+CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror -DNDEBUG #-DASCO_STATS
 
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
@@ -66,6 +70,9 @@ ifdef USE_TMASCO_ASM
 AFLAGS += -DTMASCO_ASM
 endif
 
+ifdef COW_ASMREAD
+AFLAGS += -DCOW_ASMREAD
+endif
 
 # compiler
 TMFLAGS = -fgnu-tm
@@ -78,6 +85,7 @@ ifeq ($(CC), clang)
 TMFLAGS = -ftm
 endif
 
+$(info ======================)
 $(info MODE  : $(MODE))
 $(info DEBUG : $(DEBUG))
 $(info CFLAGS: $(CFLAGS))
@@ -94,6 +102,9 @@ test: $(TESTS)
 
 $(BUILD):
 	mkdir -p $(BUILD)
+
+$(BUILD)/tmasco_read.o: src/tmasco_read.S
+	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/tmasco_asm.o: src/tmasco_asm.S
 	$(CC) $(CFLAGS) -I include -c -o $@ $<

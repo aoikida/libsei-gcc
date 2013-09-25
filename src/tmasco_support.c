@@ -12,24 +12,27 @@
  * libc functions that should be transactified
  * -------------------------------------------------------------------------- */
 
-#include "libc/string/memchr.c"
-#include "libc/string/memcmp.c"
-#include "libc/string/memmove.c"
-#ifndef TMASCO_ENABLED
-#include "libc/string/memcpy.c"
-#include "libc/string/memset.c"
-#endif
-#include "libc/string/strlen.c"
-#include "libc/string/strdup.c"
-#include "libc/string/strcmp.c"
-#include "libc/string/strncpy.c"
-#include "libc/string/strcpy.c"
-#include "libc/string/strncmp.c"
-#include "libc/string/strchr.c"
+// functions that modify arguments
 #include "libc/stdlib/strtol.c"
 #include "libc/stdlib/strtoll.c"
 #include "libc/stdlib/strtoul.c"
 #include "libc/stdlib/strtoull.c"
+#include "libc/string/memmove.c"
+#include "libc/string/strdup.c"
+#include "libc/string/strncpy.c"
+#include "libc/string/strcpy.c"
+//#include "libc/string/memcpy.c"
+//#include "libc/string/memset.c"
+
+// stateless functions
+#ifndef COW_ROPURE
+# include "libc/string/strlen.c"
+# include "libc/string/memchr.c"
+# include "libc/string/memcmp.c"
+# include "libc/string/strcmp.c"
+# include "libc/string/strncmp.c"
+# include "libc/string/strchr.c"
+#endif
 
 char*
 strndup(const char *s, size_t n)
@@ -63,6 +66,15 @@ _ZGTt7memmove(void* dst, const void* src, size_t size)
 {
     return _ZGTt11memmove_bsd(dst, src, size);
 }
+
+#if 0
+int _ZGTt10strcmp_bsd(const char *s1, const char *s2);
+int
+_ZGTt6strcmp(const char *s1, const char *s2)
+{
+    return _ZGTt10strcmp_bsd(s1, s2);
+}
+#endif
 
 /* -----------------------------------------------------------------------------
  * clang tricks
@@ -121,5 +133,3 @@ ___string_mock() {
     }
 }
 #endif
-
-

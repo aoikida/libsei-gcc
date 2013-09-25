@@ -1,20 +1,20 @@
 /* -*- asm -*- */
 /* -----------------------------------------------------------------------------
- * Copyright (c) 2013 Diogo Behrens
- * Distributed under the MIT license. See accompanying file LICENSE.
- * -------------------------------------------------------------------------- */
+** Copyright (c) 2013 Diogo Behrens
+** Distributed under the MIT license. See accompanying file LICENSE.
+** -------------------------------------------------------------------------- */
 
 /*
-* There are two things we do in assembly:
-* 1. we save the caller stack boundaries to be able to filter out calls to local
-*    variables inside tmasco.
-* 2. we save the callee-save registers, so that we can restore them correctly
-*    when switching to the second execution of the traversal.
-*
-* To understand what this file does, check the excellent introduction to x64
-*  assembly: http://cs.nyu.edu/courses/fall11/CSCI-GA.2130-001/x64-intro.pdf
-*
-*/
+** There are two things we do in assembly:
+** 1. we save the caller stack boundaries to be able to filter out calls to
+**    local variables inside tmasco.
+** 2. we save the callee-save registers, so that we can restore them correctly
+**    when switching to the second execution of the traversal.
+**
+** To understand what this file does, check the excellent introduction to x64
+**  assembly: http://cs.nyu.edu/courses/fall11/CSCI-GA.2130-001/x64-intro.pdf
+**
+**/
 
 /* --- _ITM_beginTransaction ------------------------------------------------ */
 	.text
