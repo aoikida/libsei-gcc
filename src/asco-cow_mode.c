@@ -25,8 +25,8 @@
 #include "cfc.h"
 
 #ifdef COW_APPEND_ONLY
-# ifndef COWBACK
-#  error COW_APPEND_ONLY can only work with COWBACK
+# ifndef COW_WT
+#  error COW_APPEND_ONLY can only work with COW_WT
 # endif
 # include "abuf.h"
 #else
@@ -261,7 +261,7 @@ asco_switch(asco_t* asco)
     obuf_close(asco->obuf);
     ibuf_switch(asco->ibuf);
 
-#ifdef COWBACK
+#ifdef COW_WT
 #ifdef COW_APPEND_ONLY
     abuf_swap(asco->cow[0]);
 #else

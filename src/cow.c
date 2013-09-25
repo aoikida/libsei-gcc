@@ -144,16 +144,16 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
                      "entries point to different addresses");
 
 
-#ifndef COWBACK
+#ifndef COW_WT
             addr_t v1 = WVAL(e1);
             addr_t v2 = WVAL(e2);
             fail_ifn(v1 == v2, "cow entries differ (value)");
             *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
-#else  /* ! COWBACK */
+#else  /* COW_WT */
             addr_t v1 = WVAL(e1);
             addr_t v2 = *((addr_t*) GETWADDR(cow1->heap, e1->wkey));
             fail_ifn(v1 == v2, "cow entries differ (value)");
-#endif /* ! COWBACK */
+#endif /* COW_WT */
 
 #ifdef ASCO_STACK_INFO
             if (e1->sinfo) {
@@ -288,8 +288,8 @@ cow_apply(cow_t* cow)
 void
 cow_swap(cow_t* cow)
 {
-#ifndef COWBACK
-    assert (0 && "only supported with COWBACK");
+#ifndef COW_WT
+    assert (0 && "only supported with COW_WT");
 #endif
 
     int i;
@@ -337,7 +337,7 @@ cow_find(cow_t* cow, uintptr_t wkey)
 /* -----------------------------------------------------------------------------
  * reading and writing
  * -------------------------------------------------------------------------- */
-#ifdef COWBACK
+#ifdef COW_WT
 #define COW_READ(type) inline                                           \
     type cow_read_##type(cow_t* cow, const type* addr)                  \
     {                                                                   \

@@ -2,10 +2,13 @@
 
 #libasco-cowh.a libasco-cowah.a libasco-cowp.a
 TARGETS = \
+	libasco-cowp.a\
+	libasco-cown.a\
 	libasco-cow.a\
 	libasco-cow-opt.a\
 	libasco-cowa.a\
 	libasco-cowa-opt.a\
+	libasco-cowah.a\
 	libasco-instr.a\
 	libasco-instr-opt.a
 
@@ -17,6 +20,11 @@ lib:
 libasco-cow.a: | lib
 	make BUILD=build-cow clean all MODE=cow
 	mv build-cow/libasco.a lib/libasco-cow.a
+
+libasco-cown.a: | lib
+	make BUILD=build-cown clean all MODE=cow \
+		COW_WB=1
+	mv build-cown/libasco.a lib/libasco-cown.a
 
 libasco-cow-opt.a: | lib
 	make BUILD=build-cow-opt clean all MODE=cow \
@@ -37,7 +45,8 @@ libasco-cowa-opt.a: | lib
 
 libasco-cowah.a: | lib
 	make BUILD=build-cowah clean all MODE=cow \
-		CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP"
+		COW_ASMREAD=1 \
+		CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP -DCOW_ROPURE"
 	mv build-cowah/libasco.a lib/libasco-cowah.a
 
 libasco-cowh.a: | lib
@@ -47,7 +56,7 @@ libasco-cowh.a: | lib
 
 libasco-cowp.a: | lib
 	make BUILD=build-cowp clean all MODE=cow \
-		CFLAGS="-DHEAP_PROTECT -DCOW_USEHEAP"
+		CFLAGS="-DHEAP_PROTECT -DCOW_APPEND_ONLY -DCOW_USEHEAP"
 	mv build-cowp/libasco.a lib/libasco-cowp.a
 
 libasco-instr.a: | lib

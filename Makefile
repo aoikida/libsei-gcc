@@ -29,10 +29,10 @@ AFLAGS += -DMODE=1
 TMASCO_NOASM = 1
 endif
 ifeq ($(MODE), cow)
-AFLAGS += -DMODE=2 -DCOWBACK
-endif
-ifeq ($(MODE), fcow)
-AFLAGS += -DMODE=4 -DCOWBACK
+ AFLAGS += -DMODE=2
+ ifndef COW_WB
+  AFLAGS += -DCOW_WT
+ endif
 endif
 else # !MODE
 AFLAGS += -DMODE=1

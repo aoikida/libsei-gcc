@@ -20,6 +20,20 @@ Options are:
 - ``MODE=heap|cow``: ``heap`` use two heaps and ``cow`` uses only
   copy-on-write buffers.
 
+
+COW mode
+~~~~~~~~
+
+COW mode comes in the following flavors:
+
+- WB is a write-back algorithm similar to PASC
+- WT is a write-through version which has cheap reads. WT can be combined with:
+
+  - ASMREAD: to perform reads using custom assembly code
+  - ROPURE: which makes tmasco wrappers of read-only methods transaction_pure
+  - APPEND_ONLY: which is a faster version of the algorithm using an abuf insteaf of cow data
+    structure
+
 .. and ``instr`` only instruments the code.
 
 

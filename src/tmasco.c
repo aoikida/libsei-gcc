@@ -168,7 +168,7 @@ _ITM_calloc(size_t nmemb, size_t size)
 {
     return asco_malloc(__tmasco.asco, nmemb*size);
 }
-#ifndef COWBACK
+#ifndef COW_WT
 #define ITM_READ(type, prefix, suffix) inline                   \
     type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
@@ -269,7 +269,7 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 
     do {
         //destination[i] = source[i];
-#ifdef COWBACK
+#ifdef COW_WT
         asco_write_uint8_t(__tmasco.asco, (void*) (destination + i),
                            *(uint8_t*) (source + i));
 #else

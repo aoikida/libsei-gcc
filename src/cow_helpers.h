@@ -48,7 +48,7 @@ typedef uint32_t addr_t;
 #define WVAL(e) (e->wvalue._uint32_t.value[0])
 #endif
 
-#ifndef COWBACK
+#ifndef COW_WT
 #define WVAX(e, type, addr) (e->wvalue._##type.value[PICKMASK(addr,type)])
 #else
 #define WVAX(e, type, addr) (*addr)

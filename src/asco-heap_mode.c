@@ -142,6 +142,7 @@ void*
 asco_calloc(asco_t* asco, size_t nmemb, size_t size)
 {
     assert (0 && "not implemented");
+    return 0;
 }
 
 /* -----------------------------------------------------------------------------
@@ -157,7 +158,11 @@ asco_malloc2(asco_t* asco, size_t size)
     void* ptr1 = asco_malloc(asco, size);
     assert (ptr1);
     asco->p = 1;
+#ifndef NDEBUG
     void* ptr2 = asco_malloc(asco, size);
+#else
+    asco_malloc(asco, size);
+#endif
     assert (ptr2);
     asco->p = -1;
     DLOG3("asco_malloc2 addrs:(%p, %p)\n", ptr1, ptr2);
