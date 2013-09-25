@@ -14,7 +14,7 @@
 
 #include "libc/string/memchr.c"
 #include "libc/string/memcmp.c"
-//#include "libc/string/memmove.c"
+#include "libc/string/memmove.c"
 #ifndef TMASCO_ENABLED
 #include "libc/string/memcpy.c"
 #include "libc/string/memset.c"
@@ -39,6 +39,34 @@ strndup(const char *s, size_t n)
     ptr[n] = '\0';
     return ptr;
 }
+
+/* -----------------------------------------------------------------------------
+ * special wrappers
+ * -------------------------------------------------------------------------- */
+/* we define the following wrappers by hand. That refrains the
+ * compiler from substituting the untrasactified functions.
+ *
+ * 1. we rename the function foo() to be wrapped with the suffix, eg,
+ * "foo_bsd()".
+ *
+ * 2. we instrument that function. There will be foo_bsd() and
+ * _ZGTt7foo_bsd(), where 7 is the number of characters in the
+ * function name.
+ *
+ * 3. we write _ZGTt3foo() by hand. It should simply call  _ZGTt7foo_bsd().
+ *
+ */
+
+void* _ZGTt11memmove_bsd(void* dst, const void* src, size_t size);
+void*
+_ZGTt7memmove(void* dst, const void* src, size_t size)
+{
+    return _ZGTt11memmove_bsd(dst, src, size);
+}
+
+/* -----------------------------------------------------------------------------
+ * clang tricks
+ * -------------------------------------------------------------------------- */
 
 #ifdef USE_CLANG
 /* ___string_mock() calls all functions from libc string inside a
@@ -93,3 +121,5 @@ ___string_mock() {
     }
 }
 #endif
+
+

@@ -53,7 +53,7 @@ memcpy(void *dst0, const void *src0, size_t length)
 #else
 #ifdef MEMMOVE
 void *
-memmove(void *dst0, const void *src0, size_t length)
+memmove_bsd(void *dst0, const void *src0, size_t length)
 #else
 void
 bcopy(const void *src0, void *dst0, size_t length)
