@@ -19,8 +19,11 @@
 #include "cow.h"
 #include "tbin.h"
 #include "talloc.h"
+#ifdef ASCO_STATS
 #include "ilog.h"
+#include "cpu_stats.h"
 #include "now.h"
+#endif
 
 struct asco {
     int       p;       /* the actual process (0 or 1) */
@@ -41,6 +44,8 @@ struct asco {
         unsigned int nwuint32_t; /* write 32 count    */
         unsigned int nwuint64_t; /* write 64 count    */
     } stats;           /* general statistics          */
+
+    cpu_stats_t* cpu_stats; /* cpu usage statistics   */
 #endif
 };
 
@@ -58,11 +63,15 @@ struct asco {
         asco->stats.nwuint32_t = 0;               \
         asco->stats.nwuint64_t = 0;               \
     } while (0)
-#define ASCO_STATS_INIT() do {               \
-        asco->ilog = ilog_init("stats.log"); \
-        ASCO_STATS_RESET();                  \
+#define ASCO_STATS_INIT() do {                          \
+        asco->ilog = ilog_init("asco-stats.log");       \
+        ASCO_STATS_RESET();                             \
+        asco->cpu_stats = cpu_stats_init();             \
     } while (0)
-#define ASCO_STATS_FINI() do { ilog_fini(asco->ilog); } while (0)
+#define ASCO_STATS_FINI() do {           \
+        ilog_fini(asco->ilog);           \
+        cpu_stats_fini(asco->cpu_stats); \
+    } while (0)
 #define ASCO_STATS_INC(X) (++asco->stats.X)
 #define ASCO_STATS_REPORT() do {                                        \
         static uint64_t _now = 0;                                       \
@@ -78,6 +87,7 @@ struct asco {
                     asco->stats.nwuint64_t                              \
                 );                                                      \
             ilog_push(asco->ilog, __FILE__, buffer);                    \
+            cpu_stats_report(asco->cpu_stats, asco->ilog);              \
             _now = now();                                               \
             ASCO_STATS_RESET();                                         \
         }                                                               \

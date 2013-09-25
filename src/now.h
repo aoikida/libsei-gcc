@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 /* reads current time in microseconds */
-uint64_t inline now()
+static inline uint64_t now()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);

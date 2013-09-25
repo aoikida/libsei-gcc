@@ -5,7 +5,8 @@
 
 # -- targets -------------------------------------------------------------------
 BUILD  ?= build
-SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c
+SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
+	cpu_stats.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 
@@ -28,7 +29,7 @@ TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # -- configuration -------------------------------------------------------------
 CFLAGS_DBG  = -g -O0 -Wall -Werror #-DASCO_STACK_INFO
-CFLAGS_REL  = -g -O3 -Wall -Werror -DASCO_STATS
+CFLAGS_REL  = -g -O3 -Wall -Werror #-DASCO_STATS
 
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude

@@ -16,6 +16,7 @@
  * -------------------------------------------------------------------------- */
 
 struct ilog {
+    uint64_t ts;
     FILE* fp;
 };
 
@@ -28,6 +29,7 @@ ilog_init(const char* fname)
 {
     ilog_t* ilog = (ilog_t*) malloc(sizeof(ilog_t));
     assert (ilog);
+    ilog->ts = now();
     printf("ilog file: %s\n", fname);
     ilog->fp = fopen(fname, "w+");
     assert (ilog->fp);
@@ -38,6 +40,7 @@ ilog_init(const char* fname)
 void
 ilog_fini(ilog_t* ilog)
 {
+    fflush(ilog->fp);
     fclose(ilog->fp);
     free (ilog);
 }
@@ -45,6 +48,7 @@ ilog_fini(ilog_t* ilog)
 void
 ilog_push(ilog_t* ilog, const char* topic, const char* info)
 {
-    fprintf(ilog->fp, "%lu:%ld:%s:%s\n", now(),
+    uint64_t ts = now();
+    fprintf(ilog->fp, "%lu:%lu:%ld:%s:%s\n", ts, ts - ilog->ts,
             syscall(SYS_gettid), topic, info);
 }
