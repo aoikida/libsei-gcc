@@ -20,6 +20,7 @@
 #include "tbin.h"
 #include "talloc.h"
 #include "obuf.h"
+#include "ibuf.h"
 
 #ifdef ASCO_STATS
 #include "ilog.h"
@@ -34,6 +35,7 @@ struct asco {
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocator         */
     obuf_t*   obuf;    /* output buffer (messages)    */
+    ibuf_t*   ibuf;    /* input message buffer        */
 
 #ifdef ASCO_STATS
     ilog_t*   ilog;    /* stats logger                */
@@ -123,6 +125,7 @@ asco_init()
     asco->tbin   = tbin_init(100, asco->heap);
     asco->talloc = talloc_init(asco->heap);
     asco->obuf   = obuf_init(10); // 10 messages most
+    asco->ibuf   = ibuf_init();
 
     ASCO_STATS_INIT();
 
@@ -144,6 +147,7 @@ asco_fini(asco_t* asco)
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
     obuf_fini(asco->obuf);
+    ibuf_fini(asco->ibuf);
 
 #ifdef COW_USEHEAP
     heap_fini(asco->heap);
@@ -157,12 +161,33 @@ asco_fini(asco_t* asco)
  * traversal control
  * -------------------------------------------------------------------------- */
 
+int
+asco_prepare(asco_t* asco, const void* ptr, size_t size, uint32_t crc, int ro)
+{
+    assert (ptr != NULL);
+    assert (asco->p == -1);
+    // initialize control flow
+
+    // check input message
+    return ibuf_prepare(asco->ibuf, ptr, size, crc, ro ? READ_ONLY:READ_WRITE);
+}
+
+void
+asco_prepare_nm(asco_t* asco)
+{
+    // initialize control flow
+
+    // empty message
+    (void) ibuf_prepare(asco->ibuf, NULL, 0, crc_init(), READ_ONLY);
+}
+
 void
 asco_begin(asco_t* asco)
 {
     if (asco->p == -1) {
         DLOG2("First execution\n");
         asco->p = 0;
+        assert (obuf_size(asco->obuf) == 0);
     }
 
     if (asco->p == 1) {
@@ -178,6 +203,7 @@ asco_switch(asco_t* asco)
     DLOG2("Switched: %d\n", asco->p);
     talloc_switch(asco->talloc);
     obuf_close(asco->obuf);
+    ibuf_switch(asco->ibuf);
 
 #ifdef COWBACK
     cow_swap(asco->cow[0]);
@@ -196,6 +222,8 @@ asco_commit(asco_t* asco)
     tbin_flush(asco->tbin);
     talloc_clean(asco->talloc);
     obuf_close(asco->obuf);
+    int r = ibuf_correct(asco->ibuf);
+    assert (r == 1 && "input message modified");
 
     ASCO_STATS_INC(ntrav);
     ASCO_STATS_REPORT();
@@ -316,7 +344,7 @@ asco_output_append(asco_t* asco, const void* ptr, size_t size)
     obuf_push(asco->obuf, ptr, size);
 }
 
-uint32_t
+void
 asco_output_done(asco_t* asco)
 {
     if (asco->p == -1) return;
@@ -326,7 +354,7 @@ asco_output_done(asco_t* asco)
 uint32_t
 asco_output_next(asco_t* asco)
 {
-    if (asco->p == -1) return;
+    assert (asco->p == -1);
     assert (obuf_size(asco->obuf) > 0 && "no CRC to pop");
     uint32_t crc = obuf_pop(asco->obuf);
 

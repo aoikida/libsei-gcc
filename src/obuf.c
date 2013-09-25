@@ -98,6 +98,8 @@ obuf_done(obuf_t* obuf)
     obuf_entry_t* e = &queue->entries[queue->tail % MAX_MSGS];
     assert (!e->done);
 
+    assert (e->size > 0 && "message with no content");
+
     // append size to CRC and close
     e->crc = crc_append_len(e->crc, e->size);
     e->crc = crc_close(e->crc);
@@ -116,8 +118,11 @@ obuf_pop(obuf_t* obuf)
     assert (obuf->queue[0].head < obuf->queue[0].tail);
     assert (obuf->queue[1].head < obuf->queue[1].tail);
 
-    obuf_entry_t* e1 = &obuf->queue[0].entries[obuf->queue[0].head++];
-    obuf_entry_t* e2 = &obuf->queue[1].entries[obuf->queue[1].head++];
+    obuf_queue_t* q1 = &obuf->queue[0];
+    obuf_queue_t* q2 = &obuf->queue[1];
+
+    obuf_entry_t* e1 = &q1->entries[q1->head++ % MAX_MSGS];
+    obuf_entry_t* e2 = &q2->entries[q2->head++ % MAX_MSGS];
 
     assert (e1->size == e2->size);
     assert (e1->done == e2->done);

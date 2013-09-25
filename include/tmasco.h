@@ -16,18 +16,6 @@
 #define D(...)
 #endif
 
-void  tmasco_begin(uintptr_t bp);
-int   tmasco_switched();
-void  tmasco_switch();
-void  tmasco_commit();
-void* tmasco_malloc(size_t size);
-void* tmasco_other(void* addr);
-
-#define __asco_begin(x)  __tmasco_begin(x)
-#define __asco_switch(x) __tmasco_switch(x)
-#define __asco_commit(x) __tmasco_commit(x)
-#define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
-
 #ifdef TMASCO_ENABLED
 #define TMASCO_PURE __attribute__((transaction_pure));
 #define TMASCO_SAFE __attribute__((transaction_safe));
@@ -35,6 +23,31 @@ void* tmasco_other(void* addr);
 #define TMASCO_PURE
 #define TMASCO_SAFE
 #endif
+
+void  tmasco_begin(uintptr_t bp);
+int   tmasco_switched();
+void  tmasco_switch();
+void  tmasco_commit();
+void* tmasco_malloc(size_t size);
+void* tmasco_other(void* addr);
+int   tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
+void  tmasco_prepare_nm();
+
+void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
+void     tmasco_output_done() TMASCO_PURE;
+uint32_t tmasco_output_next();
+
+#define __asco_output_append(ptr, size) tmasco_output_append(ptr, size)
+#define __asco_output_done() tmasco_output_done()
+#define __asco_output_next() tmasco_output_next()
+
+#define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
+#define __asco_prepare_nm(ptr) tmasco_prepare_nm()
+
+#define __asco_begin(x)  __tmasco_begin(x)
+#define __asco_switch(x) __tmasco_switch(x)
+#define __asco_commit(x) __tmasco_commit(x)
+#define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
 
 #if defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
 #include <stdint.h>

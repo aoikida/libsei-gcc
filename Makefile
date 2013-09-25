@@ -6,7 +6,7 @@
 # -- targets -------------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
-	cpu_stats.c obuf.c crc.c
+	cpu_stats.c obuf.c crc.c ibuf.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 

@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <asco.h>
 #include "debug.h"
 #include "heap.h"
@@ -395,6 +396,37 @@ tmasco_commit()
     asco_commit(__tmasco.asco);
 }
 #endif
+
+int
+tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
+{
+    return asco_prepare(__tmasco.asco, ptr, size, crc, ro);
+}
+
+void
+tmasco_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
+{
+    asco_prepare_nm(__tmasco.asco);
+}
+
+void
+tmasco_output_append(const void* ptr, size_t size)
+{
+    asco_output_append(__tmasco.asco, ptr, size);
+}
+
+void
+tmasco_output_done()
+{
+    asco_output_done(__tmasco.asco);
+}
+
+uint32_t
+tmasco_output_next()
+{
+    return asco_output_next(__tmasco.asco);
+}
+
 /* -----------------------------------------------------------------------------
  * clang-tm methods
  * -------------------------------------------------------------------------- */

@@ -9,7 +9,7 @@
 #include <stddef.h>
 
 /* calculate the complete crc of a block with fixed inital CRC */
-uint32_t crc_compute(char* block, size_t len);
+uint32_t crc_compute(const char* block, size_t len);
 
 /* get inital CRC */
 uint32_t crc_init();

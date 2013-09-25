@@ -1,7 +1,6 @@
-
 # -*- Makefile -*-
 
-all: libasco-cow.a libasco-fcow.a
+all: libasco-cow.a
 
 lib:
 	mkdir -p lib

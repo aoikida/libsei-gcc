@@ -11,11 +11,11 @@
 
 
 /* -----------------------------------------------------------------------------
- * basic methods
+ * high-level methods
  * -------------------------------------------------------------------------- */
 
 uint32_t
-crc_compute(char* block, size_t len)
+crc_compute(const char* block, size_t len)
 {
     return crc_close(
         crc_append_len(
@@ -24,7 +24,7 @@ crc_compute(char* block, size_t len)
 }
 
 /* -----------------------------------------------------------------------------
- * detailed methods
+ * low-level methods
  * -------------------------------------------------------------------------- */
 
 uint32_t
@@ -36,9 +36,16 @@ crc_init()
 uint32_t
 crc_append(uint32_t crc, const char* block, size_t len)
 {
+#if defined(CRC_CHECKSUM)
     int i = 0;
     for (i = 0; i < len; ++i) crc ^= block[i];
     return crc;
+#elif defined(CRC_NONE)
+    return 0;
+#else // CRC default
+    return 0;
+#endif
+
 }
 
 uint32_t
@@ -54,7 +61,7 @@ crc_close(uint32_t crc)
 }
 
 /* -----------------------------------------------------------------------------
- * advanced methods
+ * advanced interface
  * -------------------------------------------------------------------------- */
 
 uint32_t
