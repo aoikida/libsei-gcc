@@ -19,6 +19,8 @@
 #include "cow.h"
 #include "tbin.h"
 #include "talloc.h"
+#include "obuf.h"
+
 #ifdef ASCO_STATS
 #include "ilog.h"
 #include "cpu_stats.h"
@@ -31,6 +33,7 @@ struct asco {
     cow_t*    cow[2];  /* a copy-on-write buffer      */
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocator         */
+    obuf_t*   obuf;    /* output buffer (messages)    */
 
 #ifdef ASCO_STATS
     ilog_t*   ilog;    /* stats logger                */
@@ -119,6 +122,7 @@ asco_init()
 #endif
     asco->tbin   = tbin_init(100, asco->heap);
     asco->talloc = talloc_init(asco->heap);
+    asco->obuf   = obuf_init(10); // 10 messages most
 
     ASCO_STATS_INIT();
 
@@ -139,6 +143,7 @@ asco_fini(asco_t* asco)
 
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
+    obuf_fini(asco->obuf);
 
 #ifdef COW_USEHEAP
     heap_fini(asco->heap);
@@ -172,6 +177,8 @@ asco_switch(asco_t* asco)
     asco->p = 1;
     DLOG2("Switched: %d\n", asco->p);
     talloc_switch(asco->talloc);
+    obuf_close(asco->obuf);
+
 #ifdef COWBACK
     cow_swap(asco->cow[0]);
 #endif
@@ -188,6 +195,8 @@ asco_commit(asco_t* asco)
     cow_apply_cmp(asco->cow[0], asco->cow[1]);
     tbin_flush(asco->tbin);
     talloc_clean(asco->talloc);
+    obuf_close(asco->obuf);
+
     ASCO_STATS_INC(ntrav);
     ASCO_STATS_REPORT();
 }
@@ -290,3 +299,36 @@ ASCO_WRITE(uint8_t)
 ASCO_WRITE(uint16_t)
 ASCO_WRITE(uint32_t)
 ASCO_WRITE(uint64_t)
+
+/* -----------------------------------------------------------------------------
+ * output messages
+ * -------------------------------------------------------------------------- */
+
+/* asco_output_append and asco_output_done can be called from outside
+ * a handler with no effect.
+ *
+ * asco_output_next can only be called from outside the handler.
+ */
+void
+asco_output_append(asco_t* asco, const void* ptr, size_t size)
+{
+    if (asco->p == -1) return;
+    obuf_push(asco->obuf, ptr, size);
+}
+
+uint32_t
+asco_output_done(asco_t* asco)
+{
+    if (asco->p == -1) return;
+    obuf_done(asco->obuf);
+}
+
+uint32_t
+asco_output_next(asco_t* asco)
+{
+    if (asco->p == -1) return;
+    assert (obuf_size(asco->obuf) > 0 && "no CRC to pop");
+    uint32_t crc = obuf_pop(asco->obuf);
+
+    return crc;
+}
