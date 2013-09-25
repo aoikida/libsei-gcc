@@ -37,9 +37,16 @@ void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
 void     tmasco_output_done() TMASCO_PURE;
 uint32_t tmasco_output_next();
 
+#ifdef TMASCO_DISABLE_OUTPUT_CHECKS
+#define __asco_output_append(ptr, size)
+#define __asco_output_done()
+#define __asco_output_next() 0
+#else
 #define __asco_output_append(ptr, size) tmasco_output_append(ptr, size)
 #define __asco_output_done() tmasco_output_done()
 #define __asco_output_next() tmasco_output_next()
+#endif
+
 
 #define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
 #define __asco_prepare_nm(ptr) tmasco_prepare_nm()
