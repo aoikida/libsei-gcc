@@ -15,7 +15,6 @@ typedef struct heap {
     char data[];
 } heap_t;
 
-
 heap_t* heap_init(uint32_t size);
 void*   heap_malloc(heap_t* heap, size_t size);
 void    heap_free(heap_t* heap, void* ptr);
@@ -24,6 +23,7 @@ int     heap_in(heap_t* heap, void* ptr);
 size_t  heap_rel(const heap_t* heap, const void* ptr);
 void*   heap_get(heap_t* heap, size_t rel);
 
+#define HEAP_NP    0              // no preallocation
 #define HEAP_1MB   1024*1024
 #define HEAP_10MB  10*HEAP_1MB
 #define HEAP_50MB  50*HEAP_1MB

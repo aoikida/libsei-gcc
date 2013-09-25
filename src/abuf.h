@@ -16,6 +16,8 @@ void    abuf_cmp(abuf_t* a1, abuf_t* a2);
 
 void    abuf_swap(abuf_t* abuf);
 void    abuf_cmp_heap(abuf_t* a1, abuf_t* a2);
+void    abuf_push(abuf_t* abuf, void* addr, uint64_t value);
+void*   abuf_pop (abuf_t* abuf, uint64_t* value);
 
 
 void abuf_push_uint8_t (abuf_t* abuf, uint8_t*  addr, uint8_t  value);

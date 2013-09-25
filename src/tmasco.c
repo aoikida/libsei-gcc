@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <asco.h>
+#include <string.h>
+#include <stdlib.h>
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
@@ -37,6 +39,17 @@ struct {
     tmasco_ctx_t ctx;
 } __tmasco;
 
+
+#ifdef HEAP_PROTECT
+void asco_unprotect(asco_t* asco, void* addr, size_t size);
+#  include "protect.c"
+#  define HEAP_PROTECT_INIT protect_setsignal()
+PROTECT_HANDLER
+
+#else
+#  define HEAP_PROTECT_INIT
+#endif
+
 /* initialize library and allocate an asco object. This is called once
  * the library is loaded. If static liked should be called on
  * initialization of the program. */
@@ -46,6 +59,7 @@ tmasco_init()
     assert (__tmasco.asco == NULL);
     __tmasco.asco = asco_init();
     assert (__tmasco.asco);
+    HEAP_PROTECT_INIT;
 }
 
 static void __attribute__((destructor))
@@ -202,13 +216,13 @@ void
 _ITM_WM128(void* txn, __uint128_t* a, __uint128_t v)
 {
     m128 x;
-    uint64_t* y;
+    uintptr_t y;
 
     x.sse = v;
-    y = (uint64_t*) a;
+    y = (uintptr_t) a;
 
-    _ITM_WU8(y, x.v[0]);
-    _ITM_WU8(y+1, x.v[1]);
+    _ITM_WU8((uint64_t*) y, x.v[0]);
+    _ITM_WU8((uint64_t*)(y+sizeof(uint64_t)), x.v[1]);
 
 }
 
@@ -425,6 +439,15 @@ uint32_t
 tmasco_output_next()
 {
     return asco_output_next(__tmasco.asco);
+}
+
+void
+tmasco_unprotect(void* addr, size_t size)
+{
+#ifdef HEAP_PROTECT
+    asco_unprotect(__tmasco.asco, addr, size);
+#endif
+    // else ignore
 }
 
 /* -----------------------------------------------------------------------------

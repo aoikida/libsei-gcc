@@ -161,6 +161,7 @@ abuf_size(abuf_t* abuf)
 #define ABUF_SINFO_PUSH(e, addr)
 #endif
 
+
 #define ABUF_POP(type) inline                                           \
     type abuf_pop_##type(abuf_t* abuf, const type* addr)                \
     {                                                                   \
@@ -194,6 +195,27 @@ ABUF_PUSH(uint8_t)
 ABUF_PUSH(uint16_t)
 ABUF_PUSH(uint32_t)
 ABUF_PUSH(uint64_t)
+
+
+void*
+abuf_pop(abuf_t* abuf, uint64_t* value)
+{
+    assert (abuf->poped < abuf->pushed && "no entry to be read");
+    abuf_entry_t* e = &abuf->buf[abuf->poped++];
+    assert (e->size == sizeof(uint64_t) && "reading wrong size");
+    DLOG3("[%s:%d] reading address %p = x%x\n",
+          __FILE__, __LINE__, e->addr, ABUF_WVAL(e));
+    ABUF_SINFO_POP(e, addr);
+
+    *value = ABUF_WVAX(e, uint64_t, e->addr);
+    return e->addr;
+}
+
+void
+abuf_push(abuf_t* abuf, void* addr, uint64_t value)
+{
+    abuf_push_uint64_t(abuf, (uint64_t*) addr, value);
+}
 
 
 void

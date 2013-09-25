@@ -32,6 +32,15 @@
 # include "cow.h"
 #endif
 
+#ifdef HEAP_PROTECT
+# include "abuf.h"
+# include "protect.h"
+#endif
+
+#ifdef COW_USEHEAP
+# define HEAP_SIZE (HEAP_1GB + HEAP_500MB)
+#endif
+
 #ifdef ASCO_STATS
 #include "ilog.h"
 #include "cpu_stats.h"
@@ -52,6 +61,10 @@ struct asco {
     ibuf_t*   ibuf;    /* input message buffer        */
     cfc_t     cf[2];   /* control flags               */
 
+#ifdef HEAP_PROTECT
+    abuf_t*   wpages;  /* list of written pages       */
+#endif
+
 #ifdef ASCO_STATS
     ilog_t*   ilog;    /* stats logger                */
 
@@ -63,6 +76,7 @@ struct asco {
         unsigned int nwuint16_t; /* write 16 count    */
         unsigned int nwuint32_t; /* write 32 count    */
         unsigned int nwuint64_t; /* write 64 count    */
+        unsigned int nprotect;   /* number of pages   */
     } stats;           /* general statistics          */
 
     cpu_stats_t* cpu_stats; /* cpu usage statistics   */
@@ -82,6 +96,7 @@ struct asco {
         asco->stats.nwuint16_t = 0;               \
         asco->stats.nwuint32_t = 0;               \
         asco->stats.nwuint64_t = 0;               \
+        asco->stats.nprotect   = 0;               \
     } while (0)
 #define ASCO_STATS_INIT() do {                          \
         asco->ilog = ilog_init("asco-stats.log");       \
@@ -97,14 +112,15 @@ struct asco {
         static uint64_t _now = 0;                                       \
         if (now() - _now > NOW_1S) {                                    \
             char buffer[1024];                                          \
-            sprintf(buffer, "%u %u %u %u %u %u %u",                     \
+            sprintf(buffer, "%u %u %u %u %u %u %u %u",                  \
                     asco->stats.ntrav,                                  \
                     asco->stats.nmalloc,                                \
                     asco->stats.nfree,                                  \
                     asco->stats.nwuint8_t,                              \
                     asco->stats.nwuint16_t,                             \
                     asco->stats.nwuint32_t,                             \
-                    asco->stats.nwuint64_t                              \
+                    asco->stats.nwuint64_t,                             \
+                    asco->stats.nprotect                                \
                 );                                                      \
             ilog_push(asco->ilog, __FILE__, buffer);                    \
             cpu_stats_report(asco->cpu_stats, asco->ilog);              \
@@ -137,11 +153,22 @@ asco_init()
     asco->cow[1] = abuf_init(100000);
 #endif
 
-#ifdef COW_USEHEAP
-    asco->heap   = heap_init(HEAP_1GB);
-#else
-    asco->heap   = NULL;
+#ifdef HEAP_PROTECT
+    asco->wpages = abuf_init(100);
 #endif
+
+#ifdef COW_USEHEAP
+    asco->heap   = heap_init(HEAP_SIZE);
+
+#if defined(HEAP_PROTECT) && HEAP_SIZE != HEAP_NP
+    // if the heap is preallocated, protect whole heap
+    //protect_mem(asco->heap, HEAP_SIZE + sizeof(heap_t), READ);
+#endif
+
+#else  /* !COW_USEHEAP */
+    asco->heap   = NULL;
+#endif /* !COW_USEHEAP */
+
     asco->tbin   = tbin_init(100, asco->heap);
     asco->talloc = talloc_init(asco->heap);
     asco->obuf   = obuf_init(10); // 10 messages most
@@ -178,6 +205,10 @@ asco_fini(asco_t* asco)
     heap_fini(asco->heap);
 #endif
 
+#ifdef HEAP_PROTECT
+    abuf_fini(asco->wpages);
+#endif
+
     ASCO_STATS_FINI();
 }
 
@@ -191,7 +222,6 @@ asco_prepare(asco_t* asco, const void* ptr, size_t size, uint32_t crc, int ro)
 {
     assert (ptr != NULL);
     assert (asco->p == -1);
-    // initialize control flow
 
     // check input message
     return ibuf_prepare(asco->ibuf, ptr, size, crc, ro ? READ_ONLY:READ_WRITE);
@@ -200,8 +230,6 @@ asco_prepare(asco_t* asco, const void* ptr, size_t size, uint32_t crc, int ro)
 void
 asco_prepare_nm(asco_t* asco)
 {
-    // initialize control flow
-
     // empty message
     (void) ibuf_prepare(asco->ibuf, NULL, 0, crc_init(), READ_ONLY);
 }
@@ -279,6 +307,16 @@ asco_commit(asco_t* asco)
 
     ASCO_STATS_INC(ntrav);
     ASCO_STATS_REPORT();
+#ifdef HEAP_PROTECT
+    int i;
+    for (i = 0; i < abuf_size(asco->wpages); ++i) {
+        uint64_t size;
+        void* ptr = abuf_pop(asco->wpages, &size);
+        protect_mem(ptr, size, READ);
+        ASCO_STATS_INC(nprotect);
+    }
+    abuf_clean(asco->wpages);
+#endif
 }
 
 inline int
@@ -301,7 +339,20 @@ inline void*
 asco_malloc(asco_t* asco, size_t size)
 {
     ASCO_STATS_INC(nmalloc);
-    return talloc_malloc(asco->talloc, size);
+    void* ptr = talloc_malloc(asco->talloc, size);
+#if defined(HEAP_PROTECT)
+    // && (!defined(COW_USEHEAP) || HEAP_SIZE == HEAP_NP)
+    // if heap has to be protected and
+    // either we don't use heap_t or
+    // we do use heap_t but it's not preallocated (HEAP_NP)
+    // then we have to protect the heap whever we do a malloc
+
+    if (asco->p == 0) {
+        // we don't have to protect that for the second execution
+        protect_mem(ptr, size, READ);
+    }
+#endif
+    return ptr;
 }
 
 inline void
@@ -346,6 +397,21 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
     assert (0 && "asco not compiled with HEAP_MODE");
     return NULL;
 }
+
+#ifdef HEAP_PROTECT
+void
+asco_unprotect(asco_t* asco, void* addr, size_t size)
+{
+    if (asco->p == 1) {
+        assert (0 && "straaaange");
+    }
+    if (asco->p == 0 || asco->p == -1) {
+        abuf_push(asco->wpages, addr, size);
+        protect_mem(addr, size, WRITE);
+    }
+}
+#endif
+
 
 /* -----------------------------------------------------------------------------
  * load and stores

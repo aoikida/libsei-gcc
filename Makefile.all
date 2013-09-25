@@ -1,6 +1,7 @@
 # -*- Makefile -*-
 
-all: libasco-cow.a libasco-cowa.a libasco-cowh.a libasco-cowah.a
+all: libasco-cow.a libasco-cowa.a libasco-cowh.a libasco-cowah.a\
+	libasco-cowp.a
 
 lib:
 	mkdir -p lib
@@ -11,19 +12,24 @@ libasco-cow.a: | lib
 	mv build-cow/libasco.a lib/libasco-cow.a
 
 libasco-cowa.a: | lib
-	make BUILD=build-cow clean
-	make BUILD=build-cow MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY"
-	mv build-cow/libasco.a lib/libasco-cow.a
+	make BUILD=build-cowa clean
+	make BUILD=build-cowa MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY"
+	mv build-cowa/libasco.a lib/libasco-cowa.a
 
 libasco-cowah.a: | lib
-	make BUILD=build-cow clean
-	make BUILD=build-cow MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP"
-	mv build-cow/libasco.a lib/libasco-cow.a
+	make BUILD=build-cowah clean
+	make BUILD=build-cowah MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP"
+	mv build-cowah/libasco.a lib/libasco-cowah.a
 
 libasco-cowh.a: | lib
-	make BUILD=build-cow clean
-	make BUILD=build-cow MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_USEHEAP"
-	mv build-cow/libasco.a lib/libasco-cow.a
+	make BUILD=build-cowh clean
+	make BUILD=build-cowh MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DCOW_USEHEAP"
+	mv build-cowh/libasco.a lib/libasco-cowh.a
+
+libasco-cowp.a: | lib
+	make BUILD=build-cowp clean
+	make BUILD=build-cowp MODE=cow USE_TMASCO_ASM=1 CFLAGS="-DHEAP_PROTECT -DCOW_USEHEAP"
+	mv build-cowp/libasco.a lib/libasco-cowp.a
 
 libasco-heap.a: | lib
 	make BUILD=build-heap clean

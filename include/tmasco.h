@@ -47,6 +47,8 @@ uint32_t tmasco_output_next();
 #define __asco_output_next() tmasco_output_next()
 #endif
 
+void  tmasco_unprotect(void* addr, size_t size);
+#define __asco_unprotect(ptr, size) tmasco_unprotect(ptr,size)
 
 #define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
 #define __asco_prepare_nm(ptr) tmasco_prepare_nm()

@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include <unistd.h>   // sysconf
+#include <errno.h>    // perror
 
 /* -----------------------------------------------------------------------------
  * types, data structures and definitions
@@ -17,9 +19,9 @@
 #endif
 
 struct allocation {
-    size_t size;
+    uint64_t size;
     struct allocation* next;
-    char data[];
+    uint64_t data[];
 };
 
 /* -----------------------------------------------------------------------------
@@ -36,10 +38,29 @@ static inline unsigned int_log2(size_t x);
 heap_t*
 heap_init(uint32_t size)
 {
-    assert (size > ALLOC_MAX_SIZE);
+    heap_t* heap = NULL;
 
-    heap_t* heap = (heap_t*) malloc(sizeof(heap_t) + size);
-    bzero(heap, sizeof(heap_t) + size);
+    if (size > 0) {
+        // preallocated heap
+        assert (size > ALLOC_MAX_SIZE);
+
+        long page_size = sysconf(_SC_PAGESIZE);
+
+        int r = posix_memalign((void**) &heap, page_size, sizeof(heap_t) + size);
+        if (r == EINVAL) {
+            fprintf(stderr, "alignment argument was not a power of two\n");
+            exit (EXIT_FAILURE);
+        }
+        if (r == ENOMEM) {
+            fprintf(stderr, "out of memory\n");
+            exit (EXIT_FAILURE);
+        }
+        bzero(heap, sizeof(heap_t) + size);
+    } else {
+        // no preallocation, use malloc and free directly
+        heap = malloc(sizeof(heap_t));
+        assert (heap && "out of memory");
+    }
 
     unsigned log2 = int_log2(upper_power_of_two(ALLOC_MAX_SIZE)) + 1;
     heap->free_list = (allocation_t**) malloc(sizeof(allocation_t*)*log2);
@@ -70,7 +91,8 @@ heap_malloc(heap_t* heap, size_t size)
 {
     assert (size <= ALLOC_MAX_SIZE);
 
-    size_t pow_2_size = upper_power_of_two(size + sizeof(allocation_t));
+    size_t tsize = size + sizeof(allocation_t);
+    size_t pow_2_size = upper_power_of_two(tsize);
     unsigned log2 = int_log2(pow_2_size);
 
     // look in free list
@@ -81,30 +103,37 @@ heap_malloc(heap_t* heap, size_t size)
         return (void*) a->data;
     }
 
-    // look for a block with enough space
-    //memblock_t* block = heap->blocks[0];
+    allocation_t* a = NULL;
 
-    // allocate memory in the block
-    assert (heap->cursor + pow_2_size < heap->size
-            && "out of memory");
-    if (heap->cursor + pow_2_size >= heap->size)
-        return NULL;
+    if (heap->size > 0) {
+        // allocate memory in the block
+        assert (heap->cursor + pow_2_size < heap->size
+                && "out of memory");
+        if (heap->cursor + pow_2_size >= heap->size)
+            return NULL;
 
-    allocation_t* a = (allocation_t*) ((char*)heap->data + heap->cursor);
+        a = (allocation_t*) ((char*)heap->data + heap->cursor);
+        heap->cursor += pow_2_size;
+        // for valgrind
+        bzero(a->data, size);
+    } else {
+        //int r = posix_memalign((void**) &a, sizeof(uint64_t), tsize);
+        //assert (r == 0 && "allocation error");
+        a = (allocation_t*) malloc(tsize);
+        assert (a && "out of memory");
+    }
+
     a->size = pow_2_size;
     a->next = NULL;
-    heap->cursor += pow_2_size; // + sizeof(allocation_t);
-    // for valgrind
-    bzero(a->data, size);
-    /* printf("alloc %p cursor=%lu pow2_size=%ld log2 = %u hsize = %lu allocation=%lu\n", */
-           /* a->data, heap->cursor, pow_2_size, log2, heap->size, sizeof(allocation_t)); */
     return (void*) a->data;
 }
 
 void
 heap_free(heap_t* heap, void* ptr)
 {
-    assert (heap_in(heap, ptr) && "freeing data not in heap");
+    if (heap->size > 0)
+        assert (heap_in(heap, ptr) && "freeing data not in heap");
+
     allocation_t* a = (allocation_t*) (((char*) ptr) - sizeof(allocation_t));
     assert (a->size <= ALLOC_MAX_SIZE);
     unsigned log2 = int_log2(a->size);
@@ -120,20 +149,23 @@ heap_free(heap_t* heap, void* ptr)
 inline int
 heap_in(heap_t* heap, void* ptr)
 {
+    if (heap->size == 0) return 1;
+
     return ((char*)ptr >= heap->data
             && (char*) ptr < heap->data + heap->size);
-// - sizeof(allocation_t));
 }
 
 inline size_t
 heap_rel(const heap_t* heap, const void* ptr)
 {
+    assert (heap->size > 0 && "no heap preallocation");
     return ((char*) ptr) - heap->data;
 }
 
 inline void*
 heap_get(heap_t* heap, size_t rel)
 {
+    assert (heap->size > 0 && "no heap preallocation");
     return (void*)(heap->data + rel);
 }
 
