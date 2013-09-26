@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <asco.h>
 #include "debug.h"
+#include "fail.h"
 
 /* -----------------------------------------------------------------------------
  * types and data structures
