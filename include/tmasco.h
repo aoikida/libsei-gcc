@@ -72,7 +72,7 @@ void  tmasco_unprotect(void* addr, size_t size);
 #endif
 
 #ifdef TMASCO_DISABLE_INPUT_CHECKS
-#define __asco_prepare(ptr, size, crc, ro)
+#define __asco_prepare(ptr, size, crc, ro) 1
 #define __asco_prepare_nm(ptr)
 #else
 #define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)

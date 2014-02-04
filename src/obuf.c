@@ -82,6 +82,7 @@ obuf_close(obuf_t* obuf)
 inline void
 obuf_push(obuf_t* obuf, const void* ptr, size_t size)
 {
+    //fprintf(stderr,"CRC of %s\n", (char*) ptr);
     obuf_queue_t* queue = &obuf->queue[obuf->p];
     obuf_entry_t* e = &queue->entries[queue->tail % MAX_MSGS];
     assert (!e->done);
@@ -102,8 +103,10 @@ obuf_done(obuf_t* obuf)
 
     // append size to CRC and close
     e->crc = crc_append_len(e->crc, e->size);
+    //fprintf(stderr,"CRC was %u\n", e->crc);
     e->crc = crc_close(e->crc);
 
+    //fprintf(stderr,"CRC is %u\n", e->crc);
     // mark as done
     e->done = 1;
 
