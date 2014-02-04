@@ -13,6 +13,13 @@
 int printf(const char *format, ...) TMASCO_PURE;
 extern uint32_t crc_compute(const char* block, size_t len);
 
+#define NREQ 10000000
+#ifdef TMASCO_ENABLED
+#define CHECK_CRC 1
+#else
+#define CHECK_CRC 0
+#endif
+
 output_t*
 handler(state_t* state, input_t* input, uint32_t crc, uint32_t* crco)
 {
@@ -50,7 +57,7 @@ main()
     state->sum = 0;
 
     // loop for 10 input values
-    for (input.a = 1; input.a <= 1; input.a++) {
+    for (input.a = 1; input.a <= NREQ; input.a++) {
         // we receive a message and its CRC
 
         uint32_t crc = crc_compute((const char*)&input, sizeof(input_t));
@@ -60,10 +67,10 @@ main()
 
         // check CRC (this should be done on the receiver)
         uint32_t crcc = crc_compute((const char*)output, sizeof(output_t));
-        assert ((!TMASCO_ENABLED || crcc == crco) && "crcs differ!");
+        assert ((!CHECK_CRC || crcc == crco) && "crcs differ!");
 
         // Show state and messages
-        printf("DONE! %d %d %d\n", state->sum, input.a, output->a);
+        //printf("DONE! %d %d %d\n", state->sum, input.a, output->a);
 
         // we need to free output in a traversal with no message
         __asco_prepare_nm();
