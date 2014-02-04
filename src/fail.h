@@ -25,6 +25,6 @@
         ASCO_EXIT;                                              \
     } while(0);
 
-#define fail_ifn(cond, msg) if (!(cond)) { ASCO_FAIL(msg); }
+#define fail_ifn(cond, msg) if (!(cond)) { ASCO_FAIL("%s", msg); }
 
 #endif /* _ASCO_FAIL_H_ */

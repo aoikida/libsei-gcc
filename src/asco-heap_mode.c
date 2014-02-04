@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <asco.h>
 #include "debug.h"
+#include "fail.h"
 
 /* -----------------------------------------------------------------------------
  * types and data structures
@@ -18,11 +19,13 @@
 
 #include "heap.h"
 #include "cow.h"
+#include "cfc.h"
 
 struct asco {
     int       p;       /* the actual process (0 or 1) */
     heap_t*   heap[2]; /* the heap of each process    */
     cow_t*    cow[2];  /* a copy-on-write buffer      */
+    cfc_t     cf[2];   /* control flags               */
 };
 
 #if __WORDSIZE == 64
@@ -80,6 +83,8 @@ asco_begin(asco_t* asco)
     if (asco->p == -1) {
         DLOG2("First execution\n");
         asco->p = 0;
+        cfc_reset(&asco->cf[0]);
+        cfc_reset(&asco->cf[1]);
     }
 
     if (asco->p == 1) {
@@ -92,6 +97,11 @@ asco_switch(asco_t* asco)
 {
     DLOG2("Switch: %d\n", asco->p);
     asco->p = 1;
+
+    cfc_alog(&asco->cf[0]);
+    int r = cfc_amog(&asco->cf[0]);
+    fail_ifn(r, "control flow error");
+
     DLOG2("Switched: %d\n", asco->p);
 }
 
@@ -101,9 +111,18 @@ asco_commit(asco_t* asco)
     DLOG2("COMMIT: %d\n", asco->p);
     asco->p = -1;
 
+    int r = cfc_amog(&asco->cf[1]);
+    fail_ifn(r, "control flow error");
+    cfc_alog(&asco->cf[1]);
+
     cow_show(asco->cow[0]);
     cow_show(asco->cow[1]);
     cow_apply_heap(asco->cow[0], asco->cow[1]);
+
+    r = cfc_check(&asco->cf[0]);
+    fail_ifn(r,"control flow error");
+    r = cfc_check(&asco->cf[1]);
+    fail_ifn(r, "control flow error");
 }
 
 inline int
@@ -264,7 +283,7 @@ ASCO_READ(uint64_t)
               (int64_t) value, (int64_t) value);                      \
         if (!heap_in(asco->heap[asco->p], addr)) {                      \
             if (heap_in(asco->heap[1-asco->p], addr)) {                 \
-                printf("ERROR, writing on other heap %p\n", addr);      \
+                fprintf(stderr,"ERROR, writing on other heap %p\n", addr);      \
                 assert (0);                                             \
             }                                                           \
             *addr = value;                                              \
