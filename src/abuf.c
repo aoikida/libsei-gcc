@@ -139,6 +139,7 @@ abuf_clean(abuf_t* abuf)
         abuf_entry_t* e = &abuf->buf[i];
         if (e->sipop) sinfo_fini(e->sipop);
         sinfo_fini(e->sipush);
+        e->sipush = NULL;
     }
 #endif
     abuf->pushed = 0;
