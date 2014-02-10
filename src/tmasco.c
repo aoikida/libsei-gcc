@@ -250,6 +250,7 @@ void
 _ITM_changeTransactionMode(int flag)
 {
     DLOG3("changeTransactionMode\n");
+    assert (0 && "should never change mode!");
 }
 
 void*
