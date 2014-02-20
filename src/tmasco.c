@@ -12,87 +12,101 @@
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
+#include "tmasco_mt.h"
 
 #ifndef TMASCO_ENABLED
 #include "tmasco_instr.c"
 #else /* TMASCO_ENABLED */
 
-#ifdef ASCO_MT
-#include "abuf.h"
-#endif
-
-#if defined(ASCO_2PL)
-# if defined(ASCO_MINITRAV)
-#  error Wrong flag combination
-# endif
-#endif
 
 /* -----------------------------------------------------------------------------
- * tmasco state (asco object and stack boundaries)
+ * tmasco data structures
  * -------------------------------------------------------------------------- */
 
 typedef struct {
-    uint64_t rbp;
-    uint64_t rbx;
-    uint64_t r12;
-    uint64_t r13;
-    uint64_t r14;
-    uint64_t r15;
-    uint64_t rsp;
-    uint64_t ret;
+uint64_t rbp;
+uint64_t rbx;
+uint64_t r12;
+uint64_t r13;
+uint64_t r14;
+uint64_t r15;
+uint64_t rsp;
+uint64_t ret;
 } tmasco_ctx_t;
 
 typedef struct {
 #ifdef ASCO_MT
-    char pad1[64];
+char pad1[64];
 #endif
-    asco_t* asco;
-    uintptr_t low;
-    uintptr_t high;
-    tmasco_ctx_t ctx;
+asco_t* asco;
+uintptr_t low;
+uintptr_t high;
+tmasco_ctx_t ctx;
 #ifdef ASCO_MT
-    abuf_t* abuf;
-    int wrapped;
-#ifdef ASCO_MINITRAV
-# define ASCO_MAX_STACKSZ 4096*10
-    int minitrav;
-    uint64_t rbp;
-    uint64_t rsp;
-    size_t size;
-    char stack[ASCO_MAX_STACKSZ];
-#endif
+abuf_t* abuf;
+int wrapped;
+
+#ifdef ASCO_MTL
+int mtl;
+uint64_t rbp;
+uint64_t rsp;
+size_t size;
+#define ASCO_MAX_STACKSZ 4096*10
+char stack[ASCO_MAX_STACKSZ];
+#endif  /* !ASCO_MTL */
+
 #ifdef ASCO_2PL
-    abuf_t* abuf_2pl;
-#endif
-    char pad2[64];
-#endif
+abuf_t* abuf_2pl;
+#endif /* !ASCO_2PL */
+char pad2[64];
+#endif /* !ASCO_MT */
+
 } tmasco_t;
 
-#ifndef ASCO_MT
-tmasco_t ___tmasco;
-tmasco_t* __tmasco = &___tmasco;
+/* -----------------------------------------------------------------------------
+ * prototypes
+ * -------------------------------------------------------------------------- */
+
+#ifdef ASCO_MTL
+void inline tmasco_commit(int);
+void tmasco_switch2();
 #else
-# include <pthread.h>
-# define ASCO_MAX_THREADS 16
-tmasco_t ___tmasco[ASCO_MAX_THREADS];
-pthread_mutex_t __tmasco_lock = PTHREAD_MUTEX_INITIALIZER;
-int __tmasco_thread_count = 0;
-__thread tmasco_t* __tmasco = NULL;
-
-#define __USE_GNU // to enable RTLD_DEFAULT
-#include <dlfcn.h>
-typedef int (try_lock_f)(pthread_mutex_t* lock);
-typedef int (try_lock_f)(pthread_mutex_t* lock);
-typedef int (try_lock_f)(pthread_mutex_t* lock);
-typedef int (pthread_mutex_lock_f)(pthread_mutex_t *mutex);
-typedef int (pthread_mutex_trylock_f)(pthread_mutex_t *mutex);
-typedef int (pthread_mutex_unlock_f)(pthread_mutex_t *mutex);
-pthread_mutex_lock_f*    __pthread_mutex_lock    = NULL;
-pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
-pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
-void* __pthread_handle = NULL;
-
+void inline tmasco_commit();
 #endif
+
+void tmasco_switch();
+
+/* -----------------------------------------------------------------------------
+ * tmasco state
+ * -------------------------------------------------------------------------- */
+
+#ifndef ASCO_MT
+/* __tmasco is a pointer to the state of the thread. ___tmasco is the
+ * data structure itself. Hopefully the compiler is clever enough to
+ * simplify the accesses via pointer to the static data structure.
+ */
+static tmasco_t ___tmasco;
+static tmasco_t* __tmasco = &___tmasco;
+
+#else /* ASCO_MT */
+/* In Multi-Thread mode we have the tmasco data structure allocated
+ * for each thread and the threads use again the __tmasco pointer to
+ * access their own entry.
+ */
+static tmasco_t ___tmasco[ASCO_MAX_THREADS];
+static pthread_mutex_t __tmasco_lock = PTHREAD_MUTEX_INITIALIZER;
+static int __tmasco_thread_count = 0;
+static __thread tmasco_t* __tmasco = NULL;
+
+static pthread_mutex_lock_f*    __pthread_mutex_lock    = NULL;
+static pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
+static pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
+static void* __pthread_handle = NULL;
+#endif /* !ASCO_MT */
+
+/* -----------------------------------------------------------------------------
+ * Heap protection
+ * -------------------------------------------------------------------------- */
 
 #ifdef HEAP_PROTECT
 void asco_unprotect(asco_t* asco, void* addr, size_t size);
@@ -103,6 +117,11 @@ PROTECT_HANDLER
 #else
 #  define HEAP_PROTECT_INIT
 #endif
+
+
+/* -----------------------------------------------------------------------------
+ * init and fini
+ * -------------------------------------------------------------------------- */
 
 /* initialize library and allocate an asco object. This is called once
  * the library is loaded. If static liked should be called on
@@ -144,8 +163,8 @@ tmasco_init()
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
         ___tmasco[i].abuf = NULL;
-#ifdef ASCO_MINITRAV
-        ___tmasco[i].minitrav = 0;
+#ifdef ASCO_MTL
+        ___tmasco[i].mtl = 0;
 #endif
 #ifdef ASCO_2PL
         ___tmasco[i].abuf_2pl = NULL;
@@ -206,8 +225,14 @@ tmasco_fini()
 #endif
 }
 
+/* -----------------------------------------------------------------------------
+ * stack boundaries helpers
+ * -------------------------------------------------------------------------- */
+
 static inline uintptr_t getsp() __attribute__((always_inline));
-static inline uintptr_t getsp() {
+static inline uintptr_t
+getsp()
+{
     register const uintptr_t rsp asm ("rsp");
 #ifndef NDEBUG
     __tmasco->low = rsp; // this update is only necessary for debugging
@@ -216,7 +241,9 @@ static inline uintptr_t getsp() {
 }
 
 static inline uintptr_t getbp() __attribute__((always_inline));
-static inline uintptr_t getbp() {
+static inline uintptr_t
+getbp()
+{
     register const uintptr_t rbp asm ("rbp");
     return rbp;
 }
@@ -225,14 +252,8 @@ static inline uintptr_t getbp() {
 #define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __tmasco->high
 
 #if 0
-extern char __data_start;
-extern char __bss_start;
-extern char __bss_end;
-extern char edata;
 extern void* __asco_ignore_addrs[];
 #endif
-
-
 
 /* addresses inside the stack are local variables and shouldn't be
  * considered when reading and writing. Other addresses can be
@@ -261,19 +282,6 @@ ignore_addr(const void* ptr)
 }
 
 /* -----------------------------------------------------------------------------
- * prototypes
- * -------------------------------------------------------------------------- */
-
-#ifdef ASCO_MINITRAV
-void inline tmasco_commit(int);
-void tmasco_switch2();
-#else
-void inline tmasco_commit();
-#endif
-
-void tmasco_switch();
-
-/* -----------------------------------------------------------------------------
  * _ITM_ interface
  * -------------------------------------------------------------------------- */
 
@@ -288,21 +296,18 @@ _ITM_beginTransaction(uint32_t properties,...)
     return 0x01;
 }
 void _ITM_commitTransaction() {}
-#else
+#else /* TMASCO_ASM */
 
 void
 _ITM_commitTransaction()
 {
-#ifdef ASCO_MINITRAV
+#ifdef ASCO_MTL
     tmasco_commit(0);
 #else
     tmasco_commit();
-#endif
+#endif /* ASCO_MTL */
 }
-#endif
-
-
-
+#endif /* TMASCO_ASM */
 
 inline void*
 _ITM_malloc(size_t size)
@@ -330,21 +335,21 @@ _ITM_calloc(size_t nmemb, size_t size)
     }
 #else
 #ifdef COW_ASMREAD
-#  define ITM_READ(type, prefix, suffix) inline                 \
+#  define ITM_READ(type, prefix, suffix) inline         \
     type _ITM_R##prefix##suffix(const type* addr);
 #else
-#  define ITM_READ(type, prefix, suffix) inline                 \
-    type _ITM_R##prefix##suffix(const type* addr)               \
-    {                                                           \
-        return *addr;                                           \
+#  define ITM_READ(type, prefix, suffix) inline         \
+    type _ITM_R##prefix##suffix(const type* addr)       \
+    {                                                   \
+        return *addr;                                   \
     }
 #endif /* COW_ASMREAD */
-#endif
+#endif /* COW_WT */
 
-#define ITM_READ_ALL(type, suffix)                              \
-    ITM_READ(type,   , suffix)                                  \
-    ITM_READ(type, aR, suffix)                                  \
-    ITM_READ(type, aW, suffix)                                  \
+#define ITM_READ_ALL(type, suffix)              \
+    ITM_READ(type,   , suffix)                  \
+    ITM_READ(type, aR, suffix)                  \
+    ITM_READ(type, aW, suffix)                  \
     ITM_READ(type, fW, suffix)
 
 ITM_READ_ALL(uint8_t,  U1)
@@ -352,25 +357,25 @@ ITM_READ_ALL(uint16_t, U2)
 ITM_READ_ALL(uint32_t, U4)
 ITM_READ_ALL(uint64_t, U8)
 
-#define ITM_WRITE(type, prefix, suffix) inline                 \
-    void _ITM_W##prefix##suffix(type* addr, type value)        \
-    {                                                          \
-        if (ignore_addr(addr)) *addr = value;                  \
-        else {                                                 \
-            asco_write_##type(__tmasco->asco, addr, value);    \
-                DLOG3(                                      \
-                        "writing %16p %16p size = %lu (thread = %p)\n", \
-                        addr,                                           \
-                        (void*)(((uintptr_t)addr >> 3) << 3),           \
-                        sizeof(type),                                   \
-                        ((void*)(uintptr_t) pthread_self())             \
-                    );                                                  \
-        }                                                      \
+#define ITM_WRITE(type, prefix, suffix) inline                  \
+    void _ITM_W##prefix##suffix(type* addr, type value)         \
+    {                                                           \
+        if (ignore_addr(addr)) *addr = value;                   \
+        else {                                                  \
+            DLOG3(                                              \
+                "write %16p %16p size = %lu (thread = %p)\n",   \
+                addr,                                           \
+                (void*)(((uintptr_t)addr >> 3) << 3),           \
+                sizeof(type),                                   \
+                ((void*)(uintptr_t) pthread_self())             \
+                );                                              \
+            asco_write_##type(__tmasco->asco, addr, value);     \
+        }                                                       \
     }
 
-#define ITM_WRITE_ALL(type, suffix)                            \
-    ITM_WRITE(type,   , suffix)                                \
-    ITM_WRITE(type, aR, suffix)                                \
+#define ITM_WRITE_ALL(type, suffix)             \
+    ITM_WRITE(type,   , suffix)                 \
+    ITM_WRITE(type, aR, suffix)                 \
     ITM_WRITE(type, aW, suffix)
 
 ITM_WRITE_ALL(uint8_t,  U1)
@@ -507,14 +512,14 @@ int _ITM_initializeProcess() { return 0; }
  * -------------------------------------------------------------------------- */
 #ifdef ASCO_MT
 
-#ifdef ASCO_MINITRAV
+#ifdef ASCO_MTL
 uint32_t _ITM_beginTransaction(uint32_t properties,...);
 
 void
-tmasco_minitrav(uint64_t bp)
+tmasco_mtl(uint64_t bp)
 {
-    if (! __tmasco->minitrav) {
-        __tmasco->minitrav = 1;
+    if (! __tmasco->mtl) {
+        __tmasco->mtl = 1;
         // save initial rbp
         __tmasco->rbp = __tmasco->ctx.rbp;
     }
@@ -526,22 +531,22 @@ tmasco_minitrav(uint64_t bp)
 
     _ITM_beginTransaction(0);
 }
-#endif
+#endif /* ASCO_MTL */
 
 int
-pthread_mutex_lock(pthread_mutex_t* lock)
+    pthread_mutex_lock(pthread_mutex_t* lock)
 {
-#ifdef ASCO_MINITRAVI
+#ifdef ASCO_MTL2
     if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_lock(lock);
     tmasco_commit(1);
     int r =  __pthread_mutex_lock(lock);
-    tmasco_minitrav();
+    tmasco_mtl();
     return r;
-#else
+#else /* ASCO_MTL2 */
     //fprintf(stderr, "locking %p\n", lock);
     if (!__tmasco || __tmasco->wrapped) {
-        DLOG3( "locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         return __pthread_mutex_lock(lock);
     }
     __tmasco->wrapped = 1;
@@ -549,44 +554,44 @@ pthread_mutex_lock(pthread_mutex_t* lock)
     int r;
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3( "locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
         abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
-#endif
+#endif /* ASCO_2PL */
         break;
     case 1:
-        DLOG3( "fake locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("fake locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
     default:
-        DLOG3( "locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
         break;
     }
 
     __tmasco->wrapped = 0;
     return r;
-#endif
+#endif /* ASCO_MTL2 */
 }
 
 int
 pthread_mutex_trylock(pthread_mutex_t* lock)
 {
-#ifdef ASCO_MINITRAVI
+#ifdef ASCO_MTL2
     if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_trylock(lock);
     tmasco_commit(1);
     int r =  __pthread_mutex_trylock(lock);
-    tmasco_minitrav();
+    tmasco_mtl();
     return r;
 #else
     if (!__tmasco || __tmasco->wrapped) {
-        DLOG3( "try locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("try locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         return __pthread_mutex_trylock(lock);
     }
     __tmasco->wrapped = 1;
@@ -594,32 +599,32 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
     int r;
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3( "try locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("try locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
         abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
-#endif
+#endif /* ASCO_2PL */
         break;
     case 1:
-        DLOG3( "fake try locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("fake try locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
     default:
-        DLOG3( "locking %p (thread = %p)\n", lock,
-                (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock,
+              (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
         break;
     }
 
     __tmasco->wrapped = 0;
     return r;
-#endif
+#endif /* ASCO_MTL2 */
 }
 
-#ifdef ASCO_MINITRAV
+#ifdef ASCO_MTL
 int
 pthread_mutex_unlock(pthread_mutex_t* lock)
 {
@@ -633,8 +638,9 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
         tmasco_commit(1);
         DLOG3( "unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r =  __pthread_mutex_unlock(lock);
-        DLOG3( "starting mini traversal (thread = %p)\n", (void*) pthread_self());
-        tmasco_minitrav(getbp());
+        DLOG3( "starting mini traversal (thread = %p)\n",
+               (void*) pthread_self());
+        tmasco_mtl(getbp());
     default:
         r = __pthread_mutex_unlock(lock);
     }
@@ -643,12 +649,12 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     return r;
 }
 
-#else
+#else /* !ASCO_MTL */
 int
 pthread_mutex_unlock(pthread_mutex_t* lock)
 {
     if (!__tmasco || __tmasco->wrapped) {
-        DLOG3( "unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
+        DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_unlock(lock);
     }
     __tmasco->wrapped = 1;
@@ -663,14 +669,14 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     case 1:
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
-#else
+#else /* ASCO_2PL */
     case 0:
     case 1:
         r = 1;
         break;
-#endif
+#endif /* ASCO_2PL */
     default:
-        DLOG3( "unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
+        DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_unlock(lock);
         break;
     }
@@ -678,8 +684,9 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     __tmasco->wrapped = 0;
     return r;
 }
-#endif /* ASCO_MINITRAV */
+#endif /* ASCO_MTL */
 #endif /* ASCO_MT */
+
 
 /* -----------------------------------------------------------------------------
  * tmasco interface methods
@@ -758,7 +765,7 @@ tmasco_begin(tmasco_ctx_t* ctx)
     return 0x01;
 }
 
-#ifdef ASCO_MINITRAV
+#ifdef ASCO_MTL
 void
 tmasco_commit(int force)
 {
@@ -766,7 +773,7 @@ tmasco_commit(int force)
         asco_switch(__tmasco->asco);
         //fprintf(stderr, "Acquired locks: %d\n", abuf_size(__tmasco->abuf));
 
-        if (__tmasco->minitrav) {
+        if (__tmasco->mtl) {
             // copy stack back
             DLOG3( "STACK SIZE: %lu bytes (thread = %p)\n",
             __tmasco->size, (void*) pthread_self());
@@ -782,10 +789,10 @@ tmasco_commit(int force)
     abuf_clean(__tmasco->abuf);
 
     if (!force) {
-        __tmasco->minitrav = 0;
+        __tmasco->mtl = 0;
     }
 }
-#else /* ! ASCO_MINITRAV */
+#else /* ! ASCO_MTL */
 void
 tmasco_commit()
 {
@@ -815,7 +822,7 @@ tmasco_commit()
 #endif
 
 }
-#endif /* ! ASCO_MINITRAV */
+#endif /* ! ASCO_MTL */
 
 #endif /* TMASCO_ASM */
 
@@ -862,46 +869,6 @@ tmasco_unprotect(void* addr, size_t size)
     asco_unprotect(__tmasco->asco, addr, size);
 #endif
     // else ignore
-}
-
-/* -----------------------------------------------------------------------------
- * clang-tm methods
- * -------------------------------------------------------------------------- */
-void tanger_stm_indirect_init_multiple(uint32_t number_of_call_targets,
-                                       uint32_t versions){}
-void tanger_stm_indirect_register_multiple(void* nontxnal, void* txnal,
-                                           uint32_t version){}
-
-/* once a transaction starts, this methods gives the hint of where the
- * stack starts and ends (at the moment). Any memory between getsp()
- * and high_addr are inside the stack and shouldn't be considered by
- * asco. Any access outside that range is considered to be state of
- * the application. */
-void
-tanger_stm_save_restore_stack(void* low_addr, void* high_addr)
-{
-    __tmasco->low = (uintptr_t) low_addr;
-    __tmasco->high = (uintptr_t) high_addr;
-    DLOG2("low = %p, high = %p \n", __tmasco->low, __tmasco->high);
-}
-
-/* whenever a function cannot be instrumented in compile time, this
- * function is called to resolve that. We simply return the same
- * function pointer. */
-void*
-tanger_stm_indirect_resolve_multiple(void *nontxnal_function, uint32_t version)
-{
-    if (nontxnal_function == tmasco_malloc)
-        return tanger_txnal_tmasco_malloc;
-    else
-        return nontxnal_function;
-}
-
-void*
-tanger_stm_realloc(void* ptr, size_t size)
-{
-    assert (ptr == NULL && "not supported");
-    return asco_malloc(__tmasco->asco, size);
 }
 
 #endif /* TMASCO_ENABLED */

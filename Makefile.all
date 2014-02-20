@@ -1,20 +1,20 @@
 # -*- Makefile -*-
 
-TARGETS_DISABLED = #libasco-cowh.a libasco-cowah.a libasco-cowp.a
-	libasco-cowp.a\
-	libasco-cown.a\
-	libasco-cowah.a\
-	libasco-instr.a\
-	libasco-cowa.a\
-	libasco-cow.a\
+TARGETS_DISABLED = 		\
+	libasco-cowp.a		\
+	libasco-cown.a		\
+	libasco-cowah.a		\
+	libasco-instr.a		\
+	libasco-cowa.a		\
+	libasco-cow.a		\
+	libasco-cow-opt.a	\
+	libasco-cowa-opt.a	\
 
 
 TARGETS = \
-	libasco-cow-opt.a\
-	libasco-cowa-opt.a\
-	libasco-instr-opt.a\
-	libasco-cow-opt-mtl.a\
-	libasco-cow-opt-2pl.a\
+	libasco-instr-opt.a	\
+	libasco-cow-opt-mtl.a	\
+	libasco-cow-opt-2pl.a
 
 
 all: $(TARGETS)
@@ -102,4 +102,4 @@ libasco-heap.a: | lib
 	mv build-heap/libasco.a lib/libasco-heap.a
 
 clean:
-	rm -rf build-{cow,fcow,heap} lib
+	rm -rf build-* lib
