@@ -17,6 +17,10 @@
 #include "tmasco_instr.c"
 #else /* TMASCO_ENABLED */
 
+#ifdef ASCO_MT
+#include "abuf.h"
+#endif
+
 /* -----------------------------------------------------------------------------
  * tmasco state (asco object and stack boundaries)
  * -------------------------------------------------------------------------- */
@@ -33,10 +37,18 @@ typedef struct {
 } tmasco_ctx_t;
 
 typedef struct {
+#ifdef ASCO_MT
+    char pad1[64];
+#endif
     asco_t* asco;
     uintptr_t low;
     uintptr_t high;
     tmasco_ctx_t ctx;
+#ifdef ASCO_MT
+    abuf_t* abuf;
+    int wrapped;
+    char pad2[64];
+#endif
 } tmasco_t;
 
 #ifndef ASCO_MT
@@ -49,6 +61,20 @@ tmasco_t ___tmasco[ASCO_MAX_THREADS];
 pthread_mutex_t __tmasco_lock = PTHREAD_MUTEX_INITIALIZER;
 int __tmasco_thread_count = 0;
 __thread tmasco_t* __tmasco = NULL;
+
+#define __USE_GNU // to enable RTLD_DEFAULT
+#include <dlfcn.h>
+typedef int (try_lock_f)(pthread_mutex_t* lock);
+typedef int (try_lock_f)(pthread_mutex_t* lock);
+typedef int (try_lock_f)(pthread_mutex_t* lock);
+typedef int (pthread_mutex_lock_f)(pthread_mutex_t *mutex);
+typedef int (pthread_mutex_trylock_f)(pthread_mutex_t *mutex);
+typedef int (pthread_mutex_unlock_f)(pthread_mutex_t *mutex);
+pthread_mutex_lock_f*    __pthread_mutex_lock    = NULL;
+pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
+pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
+void* __pthread_handle = NULL;
+
 #endif
 
 #ifdef HEAP_PROTECT
@@ -64,17 +90,69 @@ PROTECT_HANDLER
 /* initialize library and allocate an asco object. This is called once
  * the library is loaded. If static liked should be called on
  * initialization of the program. */
-static void
-#ifndef ASCO_MT
-__attribute__((constructor))
-#endif
+static void __attribute__((constructor))
 tmasco_init()
 {
+#ifndef ASCO_MT
     assert (__tmasco->asco == NULL);
     __tmasco->asco = asco_init();
     assert (__tmasco->asco);
     HEAP_PROTECT_INIT;
+#else
+    printf("Wrapping libpthread\n");
+    __pthread_handle = dlopen("libpthread.so.0", RTLD_NOW);
+    if (!__pthread_handle) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(EXIT_FAILURE);
+    }
+    __pthread_mutex_lock = (pthread_mutex_lock_f*)
+        dlsym(__pthread_handle, "pthread_mutex_lock");
+    if (!__pthread_mutex_lock) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(EXIT_FAILURE);
+    }
+    __pthread_mutex_trylock = (pthread_mutex_trylock_f*)
+        dlsym(__pthread_handle, "pthread_mutex_trylock");
+    if (!__pthread_mutex_trylock) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(EXIT_FAILURE);
+    }
+    __pthread_mutex_unlock = (pthread_mutex_unlock_f*)
+        dlsym(__pthread_handle, "pthread_mutex_unlock");
+    if (!__pthread_mutex_unlock) {
+        fprintf(stderr, "%s\n", dlerror());
+        exit(EXIT_FAILURE);
+    }
+#endif
 }
+
+#ifdef ASCO_MT
+static void
+tmasco_thread_init()
+{
+    fprintf(stderr, "initializing tmasco thread\n");
+#ifndef NDEBUG
+    int r =
+#endif
+        __pthread_mutex_lock(&__tmasco_lock);
+    assert (r == 0 && "error acquiring lock");
+    int me = __tmasco_thread_count++;
+#ifndef NDEBUG
+    r =
+#endif
+        __pthread_mutex_unlock(&__tmasco_lock);
+
+    // should set after unlock other unlock fails
+    __tmasco = &___tmasco[me];
+    assert (r == 0 && "error releasing lock");
+
+    assert (__tmasco->asco == NULL);
+    __tmasco->asco = asco_init();
+    assert (__tmasco->asco);
+    __tmasco->abuf = abuf_init(10000000);
+    __tmasco->wrapped = 0;
+}
+#endif
 
 static void __attribute__((destructor))
 tmasco_fini()
@@ -86,6 +164,7 @@ tmasco_fini()
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
         assert (___tmasco[i].asco);
+        abuf_fini(__tmasco[i].abuf);
         asco_fini(___tmasco[i].asco);
     }
 #endif
@@ -361,6 +440,80 @@ _ZGTt6memset(void* s, int c, size_t n)
 }
 int _ITM_initializeProcess() { return 0; }
 
+#ifdef ASCO_MT
+int
+pthread_mutex_lock(pthread_mutex_t* lock)
+{
+    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_lock(lock);
+    __tmasco->wrapped = 1;
+
+    int r;
+    switch (asco_getp(__tmasco->asco)) {
+    case 0:
+        r = __pthread_mutex_lock(lock);
+        abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
+        break;
+    case 1:
+        r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
+        break;
+    default:
+        r = __pthread_mutex_lock(lock);
+        break;
+    }
+
+    __tmasco->wrapped = 0;
+    return r;
+}
+
+int
+pthread_mutex_trylock(pthread_mutex_t* lock)
+{
+    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_trylock(lock);
+    __tmasco->wrapped = 1;
+
+    int r;
+    switch (asco_getp(__tmasco->asco)) {
+    case 0:
+        r = __pthread_mutex_trylock(lock);
+        abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
+        break;
+    case 1:
+        r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
+        break;
+    default:
+        r = __pthread_mutex_trylock(lock);
+        break;
+    }
+
+    __tmasco->wrapped = 0;
+    return r;
+}
+
+int
+pthread_mutex_unlock(pthread_mutex_t* lock)
+{
+    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_unlock(lock);
+    __tmasco->wrapped = 1;
+
+    int r;
+    switch (asco_getp(__tmasco->asco)) {
+    case 0:
+        r = __pthread_mutex_unlock(lock);
+        abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
+        break;
+    case 1:
+        r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
+        break;
+    default:
+        r = __pthread_mutex_unlock(lock);
+        break;
+    }
+
+    __tmasco->wrapped = 0;
+    return r;
+}
+#endif
+
 /* -----------------------------------------------------------------------------
  * tmasco interface methods
  * -------------------------------------------------------------------------- */
@@ -396,15 +549,7 @@ void
 tmasco_begin(uintptr_t bp)
 {
 #ifdef ASCO_MT
-    if (!__tmasco) {
-        fprintf(stderr, "initializing tmasco thread\n");
-        int r = pthread_mutex_lock(&__tmasco_lock);
-        assert (r == 0 && "error acquiring lock");
-        __tmasco = &___tmasco[__tmasco_thread_count++];
-        r = pthread_mutex_unlock(&__tmasco_lock);
-        assert (r == 0 && "error releasing lock");
-        tmasco_init();
-    }
+    if (!__tmasco) tmasco_thread_init();
 #endif
     __tmasco->high = bp;
     asco_begin(__tmasco->asco);
@@ -427,6 +572,9 @@ void
 tmasco_commit()
 {
     asco_commit(__tmasco->asco);
+#ifdef ASCO_MT
+    abuf_clean(__tmasco->abuf);
+#endif
 }
 
 #else /* TMASCO_ASM */
@@ -435,15 +583,7 @@ uint32_t
 tmasco_begin(tmasco_ctx_t* ctx)
 {
 #ifdef ASCO_MT
-    if (!__tmasco) {
-        fprintf(stderr, "initializing tmasco thread\n");
-        int r = pthread_mutex_lock(&__tmasco_lock);
-        assert (r == 0 && "error acquiring lock");
-        __tmasco = &___tmasco[__tmasco_thread_count++];
-        r = pthread_mutex_unlock(&__tmasco_lock);
-        assert (r == 0 && "error releasing lock");
-        tmasco_init();
-    }
+    if (!__tmasco) tmasco_thread_init();
 #endif
     memcpy(&__tmasco->ctx, ctx, sizeof(tmasco_ctx_t));
     __tmasco->high = __tmasco->ctx.rbp;
@@ -459,6 +599,10 @@ tmasco_commit()
         tmasco_switch(&__tmasco->ctx, 0x01);
     }
     asco_commit(__tmasco->asco);
+#ifdef ASCO_MT
+    abuf_clean(__tmasco->abuf);
+#endif
+
 }
 #endif
 
