@@ -33,43 +33,38 @@ libasco-cown.a: | lib
 
 libasco-cow-opt.a: | lib
 	make BUILD=build-cow-opt clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_ROPURE"
+		COW_ASMREAD=1 COW_ROPURE=1
 	mv build-cow-opt/libasco.a lib/libasco-cow-opt.a
 
 libasco-cow-opt-mtl.a: | lib
 	make BUILD=build-cow-opt-mtl clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_ROPURE -DASCO_MT -DASCO_MTL"
+		COW_ASMREAD=1 COW_ROPURE=1 ASCO_MTL=1
 	mv build-cow-opt-mtl/libasco.a lib/libasco-cow-opt-mtl.a
 
 libasco-cow-opt-2pl.a: | lib
 	make BUILD=build-cow-opt-2pl clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_ROPURE -DASCO_MT -DASCO_2PL"
+		COW_ASMREAD=1 COW_ROPURE=1 ASCO_2PL=1
 	mv build-cow-opt-2pl/libasco.a lib/libasco-cow-opt-2pl.a
 
 libasco-cowa.a: | lib
 	make BUILD=build-cowa clean all MODE=cow \
-		CFLAGS="-DCOW_APPEND_ONLY"
+		COW_APPEND_ONLY=1
 	mv build-cowa/libasco.a lib/libasco-cowa.a
 
 libasco-cowa-opt.a: | lib
 	make BUILD=build-cowa-opt clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_APPEND_ONLY -DCOW_ROPURE"
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1
 	mv build-cowa-opt/libasco.a lib/libasco-cowa-opt.a
 
 libasco-cowa-opt-mtl.a: | lib
 	make BUILD=build-cowa-opt-mtl clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_APPEND_ONLY -DCOW_ROPURE -DASCO_MTL"
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 ASCO_MTL=1
 	mv build-cowa-opt-mtl/libasco.a lib/libasco-cowa-opt-mtl.a
 
 libasco-cowa-opt-2pl.a: | lib
 	make BUILD=build-cowa-opt-2pl clean all MODE=cow \
-		COW_ASMREAD=1 \
-		CFLAGS="-DCOW_APPEND_ONLY -DCOW_ROPURE -DASCO_2PL"
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 \
+		ASCO_2PL=1
 	mv build-cowa-opt-2pl/libasco.a lib/libasco-cowa-opt-2pl.a
 
 libasco-cowah.a: | lib

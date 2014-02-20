@@ -8,9 +8,9 @@ CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO #-DASCO_STACK_INF
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror -DNDEBUG #-DASCO_STATS
 
 ifdef DEBUG
-override CFLAGS += $(CFLAGS_DBG) -Iinclude
+override CFLAGS += $(CFLAGS_DBG) -Iinclude -frecord-gcc-switches
 else
-override CFLAGS += $(CFLAGS_REL) -Iinclude
+override CFLAGS += $(CFLAGS_REL) -Iinclude -frecord-gcc-switches
 endif
 
 # debugging level 0-3
@@ -41,6 +41,22 @@ endif
 
 ifdef COW_ASMREAD
 AFLAGS += -DCOW_ASMREAD
+endif
+
+ifdef COW_APPEND_ONLY
+AFLAGS += -DCOW_APPEND_ONLY
+endif
+
+ifdef COW_ROPURE
+AFLAGS += -DCOW_ROPURE
+endif
+
+ifdef ASCO_MTL
+AFLAGS += -DASCO_MTL
+endif
+
+ifdef ASCO_2PL
+AFLAGS += -DASCO_2PL
 endif
 
 # compiler
