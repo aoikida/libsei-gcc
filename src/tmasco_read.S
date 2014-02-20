@@ -92,6 +92,16 @@ FOO:
 	retq
 	.size	FOO, .- FOO
 #undef FOO
+#define FOO RU(fW,2)
+	.text
+	.align	4
+	.globl	FOO
+	.type	FOO, @function
+FOO:
+	movzwl (%rdi),%eax
+	retq
+	.size	FOO, .- FOO
+#undef FOO
 
 /* RU4
 **
