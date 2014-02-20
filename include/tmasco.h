@@ -1,13 +1,9 @@
 /* -----------------------------------------------------------------------------
- * Copyright (c) 2013 Diogo Behrens
+ * Copyright (c) 2013,2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
-
-#ifndef TMASCO_NOASM
-#define TMASCO_ASM
-#endif
 
 #ifdef TMASCO_INSTR
 #define TMASCO_ENABLED
@@ -89,35 +85,6 @@ void  tmasco_unprotect(void* addr, size_t size);
 #define __tmasco_begin(X)  __transaction_atomic {
 #define __tmasco_switch(X) }
 #define __tmasco_commit(X)
-
-#elif defined(TMASCO_ENABLED) && !defined(TMASCO_ASM)
-#include <stdint.h>
-
-static inline uintptr_t getbp() __attribute__((always_inline));
-static inline uintptr_t getbp() {
-    uintptr_t rbp;
-    asm __volatile__ ("mov %%rbp, %0": "=m" (rbp));
-    return rbp;
-}
-
-#define __tmasco_begin(X) { /* asco scope */         \
-    D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
-asco##X:                                             \
-tmasco_begin(getbp());                               \
-__transaction_atomic {
-
-#define __tmasco_switch(X) }                              \
-        if (!tmasco_switched()) { /* switching */         \
-        D("Switch(%s): %s:%d\n", #X, __FILE__, __LINE__);
-
-
-#define __tmasco_commit(X)                            \
-    tmasco_switch();                                  \
-    goto asco##X;                                     \
-    } /* !switching */                                \
-    D("Commit(%s): %s:%d\n", #X, __FILE__, __LINE__); \
-    tmasco_commit();                                  \
-    } /* !asco scope */
 
 #elif defined(TMASCO_ENABLED)
 

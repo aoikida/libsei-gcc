@@ -285,19 +285,6 @@ ignore_addr(const void* ptr)
  * _ITM_ interface
  * -------------------------------------------------------------------------- */
 
-#ifndef TMASCO_ASM
-uint32_t
-_ITM_beginTransaction(uint32_t properties,...)
-{
-    /* Return values to run
-     *  - uninstrumented code : 0x02
-     *  - instrumented code   : 0x01
-     */
-    return 0x01;
-}
-void _ITM_commitTransaction() {}
-#else /* TMASCO_ASM */
-
 void
 _ITM_commitTransaction()
 {
@@ -307,7 +294,6 @@ _ITM_commitTransaction()
     tmasco_commit();
 #endif /* ASCO_MTL */
 }
-#endif /* TMASCO_ASM */
 
 inline void*
 _ITM_malloc(size_t size)
@@ -718,41 +704,6 @@ tmasco_other(void* ptr)
     return r;
 }
 
-#ifndef TMASCO_ASM
-void
-tmasco_begin(uintptr_t bp)
-{
-#ifdef ASCO_MT
-    if (!__tmasco) tmasco_thread_init();
-#endif
-    __tmasco->high = bp;
-    asco_begin(__tmasco->asco);
-}
-
-
-int
-tmasco_switched()
-{
-    return asco_getp(__tmasco->asco);
-}
-
-void
-tmasco_switch()
-{
-    asco_switch(__tmasco->asco);
-}
-
-void
-tmasco_commit()
-{
-    asco_commit(__tmasco->asco);
-#ifdef ASCO_MT
-    abuf_clean(__tmasco->abuf);
-#endif
-}
-
-#else /* TMASCO_ASM */
-
 uint32_t
 tmasco_begin(tmasco_ctx_t* ctx)
 {
@@ -823,8 +774,6 @@ tmasco_commit()
 
 }
 #endif /* ! ASCO_MTL */
-
-#endif /* TMASCO_ASM */
 
 int
 tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro)

@@ -39,10 +39,6 @@ AFLAGS += -DMODE=1
 MODE=heap
 endif
 
-ifndef TMASCO_NOASM
-AFLAGS += -DTMASCO_ASM
-endif
-
 ifdef COW_ASMREAD
 AFLAGS += -DCOW_ASMREAD
 endif
