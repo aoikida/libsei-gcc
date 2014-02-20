@@ -136,3 +136,43 @@ tmasco_switch:
 
 tmasco_switch.end:
 	.size	tmasco_switch, .- tmasco_switch
+
+
+
+/* --- tmasco_switch2 ------------------------------------------------------- */
+	.text
+	.align	4
+	.globl	tmasco_switch2
+	.type   tmasco_switch2, @function
+
+tmasco_switch2:
+
+	/* Our first argument rdi points to a copy of the above
+	context. Our task is simply to restore all registers return to
+	the same address to which _ITM_beginTransaction returned. */
+	movq	  (%rcx), %rbp	// restore stack base
+	movq	 8(%rcx), %rbx	// restore callee-save register
+	movq	16(%rcx), %r12	// restore callee-save register
+	movq	24(%rcx), %r13	// restore callee-save register
+	movq	32(%rcx), %r14	// restore callee-save register
+	movq	48(%rcx), %rsp	// restore stack pointer
+	movq       %rcx,  %r15  // rcx caller-save
+	
+	// copy whole context using rdi, rsi, rdx
+	call	memcpy
+
+	movq       %r15, %rcx   // restore rcx
+	movq	40(%rcx), %r15	// restore callee-save register
+	movq	56(%rcx), %rdx	// copy return address
+
+	// We also need to return the same value as _ITM_beginTransaction
+	// returned. So our second argument, ie %rsi, represents the return
+	// value. Note that _ITM_beginTransaction returns a 32 bit value.
+	movq    %r8,  %rsi
+	movl	%esi, %eax
+
+	// now return
+	jmpq *%rdx
+
+tmasco_switch2.end:
+	.size	tmasco_switch2, .- tmasco_switch2

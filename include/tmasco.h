@@ -121,9 +121,10 @@ __transaction_atomic {
 
 #elif defined(TMASCO_ENABLED)
 
-#define __tmasco_begin(X)  __transaction_atomic {
+#define __tmasco_begin(X) D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
+    __transaction_atomic {
 #define __tmasco_switch(X) }
-#define __tmasco_commit(X)
+#define __tmasco_commit(X) D("Commit(%s): %s:%d\n", #X, __FILE__, __LINE__);
 
 #else
 

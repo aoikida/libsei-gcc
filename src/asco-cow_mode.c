@@ -305,7 +305,6 @@ asco_commit(asco_t* asco)
     r = ibuf_correct(asco->ibuf);
     assert (r == 1 && "input message modified");
 
-
     ASCO_STATS_INC(ntrav);
     ASCO_STATS_REPORT();
 #ifdef HEAP_PROTECT
