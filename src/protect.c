@@ -30,7 +30,7 @@ protect_setsignal()
 #define PROTECT_HANDLER                                                 \
     void protect_handler(int sig, siginfo_t* si, void* args)            \
     {                                                                   \
-        asco_unprotect(__tmasco.asco, si->si_addr, 1);                  \
+        asco_unprotect(__tmasco->asco, si->si_addr, 1);                 \
     }
 
 

@@ -32,13 +32,24 @@ typedef struct {
     uint64_t ret;
 } tmasco_ctx_t;
 
-struct {
+typedef struct {
     asco_t* asco;
     uintptr_t low;
     uintptr_t high;
     tmasco_ctx_t ctx;
-} __tmasco;
+} tmasco_t;
 
+#ifndef ASCO_MT
+tmasco_t ___tmasco;
+tmasco_t* __tmasco = &___tmasco;
+#else
+# include <pthread.h>
+# define ASCO_MAX_THREADS 16
+tmasco_t ___tmasco[ASCO_MAX_THREADS];
+pthread_mutex_t __tmasco_lock = PTHREAD_MUTEX_INITIALIZER;
+int __tmasco_thread_count = 0;
+__thread tmasco_t* __tmasco = NULL;
+#endif
 
 #ifdef HEAP_PROTECT
 void asco_unprotect(asco_t* asco, void* addr, size_t size);
@@ -53,33 +64,44 @@ PROTECT_HANDLER
 /* initialize library and allocate an asco object. This is called once
  * the library is loaded. If static liked should be called on
  * initialization of the program. */
-static void __attribute__((constructor))
+static void
+#ifndef ASCO_MT
+__attribute__((constructor))
+#endif
 tmasco_init()
 {
-    assert (__tmasco.asco == NULL);
-    __tmasco.asco = asco_init();
-    assert (__tmasco.asco);
+    assert (__tmasco->asco == NULL);
+    __tmasco->asco = asco_init();
+    assert (__tmasco->asco);
     HEAP_PROTECT_INIT;
 }
 
 static void __attribute__((destructor))
 tmasco_fini()
 {
-    assert (__tmasco.asco);
-    asco_fini(__tmasco.asco);
+#ifndef ASCO_MT
+    assert (__tmasco->asco);
+    asco_fini(__tmasco->asco);
+#else
+    int i;
+    for (i = 0; i < __tmasco_thread_count; ++i) {
+        assert (___tmasco[i].asco);
+        asco_fini(___tmasco[i].asco);
+    }
+#endif
 }
 
 static inline uintptr_t getsp() __attribute__((always_inline));
 static inline uintptr_t getsp() {
     register const uintptr_t rsp asm ("rsp");
 #ifndef NDEBUG
-    __tmasco.low = rsp; // this update is only necessary for debugging
+    __tmasco->low = rsp; // this update is only necessary for debugging
 #endif
     return rsp;
 }
 
 /* check whether address x is in the stack or not. */
-#define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __tmasco.high
+#define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __tmasco->high
 
 #if 0
 extern char __data_start;
@@ -154,26 +176,26 @@ _ITM_commitTransaction()
 inline void*
 _ITM_malloc(size_t size)
 {
-    return asco_malloc(__tmasco.asco, size);
+    return asco_malloc(__tmasco->asco, size);
 }
 
 inline void
 _ITM_free(void* ptr)
 {
-    asco_free(__tmasco.asco, ptr);
+    asco_free(__tmasco->asco, ptr);
 }
 
 inline void*
 _ITM_calloc(size_t nmemb, size_t size)
 {
-    return asco_malloc(__tmasco.asco, nmemb*size);
+    return asco_malloc(__tmasco->asco, nmemb*size);
 }
 #ifndef COW_WT
 #define ITM_READ(type, prefix, suffix) inline                   \
     type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
         if (ignore_addr(addr)) return *addr;                    \
-        else return asco_read_##type(__tmasco.asco, addr);      \
+        else return asco_read_##type(__tmasco->asco, addr);     \
     }
 #else
 #ifdef COW_ASMREAD
@@ -203,7 +225,7 @@ ITM_READ_ALL(uint64_t, U8)
     void _ITM_W##prefix##suffix(type* addr, type value)        \
     {                                                          \
         if (ignore_addr(addr)) *addr = value;                  \
-        else asco_write_##type(__tmasco.asco, addr, value);    \
+        else asco_write_##type(__tmasco->asco, addr, value);   \
     }
 
 #define ITM_WRITE_ALL(type, suffix)                            \
@@ -271,11 +293,11 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     do {
         //destination[i] = source[i];
 #ifdef COW_WT
-        asco_write_uint8_t(__tmasco.asco, (void*) (destination + i),
+        asco_write_uint8_t(__tmasco->asco, (void*) (destination + i),
                            *(uint8_t*) (source + i));
 #else
-        asco_write_uint8_t(__tmasco.asco, (void*) (destination + i),
-                           asco_read_uint8_t(__tmasco.asco,
+        asco_write_uint8_t(__tmasco->asco, (void*) (destination + i),
+                           asco_read_uint8_t(__tmasco->asco,
                                              (void*) (source + i)));
 #endif
     } while (i++ < size);
@@ -319,15 +341,15 @@ _ITM_memsetW(void* s, int c, size_t n)
     if (p64 < p) p64 += 0x08;
 
     while (p < e && p != p64)
-        asco_write_uint8_t(__tmasco.asco, (void*) (p++), c);
+        asco_write_uint8_t(__tmasco->asco, (void*) (p++), c);
 
     while (p < e64) {
-        asco_write_uint64_t(__tmasco.asco, (void*) (p), v);
+        asco_write_uint64_t(__tmasco->asco, (void*) (p), v);
         p += 8;
     }
 
     while (p < e)
-        asco_write_uint8_t(__tmasco.asco, (void*) (p++), c);
+        asco_write_uint8_t(__tmasco->asco, (void*) (p++), c);
 
     return s;
 }
@@ -346,26 +368,26 @@ int _ITM_initializeProcess() { return 0; }
 void*
 tmasco_malloc(size_t size)
 {
-    assert (asco_getp(__tmasco.asco) == -1
+    assert (asco_getp(__tmasco->asco) == -1
             && "called from transactional code");
-    return asco_malloc2(__tmasco.asco, size);
+    return asco_malloc2(__tmasco->asco, size);
 }
 
 void*
 tanger_txnal_tmasco_malloc(size_t size)
 {
-    assert (asco_getp(__tmasco.asco) != -1
+    assert (asco_getp(__tmasco->asco) != -1
             && "called from non-transactional code");
-    return asco_malloc(__tmasco.asco, size);
+    return asco_malloc(__tmasco->asco, size);
 }
 
 void*
 tmasco_other(void* ptr)
 {
-    int p = asco_getp(__tmasco.asco);
-    asco_setp(__tmasco.asco, 0);
-    void* r = asco_other(__tmasco.asco, ptr);
-    asco_setp(__tmasco.asco, p);
+    int p = asco_getp(__tmasco->asco);
+    asco_setp(__tmasco->asco, 0);
+    void* r = asco_other(__tmasco->asco, ptr);
+    asco_setp(__tmasco->asco, p);
     return r;
 }
 
@@ -373,27 +395,38 @@ tmasco_other(void* ptr)
 void
 tmasco_begin(uintptr_t bp)
 {
-    __tmasco.high = bp;
-    asco_begin(__tmasco.asco);
+#ifdef ASCO_MT
+    if (!__tmasco) {
+        fprintf(stderr, "initializing tmasco thread\n");
+        int r = pthread_mutex_lock(&__tmasco_lock);
+        assert (r == 0 && "error acquiring lock");
+        __tmasco = &___tmasco[__tmasco_thread_count++];
+        r = pthread_mutex_unlock(&__tmasco_lock);
+        assert (r == 0 && "error releasing lock");
+        tmasco_init();
+    }
+#endif
+    __tmasco->high = bp;
+    asco_begin(__tmasco->asco);
 }
 
 
 int
 tmasco_switched()
 {
-    return asco_getp(__tmasco.asco);
+    return asco_getp(__tmasco->asco);
 }
 
 void
 tmasco_switch()
 {
-    asco_switch(__tmasco.asco);
+    asco_switch(__tmasco->asco);
 }
 
 void
 tmasco_commit()
 {
-    asco_commit(__tmasco.asco);
+    asco_commit(__tmasco->asco);
 }
 
 #else /* TMASCO_ASM */
@@ -401,58 +434,69 @@ tmasco_commit()
 uint32_t
 tmasco_begin(tmasco_ctx_t* ctx)
 {
-    memcpy(&__tmasco.ctx, ctx, sizeof(tmasco_ctx_t));
-    __tmasco.high = __tmasco.ctx.rbp;
-    asco_begin(__tmasco.asco);
+#ifdef ASCO_MT
+    if (!__tmasco) {
+        fprintf(stderr, "initializing tmasco thread\n");
+        int r = pthread_mutex_lock(&__tmasco_lock);
+        assert (r == 0 && "error acquiring lock");
+        __tmasco = &___tmasco[__tmasco_thread_count++];
+        r = pthread_mutex_unlock(&__tmasco_lock);
+        assert (r == 0 && "error releasing lock");
+        tmasco_init();
+    }
+#endif
+    memcpy(&__tmasco->ctx, ctx, sizeof(tmasco_ctx_t));
+    __tmasco->high = __tmasco->ctx.rbp;
+    asco_begin(__tmasco->asco);
     return 0x01;
 }
 
 void
 tmasco_commit()
 {
-    if (!asco_getp(__tmasco.asco)) {
-        asco_switch(__tmasco.asco);
-        tmasco_switch(&__tmasco.ctx, 0x01);
+    if (!asco_getp(__tmasco->asco)) {
+        asco_switch(__tmasco->asco);
+        tmasco_switch(&__tmasco->ctx, 0x01);
     }
-    asco_commit(__tmasco.asco);
+    asco_commit(__tmasco->asco);
 }
 #endif
 
 int
 tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
 {
-    return asco_prepare(__tmasco.asco, ptr, size, crc, ro);
+    return asco_prepare(__tmasco->asco, ptr, size, crc, ro);
 }
 
 void
 tmasco_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 {
-    asco_prepare_nm(__tmasco.asco);
+    asco_prepare_nm(__tmasco->asco);
 }
 
 void
 tmasco_output_append(const void* ptr, size_t size)
 {
-    asco_output_append(__tmasco.asco, ptr, size);
+    asco_output_append(__tmasco->asco, ptr, size);
 }
 
 void
 tmasco_output_done()
 {
-    asco_output_done(__tmasco.asco);
+    asco_output_done(__tmasco->asco);
 }
 
 uint32_t
 tmasco_output_next()
 {
-    return asco_output_next(__tmasco.asco);
+    return asco_output_next(__tmasco->asco);
 }
 
 void
 tmasco_unprotect(void* addr, size_t size)
 {
 #ifdef HEAP_PROTECT
-    asco_unprotect(__tmasco.asco, addr, size);
+    asco_unprotect(__tmasco->asco, addr, size);
 #endif
     // else ignore
 }
@@ -473,9 +517,9 @@ void tanger_stm_indirect_register_multiple(void* nontxnal, void* txnal,
 void
 tanger_stm_save_restore_stack(void* low_addr, void* high_addr)
 {
-    __tmasco.low = (uintptr_t) low_addr;
-    __tmasco.high = (uintptr_t) high_addr;
-    DLOG2("low = %p, high = %p \n", __tmasco.low, __tmasco.high);
+    __tmasco->low = (uintptr_t) low_addr;
+    __tmasco->high = (uintptr_t) high_addr;
+    DLOG2("low = %p, high = %p \n", __tmasco->low, __tmasco->high);
 }
 
 /* whenever a function cannot be instrumented in compile time, this
@@ -494,7 +538,7 @@ void*
 tanger_stm_realloc(void* ptr, size_t size)
 {
     assert (ptr == NULL && "not supported");
-    return asco_malloc(__tmasco.asco, size);
+    return asco_malloc(__tmasco->asco, size);
 }
 
 #endif /* TMASCO_ENABLED */
