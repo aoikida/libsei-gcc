@@ -517,8 +517,14 @@ tmasco_mtl(uint64_t bp)
     /* add one pointer size to stack size so that current rsp is also
        copied. Not really necessary though. */
     __tmasco->size = __tmasco->rbp - __tmasco->rsp + sizeof(uintptr_t);
+    //__tmasco->size = __tmasco->size > 400 ? 400 : __tmasco->size;
     assert (__tmasco->size < ASCO_MAX_STACKSZ);
     memcpy(__tmasco->stack, (void*) (__tmasco->rsp), __tmasco->size);
+    //DLOG3("STACK SIZE: %lu bytes (thread = %p)\n",
+    //      __tmasco->size, (void*) pthread_self());
+
+    // reset message
+    asco_prepare_nm(__tmasco->asco);
 
     _ITM_beginTransaction(0);
 }
@@ -728,8 +734,6 @@ tmasco_commit(int force)
 
         if (__tmasco->mtl) {
             // copy stack back
-            DLOG3("STACK SIZE: %lu bytes (thread = %p)\n",
-                  __tmasco->size, (void*) pthread_self());
             tmasco_switch2((void*)__tmasco->rsp, __tmasco->stack,
                            __tmasco->size, &__tmasco->ctx, 0x01);
         } else {
@@ -743,6 +747,7 @@ tmasco_commit(int force)
 
     if (!force) {
         __tmasco->mtl = 0;
+        DLOG3("Final commit! (thread = %p)\n", (void*) pthread_self());
     }
 }
 #else /* ! ASCO_MTL */
