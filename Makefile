@@ -117,7 +117,7 @@ TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
 _TARGETS = $(LIBASCO)
-TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
+override TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # --- rules -------------------------------------------------------------------
 .PHONY: all clean test
