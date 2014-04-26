@@ -1,10 +1,12 @@
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Copyright (c) 2013 Diogo Behrens
 # Distributed under the MIT license. See accompanying file LICENSE.
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-# -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror #-DASCO_STACK_INFO #-DASCO_STACK_INFO_CMD=
+# --- configuration -----------------------------------------------------------
+CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror
+	#-DASCO_STACK_INFO
+	#-DASCO_STACK_INFO_CMD=
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG #-DASCO_STATS
 # -Werror
 ifdef DEBUG
@@ -82,9 +84,9 @@ $(info AFLAGS: $(AFLAGS))
 $(info CC    : $(CC))
 $(info ----------------------)
 
-# -- targets -------------------------------------------------------------------
+# --- targets -----------------------------------------------------------------
 BUILD  ?= build
-SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c\
+SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c crc.c ibuf.c cfc.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
@@ -110,7 +112,7 @@ TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 _TARGETS = $(LIBASCO)
 TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
-# -- rules ---------------------------------------------------------------------
+# --- rules -------------------------------------------------------------------
 .PHONY: all clean test
 
 all: $(TARGETS)

@@ -1,8 +1,8 @@
 /* -*- asm -*- */
-/* -----------------------------------------------------------------------------
-** Copyright (c) 2013 Diogo Behrens
+/* ----------------------------------------------------------------------------
+** Copyright (c) 2013,2014 Diogo Behrens
 ** Distributed under the MIT license. See accompanying file LICENSE.
-** -------------------------------------------------------------------------- */
+** ------------------------------------------------------------------------- */
 
 /*
 ** There are two things we do in assembly:
@@ -16,7 +16,7 @@
 **
 **/
 
-/* --- _ITM_beginTransaction ------------------------------------------------ */
+/* --- _ITM_beginTransaction ----------------------------------------------- */
 	.text
 	.align	4
 
@@ -106,7 +106,7 @@ _ITM_beginTransaction.end:
 	.size	_ITM_beginTransaction, .- _ITM_beginTransaction
 
 
-/* --- tmasco_switch -------------------------------------------------------- */
+/* --- tmasco_switch ------------------------------------------------------- */
 	.text
 	.align	4
 	.globl	tmasco_switch
@@ -139,7 +139,7 @@ tmasco_switch.end:
 
 
 
-/* --- tmasco_switch2 ------------------------------------------------------- */
+/* --- tmasco_switch2 ------------------------------------------------------ */
 	.text
 	.align	4
 	.globl	tmasco_switch2

@@ -1,7 +1,7 @@
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -13,9 +13,9 @@
 #include "debug.h"
 #include "fail.h"
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * types and data structures
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 #include "heap.h"
 #include "cow.h"
@@ -38,9 +38,9 @@ typedef uint32_t addr_t;
 #define HEAP_SIZE HEAP_500MB
 #endif
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * constructor/destructor
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 asco_t*
 asco_init()
@@ -73,9 +73,9 @@ asco_fini(asco_t* asco)
 }
 
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * traversal control
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 void
 asco_begin(asco_t* asco)
@@ -137,15 +137,16 @@ asco_setp(asco_t* asco, int p)
     asco->p = p;
 }
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * memory management
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 inline void*
 asco_malloc(asco_t* asco, size_t size)
 {
     void* ptr = heap_malloc(asco->heap[asco->p], size);
-    DLOG3("asco_malloc addr: %p (size = %"PRIu64", p = %d)\n", ptr, (uint64_t)size, asco->p);
+    DLOG3("asco_malloc addr: %p (size = %"PRIu64", p = %d)\n", ptr,
+          (uint64_t)size, asco->p);
     return ptr;
 }
 
@@ -164,9 +165,9 @@ asco_calloc(asco_t* asco, size_t nmemb, size_t size)
     return 0;
 }
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * memory management outside traversal
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 void*
 asco_malloc2(asco_t* asco, size_t size)
@@ -228,9 +229,9 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
     return dest;
 }
 
-/* -----------------------------------------------------------------------------
+/* ----------------------------------------------------------------------------
  * load and stores
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 #define ASCO_READ(type) inline                                          \
     type asco_read_##type(asco_t* asco, const type* addr)               \
@@ -242,22 +243,22 @@ asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
             assert (0);                                                 \
         }                                                               \
         if (!heap_in(asco->heap[asco->p], (void*) addr)) {              \
-            DLOG3("(not in heap) = %"PRIu64" x%"PRIx64" \n", (uint64_t) *addr,      \
-                  (uint64_t) *addr);                                    \
+            DLOG3("(not in heap) = %"PRIu64" x%"PRIx64" \n",            \
+                  (uint64_t) *addr, (uint64_t) *addr);                  \
             /* ASCO_FAIL("ERROR, reading from no heap"); */             \
             return *addr;                                               \
         }                                                               \
-        DLOG3("(in heap) = %"PRId64" x%"PRIx64"\n", (uint64_t) *addr,               \
-              (uint64_t) *addr);                                        \
+        DLOG3("(in heap) = %"PRId64" x%"PRIx64"\n",                     \
+              (uint64_t) *addr, (uint64_t) *addr);                      \
         size_t rel = heap_rel(asco->heap[asco->p], (void*) addr);       \
         type* addr2 = (type*) heap_get(asco->heap[1-asco->p], rel);     \
-        DLOG2("checking rel = %"PRId64" (%"PRIu64" %"PRId64")\n", (int64_t)rel,                    \
-                   (uint64_t)*addr, (int64_t)*addr2);                  \
+        DLOG2("checking rel = %"PRId64" (%"PRIu64" %"PRId64")\n",       \
+              (int64_t) rel, (uint64_t)*addr, (int64_t)*addr2);         \
         if (*addr != *addr2) {                                          \
             /* could the variable be a pointer? */                      \
-            if (sizeof(type) == sizeof(addr_t)) {                     \
-                type* ptr1 = (type*) (addr_t) *addr;                  \
-                type* ptr2 = (type*) (addr_t) *addr2;                 \
+            if (sizeof(type) == sizeof(addr_t)) {                       \
+                type* ptr1 = (type*) (addr_t) *addr;                    \
+                type* ptr2 = (type*) (addr_t) *addr2;                   \
                 size_t rel1 = heap_rel(asco->heap[asco->p], ptr1);      \
                 size_t rel2 = heap_rel(asco->heap[1-asco->p], ptr2);    \
                 fail_ifn(rel1 == rel2, "error mem check");              \
@@ -279,11 +280,13 @@ ASCO_READ(uint64_t)
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
         assert (asco->p == 0 || asco->p == 1);                          \
-        DLOG3("asco_write_%s: %p <- %"PRId64" x%"PRIx64"\n", #type, addr,         \
-              (int64_t) value, (int64_t) value);                      \
+        DLOG3("asco_write_%s: %p <- %"PRId64" x%"PRIx64"\n", #type,     \
+              addr, (int64_t) value, (int64_t) value);                  \
         if (!heap_in(asco->heap[asco->p], addr)) {                      \
             if (heap_in(asco->heap[1-asco->p], addr)) {                 \
-                fprintf(stderr,"ERROR, writing on other heap %p\n", addr);      \
+                fprintf(stderr, "ERROR, writing on other heap %p\n",    \
+                        addr);                                          \
+                /* TODO: should be fail_ifn here */                     \
                 assert (0);                                             \
             }                                                           \
             *addr = value;                                              \

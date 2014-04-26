@@ -1,7 +1,7 @@
-/* -----------------------------------------------------------------------------
- * Copyright (c) 2013 Diogo Behrens
+/* ----------------------------------------------------------------------------
+ * Copyright (c) 2013,2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
- * -------------------------------------------------------------------------- */
+ * ------------------------------------------------------------------------- */
 
 
 #include <inttypes.h>
@@ -22,7 +22,8 @@
 
 #if MODE == 1 // HEAP_MODE only
 #define GETWKEY(heap, addr)   ((uintptr_t) ADDR2KEY(heap_rel(heap, addr)))
-#define GETWADDR(heap, wkey)  ((uintptr_t) heap_get(heap, (size_t) KEY2ADDR(wkey)))
+#define GETWADDR(heap, wkey)  ((uintptr_t) heap_get(heap, \
+                                                    (size_t) KEY2ADDR(wkey)))
 #else
 #define GETWKEY(heap, addr)   ADDR2KEY(addr)
 #define GETWADDR(heap, wkey)  KEY2ADDR(wkey)
@@ -37,9 +38,11 @@ typedef uint32_t addr_t;
 
 #define TYPEMASK(addr, type)  ((uintptr_t) addr & (sizeof(type) - 1))
 #if __WORDSIZE == 64
-#define PICKMASK(addr, type)  (((uintptr_t) addr & 0x07) >> (sizeof(type) >> 1))
+#define PICKMASK(addr, type)  (((uintptr_t) addr & 0x07) >>     \
+                               (sizeof(type) >> 1))
 #else
-#define PICKMASK(addr, type)  (((uintptr_t) addr & 0x03) >> (sizeof(type) >> 1))
+#define PICKMASK(addr, type)  (((uintptr_t) addr & 0x03) >>     \
+                               (sizeof(type) >> 1))
 #endif
 
 #if __WORDSIZE == 64
