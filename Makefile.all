@@ -9,12 +9,15 @@ TARGETS_DISABLED = 		\
 	libasco-cow.a		\
 	libasco-cow-opt.a	\
 	libasco-cowa-opt.a	\
-
-
-TARGETS = \
 	libasco-instr-opt.a	\
+	libasco-cow-opt.a	\
 	libasco-cow-opt-mtl.a	\
-	libasco-cow-opt-2pl.a
+	libasco-cowa-opt-mtl.a	\
+	libasco-cowa-opt-2pl.a
+
+TARGETS = 			\
+	libasco-cow-opt-2pl.a	\
+
 
 
 all: $(TARGETS)
@@ -58,13 +61,12 @@ libasco-cowa-opt.a: | lib
 
 libasco-cowa-opt-mtl.a: | lib
 	make BUILD=build-cowa-opt-mtl clean all MODE=cow \
-		COW_ASMREAD=1 COW_APPEND_ONLY=1 ASCO_MTL=1
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_MTL=1
 	mv build-cowa-opt-mtl/libasco.a lib/libasco-cowa-opt-mtl.a
 
 libasco-cowa-opt-2pl.a: | lib
 	make BUILD=build-cowa-opt-2pl clean all MODE=cow \
-		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 \
-		ASCO_2PL=1
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_2PL=1
 	mv build-cowa-opt-2pl/libasco.a lib/libasco-cowa-opt-2pl.a
 
 libasco-cowah.a: | lib

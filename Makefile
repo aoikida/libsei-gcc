@@ -4,9 +4,9 @@
 # ------------------------------------------------------------------------------
 
 # -- configuration -------------------------------------------------------------
-CFLAGS_DBG  = -msse4.2 -g -O0 -Wall -Werror #-DASCO_STACK_INFO #-DASCO_STACK_INFO_CMD=
-CFLAGS_REL  = -msse4.2 -g -O3 -Wall -Werror -DNDEBUG #-DASCO_STATS
-
+CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror #-DASCO_STACK_INFO #-DASCO_STACK_INFO_CMD=
+CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG #-DASCO_STATS
+# -Werror
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude -frecord-gcc-switches
 else
