@@ -888,9 +888,11 @@ tmasco_bar()
 int
 tmasco_shift(int handle)
 {
-#ifdef ASCO_TBAR
+#ifdef ASCO_MT
     if (unlikely(!__tmasco)) tmasco_thread_init();
+#endif
 
+#ifdef ASCO_TBAR
     // assume we have correct handle already in-place
     if (handle == -1) {
         // create new obuf and exchange; use current if first time */
