@@ -16,6 +16,8 @@
 # define ASCO_EXIT exit(EXIT_FAILURE)
 #endif
 
+#define likely(x) __builtin_expect((x),1)
+#define unlikely(x) __builtin_expect((x),0)
 
 #define ASCO_FAIL(...) do {                                     \
         fprintf(stderr, "ERROR DETECTED (%s:%d) *** ",          \
@@ -25,6 +27,6 @@
         ASCO_EXIT;                                              \
     } while(0);
 
-#define fail_ifn(cond, msg) if (!(cond)) { ASCO_FAIL("%s", msg); }
+#define fail_ifn(cond, msg) if (unlikely(!(cond))) { ASCO_FAIL("%s", msg); }
 
 #endif /* _ASCO_FAIL_H_ */

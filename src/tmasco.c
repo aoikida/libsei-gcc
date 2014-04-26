@@ -18,6 +18,8 @@
 #include "tmasco_instr.c"
 #else /* TMASCO_ENABLED */
 
+#define likely(x) __builtin_expect((x),1)
+#define unlikely(x) __builtin_expect((x),0)
 
 /* -----------------------------------------------------------------------------
  * tmasco data structures
@@ -102,6 +104,7 @@ static pthread_mutex_lock_f*    __pthread_mutex_lock    = NULL;
 static pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
 static pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
 static void* __pthread_handle = NULL;
+
 #endif /* !ASCO_MT */
 
 /* -----------------------------------------------------------------------------
@@ -196,10 +199,10 @@ tmasco_thread_init()
     assert (__tmasco->asco == NULL);
     __tmasco->asco = asco_init();
     assert (__tmasco->asco);
-    __tmasco->abuf = abuf_init(10000000);
+    __tmasco->abuf = abuf_init(100);
     __tmasco->wrapped = 0;
 #ifdef ASCO_2PL
-    __tmasco->abuf_2pl = abuf_init(10000000);
+    __tmasco->abuf_2pl = abuf_init(100);
 #endif
 }
 #endif
@@ -522,7 +525,7 @@ tmasco_mtl(uint64_t bp)
 #endif /* ASCO_MTL */
 
 int
-    pthread_mutex_lock(pthread_mutex_t* lock)
+pthread_mutex_lock(pthread_mutex_t* lock)
 {
 #ifdef ASCO_MTL2
     if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_lock(lock);
@@ -531,19 +534,16 @@ int
     tmasco_mtl();
     return r;
 #else /* ASCO_MTL2 */
-    //fprintf(stderr, "locking %p\n", lock);
-    if (!__tmasco || __tmasco->wrapped) {
-        DLOG3("locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+    if (unlikely(!__tmasco)) { // || __tmasco->wrapped)) {
+        DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_lock(lock);
     }
-    __tmasco->wrapped = 1;
+    //__tmasco->wrapped = 1;
 
     int r;
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3("locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
@@ -551,18 +551,16 @@ int
 #endif /* ASCO_2PL */
         break;
     case 1:
-        DLOG3("fake locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("fake locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
     default:
-        DLOG3("locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
         break;
     }
 
-    __tmasco->wrapped = 0;
+    //__tmasco->wrapped = 0;
     return r;
 #endif /* ASCO_MTL2 */
 }
@@ -577,18 +575,16 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
     tmasco_mtl();
     return r;
 #else
-    if (!__tmasco || __tmasco->wrapped) {
-        DLOG3("try locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+    if (unlikely(!__tmasco)) { // || __tmasco->wrapped)) {
+        DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_trylock(lock);
     }
-    __tmasco->wrapped = 1;
+    //__tmasco->wrapped = 1;
 
     int r;
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3("try locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
@@ -596,18 +592,16 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
 #endif /* ASCO_2PL */
         break;
     case 1:
-        DLOG3("fake try locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("fake trylock %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
     default:
-        DLOG3("locking %p (thread = %p)\n", lock,
-              (void*) pthread_self());
+        DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
         break;
     }
 
-    __tmasco->wrapped = 0;
+    //__tmasco->wrapped = 0;
     return r;
 #endif /* ASCO_MTL2 */
 }
@@ -616,7 +610,9 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
 int
 pthread_mutex_unlock(pthread_mutex_t* lock)
 {
-    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_unlock(lock);
+    if (unlikely(!__tmasco)) { // || __tmasco_wrapped)) {
+       return __pthread_mutex_unlock(lock);
+    }
     //__tmasco->wrapped = 1;
 
     int r;
@@ -626,8 +622,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
         tmasco_commit(1);
         DLOG3( "unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r =  __pthread_mutex_unlock(lock);
-        DLOG3( "starting mini traversal (thread = %p)\n",
-               (void*) pthread_self());
+        DLOG3( "start mini traversal (thread = %p)\n", (void*) pthread_self());
         tmasco_mtl(getbp());
         break;
     default:
@@ -642,11 +637,11 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
 int
 pthread_mutex_unlock(pthread_mutex_t* lock)
 {
-    if (!__tmasco || __tmasco->wrapped) {
+    if (unlikely(!__tmasco)) { // || __tmasco->wrapped)) {
         DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_unlock(lock);
     }
-    __tmasco->wrapped = 1;
+    //__tmasco->wrapped = 1;
 
     int r;
     switch (asco_getp(__tmasco->asco)) {
@@ -661,7 +656,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
 #else /* ASCO_2PL */
     case 0:
     case 1:
-        r = 1;
+        r = 0; // 0 for successful unlock
         break;
 #endif /* ASCO_2PL */
     default:
@@ -670,7 +665,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
         break;
     }
 
-    __tmasco->wrapped = 0;
+    //__tmasco->wrapped = 0;
     return r;
 }
 #endif /* ASCO_MTL */
@@ -711,7 +706,7 @@ uint32_t
 tmasco_begin(tmasco_ctx_t* ctx)
 {
 #ifdef ASCO_MT
-    if (!__tmasco) tmasco_thread_init();
+    assert (__tmasco && "tmasco_prepare should be called before begin");
 #endif
     memcpy(&__tmasco->ctx, ctx, sizeof(tmasco_ctx_t));
     __tmasco->high = __tmasco->ctx.rbp;
@@ -729,8 +724,8 @@ tmasco_commit(int force)
 
         if (__tmasco->mtl) {
             // copy stack back
-            DLOG3( "STACK SIZE: %lu bytes (thread = %p)\n",
-            __tmasco->size, (void*) pthread_self());
+            DLOG3("STACK SIZE: %lu bytes (thread = %p)\n",
+                  __tmasco->size, (void*) pthread_self());
             tmasco_switch2((void*)__tmasco->rsp, __tmasco->stack,
                            __tmasco->size, &__tmasco->ctx, 0x01);
         } else {
@@ -762,17 +757,18 @@ tmasco_commit()
 #ifdef ASCO_2PL
     int r = 0;
     pthread_mutex_t* l = NULL;
+    assert (asco_getp(__tmasco->asco) == -1);
     while (abuf_size(__tmasco->abuf_2pl)) {
         l = abuf_pop(__tmasco->abuf_2pl, (void*) &r);
-        // we only pushed locks and trylocks, hence if r == 1, l was
+        // we only pushed locks and trylocks, hence if r == 0, l was
         // successfully locked.
-        DLOG3( "late unlocking %p (thread = %p)\n", l,
-                (void*) pthread_self());
+        DLOG3("late unlocking %p (thread = %p)\n", l, (void*) pthread_self());
         if (!r) {
-            r = pthread_mutex_unlock(l);
+            r = __pthread_mutex_unlock(l);
             assert (!r && "unlock failed");
         }
     }
+    abuf_clean(__tmasco->abuf_2pl);
 #endif
 
 }
@@ -782,7 +778,7 @@ int
 tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
 {
 #ifdef ASCO_MT
-    if (!__tmasco) tmasco_thread_init();
+    if (unlikely(!__tmasco)) tmasco_thread_init();
 #endif
     return asco_prepare(__tmasco->asco, ptr, size, crc, ro);
 }
@@ -791,7 +787,7 @@ void
 tmasco_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 {
 #ifdef ASCO_MT
-    if (!__tmasco) tmasco_thread_init();
+    if (unlikely(!__tmasco)) tmasco_thread_init();
 #endif
     asco_prepare_nm(__tmasco->asco);
 }
