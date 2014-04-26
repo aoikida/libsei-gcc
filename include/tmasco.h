@@ -45,6 +45,7 @@ void* tmasco_malloc(size_t size);
 void* tmasco_other(void* addr);
 int   tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
 void  tmasco_prepare_nm();
+int   tmasco_shift(int handle);
 
 void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
 void     tmasco_output_done() TMASCO_PURE;

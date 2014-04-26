@@ -131,6 +131,26 @@ asco_setp(asco_t* asco, int p)
     asco->p = p;
 }
 
+int
+asco_shift(asco_t* asco, int handle)
+{
+    /* if (handle == -1) { */
+    /*     // create new obuf and exchange; use current if first time */
+    /*     if (stash_size(asco->stash) != 0) { */
+    /*         // here we assume that current obuf already in stash */
+    /*         asco->obuf = obuf_init(OBUF_SIZE); */
+    /*     } */
+    /*     // add to stash */
+    /*     handle = stash_add(asco->stash, asco->obuf); */
+    /* } else { */
+    /*     // exchange obuf */
+    /*     asco->obuf = (obuf_t*) stash_get(asco->stash, handle); */
+    /* } */
+
+    /* return handle; */
+    return handle;
+}
+
 /* ----------------------------------------------------------------------------
  * memory management
  * ------------------------------------------------------------------------- */

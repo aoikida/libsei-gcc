@@ -12,6 +12,7 @@
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
+#include "stash.h"
 #include "tmasco_mt.h"
 
 #ifndef TMASCO_ENABLED
@@ -63,6 +64,7 @@ abuf_t* abuf_2pl;
 char pad2[64];
 #endif /* !ASCO_MT */
 
+    stash_t* stash;
 } tmasco_t;
 
 /* ----------------------------------------------------------------------------
@@ -137,6 +139,8 @@ tmasco_init()
     __tmasco->asco = asco_init();
     assert (__tmasco->asco);
     HEAP_PROTECT_INIT;
+
+    __tmasco->stash = stash_init();
 #else
     printf("Wrapping libpthread\n");
     __pthread_handle = dlopen("libpthread.so.0", RTLD_NOW);
@@ -204,6 +208,8 @@ tmasco_thread_init()
 #ifdef ASCO_2PL
     __tmasco->abuf_2pl = abuf_init(100);
 #endif
+
+    __tmasco->stash = stash_init();
 }
 #endif
 
@@ -213,6 +219,7 @@ tmasco_fini()
 #ifndef ASCO_MT
     assert (__tmasco->asco);
     asco_fini(__tmasco->asco);
+    // TODO: stash_fini(
 #else
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
@@ -224,6 +231,7 @@ tmasco_fini()
             abuf_fini(___tmasco[i].abuf_2pl);
 #endif
         asco_fini(___tmasco[i].asco);
+        // TODO: stash_fini(
     }
 #endif
 }
@@ -826,6 +834,12 @@ tmasco_unprotect(void* addr, size_t size)
     asco_unprotect(__tmasco->asco, addr, size);
 #endif
     // else ignore
+}
+
+int
+tmasco_shift(int handle)
+{
+    return asco_shift(__tmasco->asco, handle);
 }
 
 #endif /* TMASCO_ENABLED */

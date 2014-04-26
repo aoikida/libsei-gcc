@@ -13,16 +13,20 @@
 #include "fail.h"
 
 /* ----------------------------------------------------------------------------
- * types and data structures
+ * types, data structures and definitions
  * ------------------------------------------------------------------------- */
 
 #include "heap.h"
-
 #include "tbin.h"
 #include "talloc.h"
 #include "obuf.h"
 #include "ibuf.h"
 #include "cfc.h"
+#include "stash.h"
+
+#define OBUF_SIZE 10     // at most 10 output messages per traversal
+#define COW_SIZE  100000 // at most 100k writes per traversal
+#define TBIN_SIZE 100    // at most 100 frees per traversal
 
 #ifdef COW_APPEND_ONLY
 # ifndef COW_WT
@@ -43,9 +47,9 @@
 #endif
 
 #ifdef ASCO_STATS
-#include "ilog.h"
-#include "cpu_stats.h"
-#include "now.h"
+# include "ilog.h"
+# include "cpu_stats.h"
+# include "now.h"
 #endif
 
 struct asco {
@@ -61,6 +65,7 @@ struct asco {
     obuf_t*   obuf;    /* output buffer (messages)    */
     ibuf_t*   ibuf;    /* input message buffer        */
     cfc_t     cf[2];   /* control flags               */
+    stash_t*  stash;   /* obuf contexts               */
 
 #ifdef HEAP_PROTECT
     abuf_t*   wpages;  /* list of written pages       */
@@ -147,11 +152,11 @@ asco_init()
     asco_t* asco = (asco_t*) malloc(sizeof(asco_t));
     assert(asco);
 #ifndef COW_APPEND_ONLY
-    asco->cow[0] = cow_init(0, 100000);
-    asco->cow[1] = cow_init(0, 100000);
+    asco->cow[0] = cow_init(0, COW_SIZE);
+    asco->cow[1] = cow_init(0, COW_SIZE);
 #else
-    asco->cow[0] = abuf_init(100000);
-    asco->cow[1] = abuf_init(100000);
+    asco->cow[0] = abuf_init(COW_SIZE);
+    asco->cow[1] = abuf_init(COW_SIZE);
 #endif
 
 #ifdef HEAP_PROTECT
@@ -170,10 +175,11 @@ asco_init()
     asco->heap   = NULL;
 #endif /* !COW_USEHEAP */
 
-    asco->tbin   = tbin_init(100, asco->heap);
+    asco->tbin   = tbin_init(TBIN_SIZE, asco->heap);
     asco->talloc = talloc_init(asco->heap);
-    asco->obuf   = obuf_init(10); // 10 messages most
+    asco->obuf   = obuf_init(OBUF_SIZE);
     asco->ibuf   = ibuf_init();
+    asco->stash  = stash_init();
 
     ASCO_STATS_INIT();
 
@@ -199,8 +205,15 @@ asco_fini(asco_t* asco)
 
     tbin_fini(asco->tbin);
     talloc_fini(asco->talloc);
-    obuf_fini(asco->obuf);
     ibuf_fini(asco->ibuf);
+    if (stash_size(asco->stash)) {
+        int i;
+        for (i = 0; i < stash_size(asco->stash); ++i) {
+            obuf_fini((obuf_t*) stash_get(asco->stash, i));
+        }
+    } else {
+        obuf_fini(asco->obuf);
+    }
 
 #ifdef COW_USEHEAP
     heap_fini(asco->heap);
@@ -329,6 +342,25 @@ inline void
 asco_setp(asco_t* asco, int p)
 {
     asco->p = p;
+}
+
+int
+asco_shift(asco_t* asco, int handle)
+{
+    if (handle == -1) {
+        // create new obuf and exchange; use current if first time
+        if (stash_size(asco->stash) != 0) {
+            // here we assume that current obuf already in stash
+            asco->obuf = obuf_init(OBUF_SIZE);
+        }
+        // add to stash
+        handle = stash_add(asco->stash, asco->obuf);
+    } else {
+        // exchange obuf
+        asco->obuf = (obuf_t*) stash_get(asco->stash, handle);
+    }
+
+    return handle;
 }
 
 /* ----------------------------------------------------------------------------
