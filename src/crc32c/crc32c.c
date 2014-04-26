@@ -72,7 +72,6 @@ crc32c_impl() {
         return crc32cHardware32;
 #endif
     } else {
-//return crc32cSlicingBy8;
-return NULL;
+        return crc32cSlicingBy8;
     }
 }

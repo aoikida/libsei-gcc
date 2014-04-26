@@ -9,6 +9,7 @@
  * ------------------------------------------------------------------------- */
 #include "crc32c/crc32c.c"
 #include "crc32c/crc32c_hardware.c"
+#include "crc32c/crc32c_software.c"
 
 crc32c_f* crc32c;
 
