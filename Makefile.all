@@ -19,6 +19,7 @@ TARGETS ?= 			\
 	libasco-cowa-opt-mtl.a	\
 	libasco-cowa-opt-mtl2.a	\
 	libasco-cowa-opt-2pl.a	\
+	libasco-cowa-opt-2plb.a	\
 	libasco-cor.a		\
 	libasco-cor-tbar.a
 
@@ -81,6 +82,11 @@ libasco-cowa-opt-2pl.a: | lib
 	make BUILD=build-cowa-opt-2pl clean all MODE=cow \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_2PL=1
 	mv build-cowa-opt-2pl/libasco.a lib/libasco-cowa-opt-2pl.a
+
+libasco-cowa-opt-2plb.a: | lib
+	make BUILD=build-cowa-opt-2plb clean all MODE=cow ASCO_TBAR=1 \
+		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_2PL=1
+	mv build-cowa-opt-2plb/libasco.a lib/libasco-cowa-opt-2plb.a
 
 libasco-cowah.a: | lib
 	make BUILD=build-cowah clean all MODE=cow \
