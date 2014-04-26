@@ -511,7 +511,9 @@ tmasco_mtl(uint64_t bp)
     }
     // copy stack
     __tmasco->rsp  = getsp();
-    __tmasco->size = __tmasco->rbp - __tmasco->rsp;
+    /* add one pointer size to stack size so that current rsp is also
+       copied. Not really necessary though. */
+    __tmasco->size = __tmasco->rbp - __tmasco->rsp + sizeof(uintptr_t);
     assert (__tmasco->size < ASCO_MAX_STACKSZ);
     memcpy(__tmasco->stack, (void*) (__tmasco->rsp), __tmasco->size);
 
@@ -627,6 +629,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
         DLOG3( "starting mini traversal (thread = %p)\n",
                (void*) pthread_self());
         tmasco_mtl(getbp());
+        break;
     default:
         r = __pthread_mutex_unlock(lock);
     }
