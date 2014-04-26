@@ -55,6 +55,10 @@ ifdef ASCO_MTL
 AFLAGS += -DASCO_MTL
 endif
 
+ifdef ASCO_MTL2
+AFLAGS += -DASCO_MTL2
+endif
+
 ifdef ASCO_2PL
 AFLAGS += -DASCO_2PL
 endif

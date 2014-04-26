@@ -527,21 +527,23 @@ tmasco_mtl(uint64_t bp)
 int
 pthread_mutex_lock(pthread_mutex_t* lock)
 {
-#ifdef ASCO_MTL2
-    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_lock(lock);
-    tmasco_commit(1);
-    int r =  __pthread_mutex_lock(lock);
-    tmasco_mtl();
-    return r;
-#else /* ASCO_MTL2 */
     if (unlikely(!__tmasco)) { // || __tmasco->wrapped)) {
         DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_lock(lock);
     }
     //__tmasco->wrapped = 1;
-
     int r;
+
     switch (asco_getp(__tmasco->asco)) {
+#ifdef ASCO_MTL2
+    case 0:
+    case 1:
+        tmasco_commit(1);
+        r =  __pthread_mutex_lock(lock);
+        tmasco_mtl(getbp());
+        break;
+
+#else /* ASCO_MTL2 */
     case 0:
         DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
@@ -554,6 +556,7 @@ pthread_mutex_lock(pthread_mutex_t* lock)
         DLOG3("fake locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
+#endif /* ASCO_MTL2 */
     default:
         DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
@@ -562,19 +565,11 @@ pthread_mutex_lock(pthread_mutex_t* lock)
 
     //__tmasco->wrapped = 0;
     return r;
-#endif /* ASCO_MTL2 */
 }
 
 int
 pthread_mutex_trylock(pthread_mutex_t* lock)
 {
-#ifdef ASCO_MTL2
-    if (!__tmasco || __tmasco->wrapped) return __pthread_mutex_trylock(lock);
-    tmasco_commit(1);
-    int r =  __pthread_mutex_trylock(lock);
-    tmasco_mtl();
-    return r;
-#else
     if (unlikely(!__tmasco)) { // || __tmasco->wrapped)) {
         DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         return __pthread_mutex_trylock(lock);
@@ -583,6 +578,15 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
 
     int r;
     switch (asco_getp(__tmasco->asco)) {
+
+#ifdef ASCO_MTL2
+    case 0:
+    case 1:
+        tmasco_commit(1);
+        r =  __pthread_mutex_trylock(lock);
+        tmasco_mtl(getbp());
+        break;
+#else
     case 0:
         DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
@@ -595,6 +599,7 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
         DLOG3("fake trylock %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__tmasco->abuf, (uint64_t*) lock);
         break;
+#endif /* ASCO_MTL2 */
     default:
         DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
@@ -603,7 +608,6 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
 
     //__tmasco->wrapped = 0;
     return r;
-#endif /* ASCO_MTL2 */
 }
 
 #ifdef ASCO_MTL
