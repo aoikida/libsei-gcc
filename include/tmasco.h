@@ -5,6 +5,8 @@
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
 
+#define TMASCO_HANDLE_INIT -1
+
 #ifdef TMASCO_INSTR
 #define TMASCO_ENABLED
 #define TMASCO_DISABLE_OUTPUT_CHECKS
@@ -46,6 +48,7 @@ void* tmasco_other(void* addr);
 int   tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
 void  tmasco_prepare_nm();
 int   tmasco_shift(int handle);
+int   tmasco_bar();
 
 void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
 void     tmasco_output_done() TMASCO_PURE;

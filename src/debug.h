@@ -4,6 +4,7 @@
  * ------------------------------------------------------------------------- */
 #ifndef _ASCO_DEBUG_H_
 #define _ASCO_DEBUG_H_
+#include <stdio.h>
 
 #if DEBUG >= 1
 #define DLOG1(...) printf(__VA_ARGS__)

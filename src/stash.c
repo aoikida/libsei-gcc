@@ -3,7 +3,11 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 #include "stash.h"
+#include "fail.h"
+#include "debug.h"
 
 /* ----------------------------------------------------------------------------
  * types, data structures and definitions
@@ -15,7 +19,7 @@ struct stash {
     int max_items;
 };
 
-#define INITIAL_SIZE 100
+#define INITIAL_SIZE 128
 
 /* ----------------------------------------------------------------------------
  * constructor/destructor
@@ -46,6 +50,20 @@ stash_fini(stash_t* stash)
 }
 
 /* ----------------------------------------------------------------------------
+ * internal methods
+ * ------------------------------------------------------------------------- */
+
+void
+stash_extend(stash_t* stash)
+{
+    int mi = stash->max_items * 2;
+    stash->array = (void**) realloc(stash->array, sizeof(void*) * mi);
+    fail_ifn(stash->array, "cannot extend stash");
+    fprintf(stderr, "extended stash to %d items\n", mi);
+    stash->max_items = mi;
+}
+
+/* ----------------------------------------------------------------------------
  * interface methods
  * ------------------------------------------------------------------------- */
 
@@ -53,8 +71,8 @@ int
 stash_add(stash_t* stash, void* item)
 {
     assert (stash);
-    // TODO: if greater than max_items, extend data structure
-    assert (stash->c < stash->max_items);
+    if (stash->c == stash->max_items)
+        stash_extend(stash);
 
     stash->array[stash->c] = item;
     return stash->c++;

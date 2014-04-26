@@ -14,12 +14,13 @@ TARGETS_DISABLED = 		\
 	libasco-cowa-opt-2pl.a  \
 	libasco-cowa-opt-mtl.a	\
 	libasco-cow-opt-2pl.a	\
-
-
-TARGETS = 			\
 	libasco-cow-opt-mtl.a	\
 	libasco-cow-opt-mtl2.a	\
 	libasco-cor.a		\
+
+
+TARGETS = 			\
+	libasco-cor-tbar.a	\
 
 
 all: $(TARGETS)
@@ -100,6 +101,10 @@ libasco-cowp.a: | lib
 libasco-cor.a: | lib
 	make BUILD=build-cor clean all MODE=cor ASCO_MT=1
 	mv build-cor/libasco.a lib/libasco-cor.a
+
+libasco-cor-tbar.a: | lib
+	make BUILD=build-cor-tbar clean all MODE=cor ASCO_MT=1 ASCO_TBAR=1
+	mv build-cor-tbar/libasco.a lib/libasco-cor-tbar.a
 
 libasco-instr.a: | lib
 	make BUILD=build-instr clean all MODE=instr

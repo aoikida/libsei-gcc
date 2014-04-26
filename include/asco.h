@@ -19,6 +19,7 @@ void*   asco_calloc(asco_t* asco, size_t nmemb, size_t size);
 void    asco_free(asco_t* asco, void* ptr);
 int     asco_getp(asco_t* asco);
 void    asco_setp(asco_t* asco, int p);
+int     asco_shift(asco_t* asco, int handle);
 
 void*   asco_malloc2(asco_t* asco, size_t size);
 void    asco_free2(asco_t* asco, void* ptr1, void* ptr2);

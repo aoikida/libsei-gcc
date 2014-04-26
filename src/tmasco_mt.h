@@ -23,6 +23,11 @@
 
 # include "abuf.h"
 
+#if defined(ASCO_MT) && defined(ASCO_TBAR)
+# include "tbar.h"
+# include "stash.h"
+#endif
+
 /* pthread_mutex methods have to be wrapped. We define some function
  * pointer types to help us. */
 #define __USE_GNU // to enable RTLD_DEFAULT

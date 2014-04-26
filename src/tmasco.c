@@ -12,7 +12,6 @@
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
-#include "stash.h"
 #include "tmasco_mt.h"
 
 #ifndef TMASCO_ENABLED
@@ -27,44 +26,49 @@
  * ------------------------------------------------------------------------- */
 
 typedef struct {
-uint64_t rbp;
-uint64_t rbx;
-uint64_t r12;
-uint64_t r13;
-uint64_t r14;
-uint64_t r15;
-uint64_t rsp;
-uint64_t ret;
+    uint64_t rbp;
+    uint64_t rbx;
+    uint64_t r12;
+    uint64_t r13;
+    uint64_t r14;
+    uint64_t r15;
+    uint64_t rsp;
+    uint64_t ret;
 } tmasco_ctx_t;
 
 typedef struct {
 #ifdef ASCO_MT
-char pad1[64];
+    char pad1[64];
 #endif
-asco_t* asco;
-uintptr_t low;
-uintptr_t high;
-tmasco_ctx_t ctx;
+    asco_t* asco;
+    uintptr_t low;
+    uintptr_t high;
+    tmasco_ctx_t ctx;
 #ifdef ASCO_MT
-abuf_t* abuf;
-int wrapped;
+    abuf_t* abuf;
+    int wrapped;
 
 #ifdef ASCO_MTL
-int mtl;
-uint64_t rbp;
-uint64_t rsp;
-size_t size;
+    int mtl;
+    uint64_t rbp;
+    uint64_t rsp;
+    size_t size;
 #define ASCO_MAX_STACKSZ 4096*10
-char stack[ASCO_MAX_STACKSZ];
-#endif  /* !ASCO_MTL */
+    char stack[ASCO_MAX_STACKSZ];
+#endif  /* ASCO_MTL */
 
 #ifdef ASCO_2PL
-abuf_t* abuf_2pl;
-#endif /* !ASCO_2PL */
-char pad2[64];
+    abuf_t* abuf_2pl;
+#endif /* ASCO_2PL */
+
+#ifdef ASCO_TBAR
+    tbar_t* tbar;
+    stash_t* stash;
+#endif /* ASCO_TBAR */
+
+    char pad2[64];
 #endif /* !ASCO_MT */
 
-    stash_t* stash;
 } tmasco_t;
 
 /* ----------------------------------------------------------------------------
@@ -107,6 +111,9 @@ static pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
 static pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
 static void* __pthread_handle = NULL;
 
+#ifdef ASCO_TBAR
+static tbar_t* __tbar = NULL;
+#endif /* ASCO_TBAR */
 #endif /* ASCO_MT */
 
 /* ----------------------------------------------------------------------------
@@ -121,7 +128,7 @@ PROTECT_HANDLER
 
 #else
 #  define HEAP_PROTECT_INIT
-#endif
+#endif /* HEAP_PROTECT */
 
 
 /* ----------------------------------------------------------------------------
@@ -139,8 +146,6 @@ tmasco_init()
     __tmasco->asco = asco_init();
     assert (__tmasco->asco);
     HEAP_PROTECT_INIT;
-
-    __tmasco->stash = stash_init();
 #else
     printf("Wrapping libpthread\n");
     __pthread_handle = dlopen("libpthread.so.0", RTLD_NOW);
@@ -166,6 +171,11 @@ tmasco_init()
         fprintf(stderr, "%s\n", dlerror());
         exit(EXIT_FAILURE);
     }
+
+#ifdef ASCO_TBAR
+    // create a global TBAR
+    __tbar = tbar_init(ASCO_MAX_THREADS, NULL);
+#endif /* ASCO_TBAR */
 
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
@@ -207,9 +217,12 @@ tmasco_thread_init()
     __tmasco->wrapped = 0;
 #ifdef ASCO_2PL
     __tmasco->abuf_2pl = abuf_init(100);
-#endif
+#endif /* ASCO_2PL */
 
+#ifdef ASCO_TBAR
+    __tmasco->tbar  = tbar_init(ASCO_MAX_THREADS, __tbar);
     __tmasco->stash = stash_init();
+#endif /* ASCO_TBAR */
 }
 #endif
 
@@ -219,8 +232,7 @@ tmasco_fini()
 #ifndef ASCO_MT
     assert (__tmasco->asco);
     asco_fini(__tmasco->asco);
-    // TODO: stash_fini(
-#else
+#else /* ASCO_MT */
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
         assert (___tmasco[i].asco);
@@ -229,11 +241,27 @@ tmasco_fini()
 #ifdef ASCO_2PL
         if (___tmasco[i].abuf_2pl)
             abuf_fini(___tmasco[i].abuf_2pl);
-#endif
+#endif /* ASCO_2PL */
+
+#ifdef ASCO_TBAR
+        if (___tmasco[i].stash && stash_size(___tmasco[i].stash)) {
+            int j;
+            for (j = 0; j < stash_size(___tmasco[i].stash); ++j) {
+                tbar_fini((tbar_t*) stash_get(___tmasco[i].stash, j));
+            }
+        } else {
+            if (___tmasco[i].tbar)
+                tbar_fini(___tmasco[i].tbar);
+        }
+#endif /* ASCO_TBAR */
         asco_fini(___tmasco[i].asco);
-        // TODO: stash_fini(
     }
-#endif
+
+#ifdef ASCO_TBAR
+    tbar_fini(__tbar);
+#endif /* ASCO_TBAR */
+
+#endif /* ASCO_MT */
 }
 
 /* ----------------------------------------------------------------------------
@@ -725,7 +753,10 @@ tmasco_begin(tmasco_ctx_t* ctx)
 {
 #ifdef ASCO_MT
     assert (__tmasco && "tmasco_prepare should be called before begin");
-#endif
+#ifdef ASCO_TBAR
+    tbar_enter(__tmasco->tbar);
+#endif /* ASCO_TBAR */
+#endif /* ASCO_MT */
     memcpy(&__tmasco->ctx, ctx, sizeof(tmasco_ctx_t));
     __tmasco->high = __tmasco->ctx.rbp;
     asco_begin(__tmasco->asco);
@@ -788,6 +819,10 @@ tmasco_commit()
     abuf_clean(__tmasco->abuf_2pl);
 #endif
 
+#ifdef ASCO_TBAR
+    tbar_leave(__tmasco->tbar);
+#endif /* ASCO_TBAR */
+
 }
 #endif /* ! ASCO_MTL */
 
@@ -836,10 +871,54 @@ tmasco_unprotect(void* addr, size_t size)
     // else ignore
 }
 
+/* ----------------------------------------------------------------------------
+ * Traversal management
+ * ------------------------------------------------------------------------- */
+
+int
+tmasco_bar()
+{
+#ifdef ASCO_TBAR
+    return !tbar_check(__tmasco->tbar);
+#else /* ASCO_TBAR */
+    return 0;
+#endif /* ASCO_TBAR */
+}
+
 int
 tmasco_shift(int handle)
 {
+#ifdef ASCO_TBAR
+    if (unlikely(!__tmasco)) tmasco_thread_init();
+
+    // assume we have correct handle already in-place
+    if (handle == -1) {
+        // create new obuf and exchange; use current if first time */
+        if (stash_size(__tmasco->stash) != 0) {
+            // here we assume that current tbar already in stash
+            __tmasco->tbar = tbar_idup(__tmasco->tbar);
+        }
+        // add to stash
+#ifndef NDEBUG
+        int h =
+            asco_shift(__tmasco->asco, handle);
+#endif
+        handle = stash_add(__tmasco->stash, __tmasco->tbar);
+        //TODO: assert (handle == h);
+    } else {
+        // shift and exchange tbar
+#ifndef NDEBUG
+        int h =
+#endif
+            asco_shift(__tmasco->asco, handle);
+        //TODO: assert (handle == h);
+        __tmasco->tbar = stash_get(__tmasco->stash, handle);
+        assert (__tmasco->tbar);
+    }
+    return handle;
+#else /* ASCO_TBAR */
     return asco_shift(__tmasco->asco, handle);
+#endif /* ASCO_TBAR */
 }
 
 #endif /* TMASCO_ENABLED */

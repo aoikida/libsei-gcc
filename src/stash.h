@@ -5,7 +5,6 @@
 #ifndef _ASCO_STASH_H_
 #define _ASCO_STASH_H_
 #include <stdint.h>
-#include <stdlib.h>
 
 typedef struct stash stash_t;
 stash_t* stash_init();
