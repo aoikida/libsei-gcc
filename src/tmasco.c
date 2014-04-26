@@ -591,7 +591,7 @@ pthread_mutex_lock(pthread_mutex_t* lock)
         r = __pthread_mutex_lock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
-        abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
+        //abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
 #endif /* ASCO_2PL */
         break;
     case 1:
@@ -634,7 +634,7 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
         r = __pthread_mutex_trylock(lock);
         abuf_push_uint64_t(__tmasco->abuf, (uint64_t*) lock, r);
 #ifdef ASCO_2PL
-        abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
+        //abuf_push_uint64_t(__tmasco->abuf_2pl, (uint64_t*) lock, r);
 #endif /* ASCO_2PL */
         break;
     case 1:
@@ -798,16 +798,14 @@ tmasco_commit()
         tmasco_switch(&__tmasco->ctx, 0x01);
     }
     asco_commit(__tmasco->asco);
-#ifdef ASCO_MT
-    abuf_clean(__tmasco->abuf);
-#endif
 
 #ifdef ASCO_2PL
     int r = 0;
     pthread_mutex_t* l = NULL;
     assert (asco_getp(__tmasco->asco) == -1);
-    while (abuf_size(__tmasco->abuf_2pl)) {
-        l = abuf_pop(__tmasco->abuf_2pl, (void*) &r);
+    abuf_rewind(__tmasco->abuf);
+    while (abuf_size(__tmasco->abuf)) {
+        l = abuf_pop(__tmasco->abuf, (void*) &r);
         // we only pushed locks and trylocks, hence if r == 0, l was
         // successfully locked.
         DLOG3("late unlocking %p (thread = %p)\n", l, (void*) pthread_self());
@@ -816,7 +814,11 @@ tmasco_commit()
             assert (!r && "unlock failed");
         }
     }
-    abuf_clean(__tmasco->abuf_2pl);
+    //abuf_clean(__tmasco->abuf_2pl);
+#endif
+
+#ifdef ASCO_MT
+    abuf_clean(__tmasco->abuf);
 #endif
 
 #ifdef ASCO_TBAR

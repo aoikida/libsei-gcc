@@ -12,6 +12,7 @@ abuf_t* abuf_init(int max_size);
 void    abuf_fini(abuf_t* abuf);
 int     abuf_size(abuf_t* abuf);
 void    abuf_clean(abuf_t* abuf);
+void    abuf_rewind(abuf_t* abuf);
 void    abuf_cmp(abuf_t* a1, abuf_t* a2);
 
 void    abuf_swap(abuf_t* abuf);

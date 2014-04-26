@@ -146,6 +146,12 @@ abuf_clean(abuf_t* abuf)
     abuf->poped  = 0;
 }
 
+inline void
+abuf_rewind(abuf_t* abuf)
+{
+    abuf->poped = 0;
+}
+
 inline int
 abuf_size(abuf_t* abuf)
 {
