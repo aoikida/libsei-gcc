@@ -36,6 +36,9 @@ ifeq ($(MODE), cow)
   AFLAGS += -DCOW_WT
  endif
 endif
+ifeq ($(MODE), cor)
+AFLAGS += -DMODE=3 -DASCO_MT
+endif
 else # !MODE
 AFLAGS += -DMODE=1
 MODE=heap

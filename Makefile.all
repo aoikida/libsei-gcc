@@ -19,7 +19,7 @@ TARGETS_DISABLED = 		\
 TARGETS = 			\
 	libasco-cow-opt-mtl.a	\
 	libasco-cow-opt-mtl2.a	\
-
+	libasco-cor.a		\
 
 
 all: $(TARGETS)
@@ -96,6 +96,10 @@ libasco-cowp.a: | lib
 	make BUILD=build-cowp clean all MODE=cow \
 		CFLAGS="-DHEAP_PROTECT -DCOW_APPEND_ONLY -DCOW_USEHEAP"
 	mv build-cowp/libasco.a lib/libasco-cowp.a
+
+libasco-cor.a: | lib
+	make BUILD=build-cor clean all MODE=cor ASCO_MT=1
+	mv build-cor/libasco.a lib/libasco-cor.a
 
 libasco-instr.a: | lib
 	make BUILD=build-instr clean all MODE=instr

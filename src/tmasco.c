@@ -105,7 +105,7 @@ static pthread_mutex_trylock_f* __pthread_mutex_trylock = NULL;
 static pthread_mutex_unlock_f*  __pthread_mutex_unlock  = NULL;
 static void* __pthread_handle = NULL;
 
-#endif /* !ASCO_MT */
+#endif /* ASCO_MT */
 
 /* ----------------------------------------------------------------------------
  * Heap protection
