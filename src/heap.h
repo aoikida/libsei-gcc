@@ -31,8 +31,4 @@ void*   heap_get(heap_t* heap, size_t rel);
 #define HEAP_500MB 500*HEAP_1MB
 #define HEAP_1GB   1000*HEAP_1MB
 
-#ifndef COW_SIZE
-#define COW_SIZE 100000
-#endif
-
 #endif /* _ASCO_HEAP_H_ */

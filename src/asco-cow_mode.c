@@ -15,8 +15,6 @@
 /* ----------------------------------------------------------------------------
  * types, data structures and definitions
  * ------------------------------------------------------------------------- */
-
-#include "heap.h"
 #include "tbin.h"
 #include "talloc.h"
 #include "obuf.h"
@@ -25,8 +23,8 @@
 #include "stash.h"
 
 #define OBUF_SIZE 10     // at most 10 output messages per traversal
-#define COW_SIZE  100000 // at most 100k writes per traversal
-#define TBIN_SIZE 100    // at most 100 frees per traversal
+#define COW_SIZE  100    // at most 100 writes per traversal
+#define TBIN_SIZE 10     // at most 10 frees per traversal
 
 #ifdef COW_APPEND_ONLY
 # ifndef COW_WT
@@ -35,6 +33,10 @@
 # include "abuf.h"
 #else
 # include "cow.h"
+#endif
+
+#ifdef COW_USEHEAP
+# include "heap.h"
 #endif
 
 #ifdef HEAP_PROTECT
