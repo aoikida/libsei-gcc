@@ -13,6 +13,7 @@
 
 #include "abuf.h"
 #include "debug.h"
+#include "config.h"
 
 #ifdef ASCO_STACK_INFO
 #include "sinfo.h"
@@ -77,7 +78,7 @@ struct abuf {
  * helper macros
  * ------------------------------------------------------------------------- */
 
-#define ABUF_MAX_CONFLICTS 200
+
 
 #define ABUF_TYPEMASK(addr, type) ( (uintptr_t) addr & (sizeof(type) - 1))
 #define ABUF_PICKMASK(addr, type) (((uintptr_t) addr & 0x07)    \

@@ -13,10 +13,15 @@
 #include "heap.h"
 #include "cow.h"
 #include "tmasco_mt.h"
+#include "config.h"
 
 #ifndef TMASCO_ENABLED
 #include "tmasco_instr.c"
 #else /* TMASCO_ENABLED */
+
+#ifdef ASCO_WRAP_SC
+#include "tmasco_sc.h"
+#endif
 
 #define likely(x) __builtin_expect((x),1)
 #define unlikely(x) __builtin_expect((x),0)
@@ -69,6 +74,10 @@ typedef struct {
     char pad2[64];
 #endif /* !ASCO_MT */
 
+#ifdef ASCO_WRAP_SC
+    abuf_t* abuf_sc; /* buffer for return values of wrapped system calls */
+#endif
+
 } tmasco_t;
 
 /* ----------------------------------------------------------------------------
@@ -116,6 +125,14 @@ static tbar_t* __tbar = NULL;
 #endif /* ASCO_TBAR */
 #endif /* ASCO_MT */
 
+#ifdef ASCO_WRAP_SC
+static socket_f* __socket = NULL;
+static close_f* __close = NULL;
+static bind_f* __bind = NULL;
+static connect_f* __connect = NULL;
+static send_f* __send = NULL;
+#endif
+
 /* ----------------------------------------------------------------------------
  * Heap protection
  * ------------------------------------------------------------------------- */
@@ -130,6 +147,17 @@ PROTECT_HANDLER
 #  define HEAP_PROTECT_INIT
 #endif /* HEAP_PROTECT */
 
+#ifdef ASCO_WRAP_SC
+#define SYSCALL_WRAPPER_INIT(name)						\
+	do {												\
+		__##name = (name##_f*) dlsym(RTLD_NEXT, #name);	\
+		if (!__##name) {								\
+			fprintf(stderr, "%s\n", dlerror());			\
+			exit(EXIT_FAILURE);							\
+		}												\
+	}													\
+	while(0)
+#endif
 
 /* ----------------------------------------------------------------------------
  * init and fini
@@ -146,6 +174,17 @@ tmasco_init()
     __tmasco->asco = asco_init();
     assert (__tmasco->asco);
     HEAP_PROTECT_INIT;
+
+#ifdef ASCO_WRAP_SC
+    SYSCALL_WRAPPER_INIT(socket);
+    SYSCALL_WRAPPER_INIT(bind);
+    SYSCALL_WRAPPER_INIT(close);
+    SYSCALL_WRAPPER_INIT(connect);
+    SYSCALL_WRAPPER_INIT(send);
+
+	__tmasco->abuf_sc = abuf_init(MAX_CALLS);
+#endif
+
 #else
     printf("Wrapping libpthread\n");
     __pthread_handle = dlopen("libpthread.so.0", RTLD_NOW);
@@ -229,9 +268,16 @@ tmasco_thread_init()
 static void __attribute__((destructor))
 tmasco_fini()
 {
+
 #ifndef ASCO_MT
+#ifdef ASCO_WRAP_SC
+	/* uncomment this to get double free or corruption */
+    //abuf_fini(__tmasco->abuf_sc);
+#endif
+
     assert (__tmasco->asco);
     asco_fini(__tmasco->asco);
+
 #else /* ASCO_MT */
     int i;
     for (i = 0; i < __tmasco_thread_count; ++i) {
@@ -262,6 +308,7 @@ tmasco_fini()
 #endif /* ASCO_TBAR */
 
 #endif /* ASCO_MT */
+
 }
 
 /* ----------------------------------------------------------------------------
@@ -460,6 +507,16 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     char* source      = (char*) src;
     uint32_t i = 0;
 
+    if (ignore_addr(dst)) {
+    	DLOG3("_ITM_memcpyRtWt ignore stack write source %p dest %p size %u\n", src, dst, size);
+
+		do
+			destination[i] = source[i];
+		while (i++ < size);
+
+		return (void*) destination;
+    }
+
     do {
         //destination[i] = source[i];
 #ifdef COW_WT
@@ -484,6 +541,8 @@ _ZGTt6memcpy(void* dst, const void* src, size_t size)
 void*
 _ITM_memmoveRtWt(void* dst, const void* src, size_t size)
 {
+    return _ITM_memcpyRtWt(dst, src, size);
+
     assert(0 && "not supported yet");
     return NULL;
 }
@@ -497,9 +556,21 @@ _ZGTt7realloc(void* ptr, size_t size)
     return p;
 }
 
+void
+_ITM_LB (const void *ptr, size_t len) {
+
+}
+
 void*
 _ITM_memsetW(void* s, int c, size_t n)
 {
+	if (ignore_addr(s)) {
+		DLOG3("_ITM_memsetW ignore stack write\n");
+
+		memset(s, c, n);
+
+		return s;
+	}
     uintptr_t p    = (uintptr_t) s;
     uintptr_t p64  = p & ~(0x07);
     uintptr_t e    = p + n;
@@ -532,6 +603,147 @@ _ZGTt6memset(void* s, int c, size_t n)
 int _ITM_initializeProcess() { return 0; }
 
 
+/* ----------------------------------------------------------------------------
+ * system calls wrappers
+ * ---------------------------------------------------------------------------*/
+#ifdef ASCO_WRAP_SC
+
+int
+socket(int domain, int type, int protocol)
+{
+    if (unlikely(!__tmasco)) {
+        return __socket(domain, type, protocol);
+    }
+    int r;
+
+    switch (asco_getp(__tmasco->asco)) {
+    case 0:
+        r = __socket(domain, type, protocol);
+        DLOG3("calling socket, result %d (thread = %p)\n", r, (void*) pthread_self());
+        abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) domain, r);
+        break;
+    case 1:
+        r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) domain);
+        DLOG3("fake calling socket, result %d (thread = %p)\n", r, (void*) pthread_self());
+        break;
+    default:
+        DLOG3("calling socket outside (thread = %p)\n", (void*) pthread_self());
+        r = __socket(domain, type, protocol);
+        break;
+    }
+
+    return r;
+}
+
+int
+close(int fd)
+{
+	if (unlikely(!__tmasco)) {
+		return __close(fd);
+	}
+	int r;
+
+	switch (asco_getp(__tmasco->asco)) {
+	case 0:
+		DLOG3("calling close (thread = %p)\n", (void*) pthread_self());
+		r = __close(fd);
+		abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) fd, r);
+		break;
+	case 1:
+		DLOG3("fake calling close (thread = %p)\n", (void*) pthread_self());
+		r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) fd);
+		break;
+	default:
+		DLOG3("calling close outside (thread = %p)\n", (void*) pthread_self());
+		r = __close(fd);
+		break;
+	}
+
+	return r;
+}
+
+int
+connect(int socket, const struct sockaddr *addr, socklen_t length)
+{
+	if (unlikely(!__tmasco)) {
+		return __connect(socket, addr, length);
+	}
+	int r;
+
+	switch (asco_getp(__tmasco->asco)) {
+	case 0:
+		DLOG3("calling connect (thread = %p)\n", (void*) pthread_self());
+		r = __connect(socket, addr, length);
+		abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) socket, r);
+		break;
+	case 1:
+		DLOG3("fake calling connect (thread = %p)\n", (void*) pthread_self());
+		r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) socket);
+		break;
+	default:
+		DLOG3("calling connect outside (thread = %p)\n", (void*) pthread_self());
+		r = __connect(socket, addr, length);
+		break;
+	}
+
+	return r;
+}
+
+int
+bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
+	if (unlikely(!__tmasco)) {
+		return __bind(sockfd, addr, addrlen);
+	}
+	int r;
+
+	switch (asco_getp(__tmasco->asco)) {
+	case 0:
+		DLOG3("calling bind (thread = %p)\n", (void*) pthread_self());
+		r = __bind(sockfd, addr, addrlen);
+		abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*) addr, r);
+		break;
+	case 1:
+		DLOG3("fake calling bind (thread = %p)\n", (void*) pthread_self());
+		r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*) addr);
+		break;
+	default:
+		DLOG3("calling bind outside (thread = %p)\n", (void*) pthread_self());
+		r = __bind(sockfd, addr, addrlen);
+		break;
+	}
+
+	return r;
+}
+
+ssize_t
+send(int socket, const void *buffer, size_t size, int flags)
+{
+	if (unlikely(!__tmasco)) {
+		return __send(socket, buffer, size, flags);
+	}
+	int r;
+
+	switch (asco_getp(__tmasco->asco)) {
+	case 0:
+		DLOG3("calling send (thread = %p)\n", (void*) pthread_self());
+		r = __send(socket, buffer, size, flags);
+		abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*) buffer, r);
+		break;
+	case 1:
+		DLOG3("fake calling send (thread = %p)\n", (void*) pthread_self());
+		r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*) buffer);
+		break;
+	default:
+		DLOG3("calling send outside (thread = %p)\n", (void*) pthread_self());
+		r = __send(socket, buffer, size, flags);
+		break;
+	}
+
+	return r;
+}
+
+#endif
 /* ----------------------------------------------------------------------------
  * pthread wrappers
  * ------------------------------------------------------------------------- */

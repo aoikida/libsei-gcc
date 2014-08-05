@@ -21,10 +21,8 @@
 #include "ibuf.h"
 #include "cfc.h"
 #include "stash.h"
+#include "config.h"
 
-#define OBUF_SIZE 10     // at most 10 output messages per traversal
-#define COW_SIZE  100    // at most 100 writes per traversal
-#define TBIN_SIZE 10     // at most 10 frees per traversal
 
 #ifdef COW_APPEND_ONLY
 # ifndef COW_WT

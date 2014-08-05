@@ -15,8 +15,8 @@
  * types, data structures and definitions
  * ------------------------------------------------------------------------- */
 
-#define TALLOC_MAX_ALLOCS 100
 
+#include "config.h"
 #include "talloc.h"
 #include "heap.h"
 #ifdef ASCO_STACK_INFO

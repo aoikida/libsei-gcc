@@ -6,7 +6,7 @@
 #define _ASCO_SINFO_H_
 
 #define MAX_DEPTH 24
-#define MAX_ALLOC 100000
+
 
 typedef struct sinfo sinfo_t;
 
