@@ -1123,7 +1123,7 @@ tmasco_shift(int handle)
         }
         // add to stash
 #ifndef NDEBUG
-        int h =
+        //TODO: int h =
 #endif
             asco_shift(__tmasco->asco, handle);
         handle = stash_add(__tmasco->stash, __tmasco->tbar);
@@ -1131,7 +1131,7 @@ tmasco_shift(int handle)
     } else {
         // shift and exchange tbar
 #ifndef NDEBUG
-        int h =
+        //TODO: int h =
 #endif
             asco_shift(__tmasco->asco, handle);
         //TODO: assert (handle == h);

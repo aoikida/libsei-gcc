@@ -191,7 +191,7 @@ ABUF_POP(uint16_t)
 ABUF_POP(uint32_t)
 ABUF_POP(uint64_t)
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(DEBUG)
 #define SAVE_NEXT e->next = e + sizeof(abuf_entry_t)
 #else
 #define SAVE_NEXT
