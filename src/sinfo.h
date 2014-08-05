@@ -7,7 +7,6 @@
 
 #define MAX_DEPTH 24
 
-
 typedef struct sinfo sinfo_t;
 
 sinfo_t* sinfo_init(void* addr);
