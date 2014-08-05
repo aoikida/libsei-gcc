@@ -271,8 +271,7 @@ tmasco_fini()
 
 #ifndef ASCO_MT
 #ifdef ASCO_WRAP_SC
-    /* uncomment this to get double free or corruption */
-    //abuf_fini(__tmasco->abuf_sc);
+    abuf_fini(__tmasco->abuf_sc);
 #endif /* ASCO_WRAP_SC */
 
     assert (__tmasco->asco);
@@ -1042,6 +1041,9 @@ tmasco_commit()
     tbar_leave(__tmasco->tbar);
 #endif /* ASCO_TBAR */
 
+#ifdef ASCO_WRAP_SC
+    abuf_clean(__tmasco->abuf_sc);
+#endif /* ASCO_WRAP_SC */
 }
 #endif /* ! ASCO_MTL */
 
