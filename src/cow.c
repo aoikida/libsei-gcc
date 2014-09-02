@@ -19,7 +19,7 @@
 #include "sinfo.h"
 #endif
 
-#define COW_POW 4
+#define COW_POW 7
 #define COW_MAX (1<<COW_POW)
 
 typedef union {
@@ -134,6 +134,8 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         fail_ifn(cow1->sizes[i] == cow2->sizes[i], "cow sizes differ");
 
         if (cow1->sizes[i] == 0) continue;
+
+        //DLOG1("Cow size: %d \n", cow1->sizes[i]);
 
         int j;
         for (j = 0; j < cow1->sizes[i]; ++j) {
@@ -384,6 +386,7 @@ COW_READ(uint64_t)
         }                                                               \
         cow_entry_t* e = cow_find(cow, GETWKEY(cow->heap, addr));       \
         if (!e) {                                                       \
+            DLOG3("kaddr=%d\n",GETWKEY(cow->heap, addr));               \
             int key = HASH(GETWKEY(cow->heap, addr));                   \
             DLOG3("key=%d\n",key);                                      \
             e = &cow->table[key][cow->sizes[key]++];                    \

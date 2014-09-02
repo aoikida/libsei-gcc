@@ -94,7 +94,7 @@ $(info ----------------------)
 # --- targets -----------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
-	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c
+	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c wts.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
 

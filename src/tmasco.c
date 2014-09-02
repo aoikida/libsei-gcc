@@ -21,6 +21,7 @@
 
 #ifdef ASCO_WRAP_SC
 #include "tmasco_sc.h"
+#include "wts.h"
 #endif
 
 #define likely(x) __builtin_expect((x),1)
@@ -126,11 +127,12 @@ static tbar_t* __tbar = NULL;
 #endif /* ASCO_MT */
 
 #ifdef ASCO_WRAP_SC
-static socket_f* __socket = NULL;
-static close_f* __close = NULL;
-static bind_f* __bind = NULL;
-static connect_f* __connect = NULL;
-static send_f* __send = NULL;
+socket_f* __socket = NULL;
+close_f* __close = NULL;
+bind_f* __bind = NULL;
+connect_f* __connect = NULL;
+send_f* __send = NULL;
+sendto_f* __sendto = NULL;
 #endif
 
 /* ----------------------------------------------------------------------------
@@ -181,6 +183,7 @@ tmasco_init()
     SYSCALL_WRAPPER_INIT(close);
     SYSCALL_WRAPPER_INIT(connect);
     SYSCALL_WRAPPER_INIT(send);
+    SYSCALL_WRAPPER_INIT(sendto);
 
     __tmasco->abuf_sc = abuf_init(SC_MAX_CALLS);
 #endif /* ASCO_WRAP_SC */
@@ -510,12 +513,11 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
         DLOG3("_ITM_memcpyRtWt ignore stack write source %p dest %p size %u\n",
               src, dst, size);
 
-        do
-            destination[i] = source[i];
-        while (i++ < size);
-
+        memcpy(dst, src, size);
         return (void*) destination;
     }
+    DLOG3("Start memcpy, size %d\n", size);
+
 
     do {
         //destination[i] = source[i];
@@ -527,8 +529,10 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
                            asco_read_uint8_t(__tmasco->asco,
                                              (void*) (source + i)));
 #endif
-    } while (i++ < size);
+    } while (++i < size);
 
+
+    DLOG3("End memcpy");
     return (void*) destination;
 }
 
@@ -639,23 +643,34 @@ socket(int domain, int type, int protocol)
 }
 
 int
+wts_close(uint64_t* args)
+{
+	int res;
+	res = __close((int) args[0]);
+	DLOG3("result of close %d", res);
+	//assert(res == args[1] && "unexpected result of close");
+	return res;
+}
+
+int
 close(int fd)
 {
     if (unlikely(!__tmasco)) {
         return __close(fd);
     }
     int r;
+    int p = asco_getp(__tmasco->asco);
 
-    switch (asco_getp(__tmasco->asco)) {
+    switch (p) {
     case 0:
-        DLOG3("calling close (thread = %p)\n", (void*) pthread_self());
-        r = __close(fd);
-        abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) fd, r);
+    case 1: {
+    	DLOG3("got args for close: %d\n", fd);
+    	wts_add(asco_get_wts(__tmasco->asco), p, wts_close, 2, (uint64_t) fd,
+    			(uint64_t) 0);
+		DLOG3("deferring close (thread = %p)\n", (void*) pthread_self());
+		r = 0;
         break;
-    case 1:
-        DLOG3("fake calling close (thread = %p)\n", (void*) pthread_self());
-        r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) fd);
-        break;
+    }
     default:
         DLOG3("calling close outside (thread = %p)\n", (void*) pthread_self());
         r = __close(fd);
@@ -675,13 +690,15 @@ connect(int socket, const struct sockaddr *addr, socklen_t length)
 
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3("calling connect (thread = %p)\n", (void*) pthread_self());
         r = __connect(socket, addr, length);
         abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) socket, r);
+        DLOG3("calling connect, retval %d (thread = %p)\n", r,
+        	  (void*) pthread_self());
         break;
     case 1:
-        DLOG3("fake calling connect (thread = %p)\n", (void*) pthread_self());
         r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*)(intptr_t) socket);
+        DLOG3("fake calling connect, retval %d (thread = %p)\n", r,
+        	  (void*) pthread_self());
         break;
     default:
         DLOG3("calling connect outside (thread = %p)\n",
@@ -703,13 +720,15 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
     switch (asco_getp(__tmasco->asco)) {
     case 0:
-        DLOG3("calling bind (thread = %p)\n", (void*) pthread_self());
         r = __bind(sockfd, addr, addrlen);
         abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*) addr, r);
+        DLOG3("calling bind, retval %d (thread = %p)\n", r,
+        	  (void*) pthread_self());
         break;
     case 1:
-        DLOG3("fake calling bind (thread = %p)\n", (void*) pthread_self());
         r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*) addr);
+        DLOG3("fake calling bind, retval %d (thread = %p)\n", r,
+        	  (void*) pthread_self());
         break;
     default:
         DLOG3("calling bind outside (thread = %p)\n", (void*) pthread_self());
@@ -720,6 +739,24 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     return r;
 }
 
+
+int
+wts_send(uint64_t* args)
+{
+	int res;
+	assert (__send);
+
+	DLOG1("real send args: %d %p %d %d\n", args[0], args[1], args[2], args[3]);
+
+	res = __send((int) args[0],
+				 (void*) args[1],
+				 (size_t) args[2],
+				 (int) args[3]);
+
+	assert(res == args[4] && "unexpected result of send");
+	return res;
+}
+
 ssize_t
 send(int socket, const void *buffer, size_t size, int flags)
 {
@@ -727,24 +764,101 @@ send(int socket, const void *buffer, size_t size, int flags)
         return __send(socket, buffer, size, flags);
     }
     int r;
+    int p = asco_getp(__tmasco->asco);
 
-    switch (asco_getp(__tmasco->asco)) {
+    switch (p) {
     case 0:
-        DLOG3("calling send (thread = %p)\n", (void*) pthread_self());
-        r = __send(socket, buffer, size, flags);
-        abuf_push_uint32_t(__tmasco->abuf_sc, (uint32_t*) buffer, r);
+    case 1: {
+    	wts_add(asco_get_wts(__tmasco->asco), p, wts_send, 5, (uint64_t) socket,
+    			(uint64_t) buffer, (uint64_t) size, (uint64_t) flags,
+    			(uint64_t) size); //last arg - expected ret value
+
+        DLOG1("deferring send (thread = %p)\n", (void*) pthread_self());
+        r = size;
         break;
-    case 1:
-        DLOG3("fake calling send (thread = %p)\n", (void*) pthread_self());
-        r = abuf_pop_uint32_t(__tmasco->abuf_sc, (uint32_t*) buffer);
-        break;
+    }
     default:
-        DLOG3("calling send outside (thread = %p)\n", (void*) pthread_self());
+        DLOG1("calling send outside (thread = %p)\n", (void*) pthread_self());
         r = __send(socket, buffer, size, flags);
         break;
     }
 
     return r;
+}
+
+int
+wts_sendto(uint64_t* args)
+{
+	int res;
+	assert (__sendto);
+
+	if (args[7] == 0)
+		res = __sendto((int) args[0],
+					 (void*) args[1],
+					 (size_t) args[2],
+					 (int) args[3],
+					 (struct sockaddr*) args[4],
+					 (socklen_t) args[5]);
+	else
+		res = __sendto((int) args[0],
+					 (void*) args[1],
+					 (size_t) args[2],
+					 (int) args[3],
+					 (struct sockaddr*) &args[8],
+					 (socklen_t) args[5]);
+
+	DLOG1("result of sendto %d expected %d \n", res, args[6]);
+
+	assert(res == args[6] && "unexpected result of sendto");
+	return res;
+}
+
+ssize_t sendto(int socket, const void *buffer, size_t size, int flags,
+                     const struct sockaddr *dest_addr, socklen_t addrlen)
+{
+	if (unlikely(!__tmasco)) {
+		return __sendto(socket, buffer, size, flags, dest_addr, addrlen);
+	}
+	int r;
+	int p = asco_getp(__tmasco->asco);
+
+	switch (p) {
+	case 0:
+	case 1: {
+
+		if (IN_STACK(dest_addr)) {
+			assert(sizeof(struct sockaddr) == 16);
+
+			uint64_t a1, a2;
+			unsigned char* d = (unsigned char*) dest_addr;
+			memcpy(&a1, d, 8);
+			memcpy(&a2, d + 8, 8);
+
+			wts_add(asco_get_wts(__tmasco->asco), p, wts_sendto, 10,
+								(uint64_t) socket, (uint64_t) buffer,
+								(uint64_t) size, (uint64_t) flags,
+								(uint64_t) dest_addr, (uint64_t) addrlen,
+								(uint64_t) size, 1/*dest_addr on stack*/, a1, a2);
+		}
+		else
+			wts_add(asco_get_wts(__tmasco->asco), p, wts_sendto, 8,
+					(uint64_t) socket, (uint64_t) buffer, (uint64_t) size,
+					(uint64_t) flags, (uint64_t) dest_addr, (uint64_t) addrlen,
+					(uint64_t) size, 0/*dest_addr not on stack*/);
+
+
+
+		DLOG1("deferring sendto (thread = %p)\n", (void*) pthread_self());
+		r = size;
+		break;
+	}
+	default:
+		DLOG1("calling sendto outside (thread = %p)\n", (void*) pthread_self());
+		r = __sendto(socket, buffer, size, flags, dest_addr, addrlen);
+		break;
+	}
+
+	return r;
 }
 
 #endif

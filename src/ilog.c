@@ -51,4 +51,5 @@ ilog_push(ilog_t* ilog, const char* topic, const char* info)
     uint64_t ts = now();
     fprintf(ilog->fp, "%lu:%lu:%ld:%s:%s\n", ts, ts - ilog->ts,
             syscall(SYS_gettid), topic, info);
+    fflush(ilog->fp);
 }

@@ -23,6 +23,9 @@
 #include "stash.h"
 #include "config.h"
 
+#ifdef ASCO_WRAP_SC
+#include "wts.h"
+#endif
 
 #ifdef COW_APPEND_ONLY
 # ifndef COW_WT
@@ -66,6 +69,9 @@ struct asco {
     ibuf_t*   ibuf;    /* input message buffer        */
     cfc_t     cf[2];   /* control flags               */
     stash_t*  stash;   /* obuf contexts               */
+#ifdef ASCO_WRAP_SC
+    wts_t*	  wts;	   /* waitress for delayed calls  */
+#endif
 
 #ifdef HEAP_PROTECT
     abuf_t*   wpages;  /* list of written pages       */
@@ -131,7 +137,6 @@ struct asco {
             ilog_push(asco->ilog, __FILE__, buffer);                    \
             cpu_stats_report(asco->cpu_stats, asco->ilog);              \
             _now = now();                                               \
-            ASCO_STATS_RESET();                                         \
         }                                                               \
     } while (0)
 #else
@@ -141,6 +146,8 @@ struct asco {
 #define ASCO_STATS_INC(X)
 #define ASCO_STATS_REPORT()
 #endif
+
+
 
 /* ----------------------------------------------------------------------------
  * constructor/destructor
@@ -180,7 +187,9 @@ asco_init()
     asco->obuf   = obuf_init(OBUF_SIZE);
     asco->ibuf   = ibuf_init();
     asco->stash  = stash_init();
-
+#ifdef ASCO_WRAP_SC
+    asco->wts	 = wts_init(SC_MAX_CALLS);
+#endif
     ASCO_STATS_INIT();
 
     // initialize with invalid execution number
@@ -214,6 +223,10 @@ asco_fini(asco_t* asco)
     } else {
         obuf_fini(asco->obuf);
     }
+
+#ifdef ASCO_WRAP_SC
+    wts_fini(asco->wts);
+#endif
 
 #ifdef COW_USEHEAP
     heap_fini(asco->heap);
@@ -304,6 +317,10 @@ asco_commit(asco_t* asco)
     abuf_cmp_heap(asco->cow[0], asco->cow[1]);
     abuf_clean(asco->cow[0]);
     abuf_clean(asco->cow[1]);
+#endif
+
+#ifdef ASCO_WRAP_SC
+    wts_flush(asco->wts);
 #endif
 
     tbin_flush(asco->tbin);
@@ -496,7 +513,8 @@ ASCO_READ(uint64_t)
 #define ASCO_WRITE(type) inline                                         \
     void asco_write_##type(asco_t* asco, type* addr, type value)        \
     {                                                                   \
-        assert (asco->p == 0 || asco->p == 1);                          \
+   	    ASCO_STATS_INC(nw##type);                                       \
+   	    assert (asco->p == 0 || asco->p == 1);                          \
         DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
               addr, (uint64_t) value);                                  \
         abuf_push_##type(asco->cow[asco->p], addr, *addr);              \
@@ -539,4 +557,14 @@ asco_output_next(asco_t* asco)
     uint32_t crc = obuf_pop(asco->obuf);
 
     return crc;
+}
+
+/* ----------------------------------------------------------------------------
+ * system call management
+ * ------------------------------------------------------------------------- */
+
+void*
+asco_get_wts(asco_t* asco)
+{
+	return asco->wts;
 }

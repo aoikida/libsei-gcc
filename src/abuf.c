@@ -181,8 +181,8 @@ abuf_size(abuf_t* abuf)
         abuf_entry_t* e = &abuf->buf[abuf->poped++];                    \
         fail_ifn(e->addr == addr, "reading wrong address");             \
         assert (e->size == sizeof(type) && "reading wrong size");       \
-        DLOG3("[%s:%d] reading address %p = x%x (x%x)\n",               \
-              __FILE__, __LINE__, e->addr, ABUF_WVAL(e), *addr);        \
+        DLOG3("[%s:%d] reading address %p = x%x (---)\n",               \
+              __FILE__, __LINE__, e->addr, ABUF_WVAL(e));               \
         ABUF_SINFO_POP(e, addr);                                        \
         return ABUF_WVAX(e, type, addr);                                \
     }
@@ -293,6 +293,8 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
             assert (0 && "unknown case");
         }
     }
+
+    DLOG1("Number of conflicts: %d\n", nentry);
 
     if (nentry == 0) return;
 

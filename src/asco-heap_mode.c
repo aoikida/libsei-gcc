@@ -12,6 +12,7 @@
 #include <asco.h>
 #include "debug.h"
 #include "fail.h"
+#include "config.h"
 
 /* ----------------------------------------------------------------------------
  * types and data structures

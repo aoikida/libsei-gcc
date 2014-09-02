@@ -6,17 +6,22 @@
 #ifndef _TMASCO_SC_H_
 #define _TMASCO_SC_H_
 
-/* Typedefs for wrapped system calls */
+/* ----------------------------------------------------------------------------
+* Typedefs for wrapped system calls
+* --------------------------------------------------------------------------*/
 
 #include <sys/socket.h>
 
-typedef int (socket_f)(int domain, int type, int protocol);
-typedef int (close_f)(int fd);
-typedef int (bind_f)(int sockfd, const struct sockaddr *addr,
-                     socklen_t addrlen);
-typedef int (connect_f)(int socket, const struct sockaddr *addr,
-                        socklen_t length);
+typedef int 	(socket_f)(int domain, int type, int protocol);
+typedef int 	(close_f)(int fd);
+typedef int 	(bind_f)(int sockfd, const struct sockaddr *addr,
+                     	 socklen_t addrlen);
+typedef int 	(connect_f)(int socket, const struct sockaddr *addr,
+                        	socklen_t length);
 typedef ssize_t (send_f)(int socket, const void *buffer, size_t size,
                          int flags);
+
+typedef ssize_t (sendto_f)(int sockfd, const void *buf, size_t len, int flags,
+                      const struct sockaddr *dest_addr, socklen_t addrlen);
 
 #endif /* _TMASCO_SC_H_ */
