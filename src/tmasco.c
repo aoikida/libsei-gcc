@@ -518,6 +518,62 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     }
     DLOG3("Start memcpy, size %d\n", size);
 
+#ifdef COW_WT
+
+    if (size >= sizeof(uint32_t)) {
+        uint32_t len = size;
+    	uint32_t unal = (unsigned long int)destination % sizeof(uint32_t);
+
+    	if (unal > 0) {
+    		unal = sizeof(uint32_t) - unal;
+
+			do {
+				asco_write_uint8_t(__tmasco->asco, (void*) (destination + i),
+						   *(uint8_t*) (source + i));
+			} while (++i < unal);
+		}
+
+    	len -= i;
+
+    	uint32_t unal64 = (unsigned long int)(destination + i) % sizeof(uint64_t);
+
+    	if (unal64 > 0 && len >= sizeof(uint32_t)) {
+    		asco_write_uint32_t(__tmasco->asco, (void*) (destination + i),
+    							   *(uint32_t*) (source + i));
+
+    		i += sizeof(uint32_t);
+    		len -= sizeof(uint32_t);
+    	}
+
+    	uint32_t num64w = len / sizeof(uint64_t);
+		uint32_t j = 0;
+
+		while (j < num64w) {
+			asco_write_uint64_t(__tmasco->asco, (void*) (destination + i),
+					   *(uint64_t*) (source + i));
+			i += sizeof(uint64_t);
+			len -= sizeof(uint64_t);
+			j++;
+		};
+
+		if (len >= sizeof(uint32_t)) {
+			asco_write_uint32_t(__tmasco->asco, (void*) (destination + i),
+							   *(uint32_t*) (source + i));
+
+			i += sizeof(uint32_t);
+		}
+
+		while (i < size) {
+			asco_write_uint8_t(__tmasco->asco, (void*) (destination + i),
+				   *(uint8_t*) (source + i));
+			i++;
+		}
+
+		DLOG3("End memcpy\n");
+		return (void*) destination;
+    }
+
+#endif
 
     do {
         //destination[i] = source[i];
