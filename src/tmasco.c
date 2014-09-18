@@ -344,7 +344,12 @@ getbp()
 void* __asco_ignore_addr_s[ASCO_MAX_IGNORE];
 void* __asco_ignore_addr_e[ASCO_MAX_IGNORE];
 uint32_t __asco_ignore_num = 0;
+uint32_t __asco_ignore_all = 0;
 #endif
+
+void tmasco_ignore_all(uint32_t v) {
+	__asco_ignore_all = v;
+}
 
 void tmasco_ignore_addr(void* start, void* end) {
 	if (asco_getp(__tmasco->asco) == -1)
@@ -406,7 +411,13 @@ _ITM_commitTransaction()
 inline void*
 _ITM_malloc(size_t size)
 {
-    return asco_malloc(__tmasco->asco, size);
+    if (__asco_ignore_all) {
+	void* r = asco_malloc(__tmasco->asco, size);
+	tmasco_ignore_addr(r, (uint8_t*)r + size);
+	return r;
+    }
+    else    
+    	return asco_malloc(__tmasco->asco, size);
 }
 
 inline void
