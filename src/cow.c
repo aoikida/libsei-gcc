@@ -130,11 +130,17 @@ void
 cow_apply_cmp(cow_t* cow1, cow_t* cow2)
 {
     int i;
+#ifdef DEBUG
+    int cnt_entries = 0;
+#endif
     for (i = 0; i < COW_MAX; ++i) {
         fail_ifn(cow1->sizes[i] == cow2->sizes[i], "cow sizes differ");
 
         if (cow1->sizes[i] == 0) continue;
 
+#ifdef DEBUG
+        cnt_entries += cow1->sizes[i];
+#endif
         //DLOG1("Cow size: %d \n", cow1->sizes[i]);
 
         int j;
@@ -175,6 +181,8 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
         // cleanup
         cow1->sizes[i] = cow2->sizes[i] = 0;
     }
+
+    DLOG1("cow entries: %d\n", cnt_entries);
 
 #ifdef COW_STATS
     cow1->stats.size   += cow1->stats_tr.size;
