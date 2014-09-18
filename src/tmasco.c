@@ -339,9 +339,29 @@ getbp()
 /* check whether address x is in the stack or not. */
 #define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __tmasco->high
 
-#if 0
-extern void* __asco_ignore_addrs[];
+#if 1
+#define ASCO_MAX_IGNORE 100 
+void* __asco_ignore_addr_s[ASCO_MAX_IGNORE];
+void* __asco_ignore_addr_e[ASCO_MAX_IGNORE];
+uint32_t __asco_ignore_num = 0;
 #endif
+
+void tmasco_ignore_addr(void* start, void* end) {
+	if (asco_getp(__tmasco->asco) == -1)
+		return;
+	int i;
+	for (i = 0; i < __asco_ignore_num; ++i) {
+		if (__asco_ignore_addr_s[i] == start &&
+		    __asco_ignore_addr_e[i] == end)
+			return;
+	}
+
+	__asco_ignore_addr_s[__asco_ignore_num] = start;
+	__asco_ignore_addr_e[__asco_ignore_num] = end;
+	__asco_ignore_num++;
+	assert(ASCO_MAX_IGNORE >= __asco_ignore_num && "not enough ignore slots");
+	DLOG3("Ignore range from %p to %p\n", start, end);
+}
 
 /* addresses inside the stack are local variables and shouldn't be
  * considered when reading and writing. Other addresses can be
@@ -354,18 +374,18 @@ ignore_addr(const void* ptr)
     if (IN_STACK(ptr)) {
         DLOG3("Ignore address: %p\n", ptr);
         return 1;
-    } else return 0;
+    }// else return 0;
 
-#if 0
-    if ((uintptr_t) ptr < (uintptr_t) &edata) return 1;
+#if 1
+//    if ((uintptr_t) ptr < (uintptr_t) &edata) return 1;
 
-    if (1) {
         int i;
-        for (i = 0; __asco_ignore_addrs[i]; ++i)
-            if (ptr == __asco_ignore_addrs[i])
-                return 1;
+        for (i = 0; i < __asco_ignore_num; ++i)
+            if (ptr >= __asco_ignore_addr_s[i] && ptr <= __asco_ignore_addr_e[i]) {
+            	DLOG3("(hack) Ignore address: %p from range %d \n", ptr, i);
+            	return 1;
+            }
         return 0;
-    }
 #endif
 }
 
@@ -1179,6 +1199,12 @@ tmasco_commit(int force)
 void
 tmasco_commit()
 {
+#if 1
+    	memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
+    	memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
+	__asco_ignore_num = 0;
+#endif
+
     if (!asco_getp(__tmasco->asco)) {
         asco_switch(__tmasco->asco);
         tmasco_switch(&__tmasco->ctx, 0x01);
@@ -1232,6 +1258,9 @@ tmasco_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef ASCO_MT
     if (unlikely(!__tmasco)) tmasco_thread_init();
 #endif
+    memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
+    memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
+    __asco_ignore_num = 0;
     asco_prepare_nm(__tmasco->asco);
 }
 

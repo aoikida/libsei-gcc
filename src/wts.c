@@ -78,7 +78,7 @@ wts_flush(wts_t* wts)
     wts_item_t* it = &wts->items[0];
     int i = 0;
     for (; i < wts->nitems[0]; ++i, ++it) {
-        fail_ifn(it->func[0] && it->func[1], "only one pointers passed");
+        fail_ifn(it->func[0] && it->func[1], "only one pointer passed");
         fail_ifn(it->func[0] == it->func[1], "pointers differ");
         fail_ifn(it->anum[0] == it->anum[1], "number of args differ");
 

@@ -18,7 +18,10 @@
 #define TMASCO_DISABLE_OUTPUT_CHECKS
 #define TMASCO_DISABLE_INPUT_CHECKS
 #define TMASCO_DISABLE_PROTECTION
+#define TMASCO_DISABLE_IGNORE
 #endif
+
+
 
 #include <tmasco_support.h>
 #include <stdint.h>
@@ -54,6 +57,8 @@ void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
 void     tmasco_output_done() TMASCO_PURE;
 uint32_t tmasco_output_next();
 
+void tmasco_ignore_addr(void* start, void* end) TMASCO_PURE;
+
 #ifdef TMASCO_DISABLE_OUTPUT_CHECKS
 #define __asco_output_append(ptr, size)
 #define __asco_output_done()
@@ -77,6 +82,12 @@ void  tmasco_unprotect(void* addr, size_t size);
 #else
 #define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
 #define __asco_prepare_nm(ptr) tmasco_prepare_nm()
+#endif
+
+#ifdef TMASCO_DISABLE_IGNORE
+#define __asco_ignore_addr(start, end) 
+#else
+#define __asco_ignore_addr(start, end) tmasco_ignore_addr(start, end)  
 #endif
 
 #define __asco_begin(x)  __tmasco_begin(x)
