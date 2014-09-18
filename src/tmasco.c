@@ -337,15 +337,21 @@ getbp()
 }
 
 /* check whether address x is in the stack or not. */
-#define IN_STACK(x) getsp() <= (uintptr_t) x && (uintptr_t) x < __tmasco->high
+#define IN_STACK(x) (getsp() <= (uintptr_t) x \
+                     && (uintptr_t) x < __tmasco->high)
 
 #if 1
-#define ASCO_MAX_IGNORE 100 
+#define ASCO_MAX_IGNORE 1000
 void* __asco_ignore_addr_s[ASCO_MAX_IGNORE];
 void* __asco_ignore_addr_e[ASCO_MAX_IGNORE];
 uint32_t __asco_ignore_num = 0;
 uint32_t __asco_ignore_all = 0;
+int __asco_write_disable = 0;
 #endif
+
+void tmasco_ignore(int v) {
+	__asco_write_disable = v;
+}
 
 void tmasco_ignore_all(uint32_t v) {
 	__asco_ignore_all = v;
@@ -376,7 +382,7 @@ static int inline ignore_addr(const void* ptr) __attribute__((always_inline));
 static int inline
 ignore_addr(const void* ptr)
 {
-    if (IN_STACK(ptr)) {
+    if (__asco_write_disable || IN_STACK(ptr)) {
         DLOG3("Ignore address: %p\n", ptr);
         return 1;
     }// else return 0;
@@ -1211,9 +1217,11 @@ void
 tmasco_commit()
 {
 #if 1
-    	memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
-    	memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
+    //	memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
+    // 	memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
+    DLOG1("__asco_ignore_num = %d\n", __asco_ignore_num);
 	__asco_ignore_num = 0;
+    __asco_write_disable = 0;
 #endif
 
     if (!asco_getp(__tmasco->asco)) {

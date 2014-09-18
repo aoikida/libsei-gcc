@@ -59,6 +59,7 @@ uint32_t tmasco_output_next();
 
 void tmasco_ignore_addr(void* start, void* end) TMASCO_PURE;
 void tmasco_ignore_all(uint32_t v) TMASCO_PURE;
+void tmasco_ignore(int v) TMASCO_PURE;
 
 #ifdef TMASCO_DISABLE_OUTPUT_CHECKS
 #define __asco_output_append(ptr, size)
@@ -88,10 +89,11 @@ void  tmasco_unprotect(void* addr, size_t size);
 #ifdef TMASCO_DISABLE_IGNORE
 #define __asco_ignore_addr(start, end) 
 #define __asco_ignore_all(v) 
+#define __asco_ignore(v)
 #else
 #define __asco_ignore_addr(start, end) tmasco_ignore_addr(start, end)  
 #define __asco_ignore_all(v) tmasco_ignore_all(v) 
-
+#define __asco_ignore(v) tmasco_ignore(v)
 #endif
 
 #define __asco_begin(x)  __tmasco_begin(x)
