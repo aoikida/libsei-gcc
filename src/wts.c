@@ -83,8 +83,8 @@ wts_flush(wts_t* wts)
         fail_ifn(it->anum[0] == it->anum[1], "number of args differ");
 
         int j = 0;
-        for (; j < it->anum[0]; ++j)
-        	fail_ifn(it->args[0][j] == it->args[1][j], "args differ");
+//        for (; j < it->anum[0]; ++j)
+//        	fail_ifn(it->args[0][j] == it->args[1][j], "args differ");
 
         it->func[0]((uint64_t*)&it->args[0]);
 
