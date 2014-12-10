@@ -39,6 +39,28 @@
  * algorithm selection
  * -------------------------------------------------------------------------- */
 
+#ifdef __x86_64
+static uint32_t
+cpuid(uint32_t input) {
+    uint64_t rax;
+    uint64_t rbx;
+    uint64_t rcx;
+    uint64_t rdx;
+#ifdef __PIC__
+    // PIC: Need to save and restore ebx See:
+    // http://sam.zoy.org/blog/2007-04-13-shlib-with-non-pic-code-have-inline-assembly-and-pic-mix-well
+    asm("pushq %%rbx\n\t" /* save %ebx */
+        "cpuid\n\t"
+        "movq %%rbx, %[rbx]\n\t" /* save what cpuid just put in %ebx */
+        "popq %%rbx" : "=a"(rax), [rbx] "=r"(rbx), "=c"(rcx), "=d"(rdx)
+        : "a" (input)
+        : "cc");
+#else
+    asm("cpuid" : "=a" (rax), "=b" (rbx), "=c" (rcx), "=d" (rdx) : "a" (input));
+#endif
+    return rcx;
+}
+#else
 static uint32_t
 cpuid(uint32_t input) {
     uint32_t eax;
@@ -51,7 +73,7 @@ cpuid(uint32_t input) {
     asm("pushl %%ebx\n\t" /* save %ebx */
         "cpuid\n\t"
         "movl %%ebx, %[ebx]\n\t" /* save what cpuid just put in %ebx */
-        "popl %%ebx" : "=a"(eax), [ebx] "=r"(ebx), "=c"(ecx), "=d"(edx)
+        "popl %%rbx" : "=a"(eax), [ebx] "=r"(ebx), "=c"(ecx), "=d"(edx)
         : "a" (input)
         : "cc");
 #else
@@ -59,6 +81,7 @@ cpuid(uint32_t input) {
 #endif
     return ecx;
 }
+#endif
 
 crc32c_f*
 crc32c_impl() {
