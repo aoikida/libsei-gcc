@@ -14,7 +14,6 @@
 #include "cow.h"
 #include "tmasco_mt.h"
 #include "config.h"
-#include "asco-cow_mode.h"
 
 #ifndef TMASCO_ENABLED
 #include "tmasco_instr.c"

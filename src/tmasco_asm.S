@@ -23,9 +23,7 @@
 	// globl makes the label visible to the linker while .type
 	// defines the type of the labal, ie, a function
 	.globl	_ITM_beginTransaction
-#ifndef __APPLE__	
 	.type   _ITM_beginTransaction, @function
-#endif
 
 _ITM_beginTransaction:
 	/* A function prologue typically looks like this:
@@ -105,17 +103,14 @@ _ITM_beginTransaction.end:
 	// Every function terminated with a .size line which tells the
 	// assembler to calculate the distance from here up to the
 	// _ITM_beginTransaction label.
-#ifndef __APPLE__	
 	.size	_ITM_beginTransaction, .- _ITM_beginTransaction
-#endif
+
 
 /* --- tmasco_switch ------------------------------------------------------- */
 	.text
 	.align	4
 	.globl	tmasco_switch
-#ifndef __APPLE__	
 	.type	tmasco_switch, @function
-#endif
 
 tmasco_switch:
 
@@ -140,18 +135,15 @@ tmasco_switch:
 	jmpq *%rdx
 
 tmasco_switch.end:
-#ifndef __APPLE__	
 	.size	tmasco_switch, .- tmasco_switch
-#endif
+
 
 
 /* --- tmasco_switch2 ------------------------------------------------------ */
 	.text
 	.align	4
 	.globl	tmasco_switch2
-#ifndef __APPLE__
 	.type   tmasco_switch2, @function
-#endif
 
 tmasco_switch2:
 
@@ -183,6 +175,4 @@ tmasco_switch2:
 	jmpq *%rdx
 
 tmasco_switch2.end:
-#ifndef __APPLE__	
 	.size	tmasco_switch2, .- tmasco_switch2
-#endif
