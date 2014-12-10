@@ -6,6 +6,10 @@
 #define _TMASCO_SUPPORT_H_
 #include <stddef.h>
 
+#ifdef __APPLE__
+#include <ctype.h>
+#endif
+
 #ifndef ASCO_ATTR
 #define ASCO_ATTR __attribute__((transaction_safe))
 #ifdef COW_ROPURE
@@ -30,6 +34,10 @@ void __assert_fail (const char *__assertion, const char *__file,
                     unsigned int __line, const char *__function)
     __attribute__((transaction_pure));
 
+#ifdef __APPLE__
+ASCO_DECLP(int, __maskrune, (__darwin_ct_rune_t _c, unsigned long _f))
+ASCO_DECLP(int*, __error, (void))
+#endif 
 
 ASCO_DECLP(size_t, strlen,  (const char*))
 ASCO_DECLP(int,    strcmp,  (const char*, const char*))

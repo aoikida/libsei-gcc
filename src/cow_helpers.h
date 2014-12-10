@@ -5,7 +5,13 @@
 
 
 #include <inttypes.h>
+#ifdef __LINUX__
 #include <bits/wordsize.h>
+#else
+#include <limits.h>
+#include <stdint.h>
+#endif
+
 #if __WORDSIZE != 64 && __WORDSIZE != 32
 #error support only 32 or 64 bits
 #endif

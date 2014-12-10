@@ -10,9 +10,9 @@ CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG #-DASCO_STATS
 # -Werror
 ifdef DEBUG
-override CFLAGS += $(CFLAGS_DBG) -Iinclude -frecord-gcc-switches
+override CFLAGS += $(CFLAGS_DBG) -Iinclude -std=gnu89
 else
-override CFLAGS += $(CFLAGS_REL) -Iinclude -frecord-gcc-switches
+override CFLAGS += $(CFLAGS_REL) -Iinclude -std=gnu89
 endif
 
 # debugging level 0-3
