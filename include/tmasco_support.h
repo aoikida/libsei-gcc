@@ -37,6 +37,10 @@ void __assert_fail (const char *__assertion, const char *__file,
 #ifdef __APPLE__
 ASCO_DECLP(int, __maskrune, (__darwin_ct_rune_t _c, unsigned long _f))
 ASCO_DECLP(int*, __error, (void))
+ASCO_DECLP(size_t, __builtin_object_size, (void * ptr, int type))
+ASCO_DECLP(void* , __builtin___memcpy_chk, (void* dst, const void* src, size_t size, size_t len))
+ASCO_DECLP(void* , __builtin___strcpy_chk, (void* dst, const void* src, size_t len))
+ASCO_DECLP(void* , __builtin___memset_chk, (void *s, int c, size_t n, size_t len))
 #endif 
 
 ASCO_DECLP(size_t, strlen,  (const char*))
@@ -60,6 +64,5 @@ ASCO_DECL(void*, memset, (void *s, int c, size_t n))
 ASCO_DECL(void*, memmove, (void *dest, const void *src, size_t n))
 ASCO_DECL(void*, memmove_bsd, (void *dest, const void *src, size_t n))
 ASCO_DECL(void*, realloc, (void* ptr, size_t size))
-
 
 #endif /* _TMASCO_SUPPORT_H_ */

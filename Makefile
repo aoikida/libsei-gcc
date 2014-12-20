@@ -75,7 +75,7 @@ endif
 # compiler
 TMFLAGS = -fgnu-tm
 ifndef CC
-CC = gcc
+CC = /usr/local/Cellar/gcc/4.9.2/bin/gcc-4.9 
 endif
 
 # pick TM flags for compiler

@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -Wall
+CFLAGS  = -g -O0 -Wall -v
 BUILD   = build
 
 # there are two main targets: ukv-server and ukv-server.tmasco
