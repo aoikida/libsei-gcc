@@ -33,7 +33,7 @@ TARGET_ASCO = ukv-server.asco
 # Libraries and paths
 INCP =
 LIBP =
-LIBS = -lm -ldl
+LIBS = -lm -ldl -lcrt1.o
 
 INCP_ASCO = -I../../include
 LIBP_ASCO = -L../../build
@@ -43,7 +43,7 @@ LIBS_ASCO = -lasco $(LIBS)
 ifeq ($(CC), clang)
 TMFLAGS = -DINC_SUPPORT -ftm -DTMASCO_ENABLED
 else
-CC = gcc
+CC = $(GCC) 
 TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
 endif
 
