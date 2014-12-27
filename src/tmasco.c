@@ -559,7 +559,9 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     }
     DLOG3("Start memcpy, size %d\n", size);
 
-#ifdef COW_WT
+#ifdef COW_WT 
+
+#ifndef COW_APPEND_ONLY 
 
     if (size >= sizeof(uint32_t)) {
         uint32_t len = size;
@@ -613,6 +615,7 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 		DLOG3("End memcpy\n");
 		return (void*) destination;
     }
+#endif
 
 #endif
 
