@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -Wall -v
+CFLAGS  = -g -O0 -Wall -v -Wl,-t -fno-builtin
 BUILD   = build
 
 # there are two main targets: ukv-server and ukv-server.tmasco
@@ -31,9 +31,10 @@ TARGET      = ukv-server
 TARGET_ASCO = ukv-server.asco
 
 # Libraries and paths
+#INCP = -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/tr1/ -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/
 INCP =
 LIBP =
-LIBS = -lm -ldl -lcrt1.o
+LIBS = -lm -ldl -lcrt1.o -lc -fno-builtin
 
 INCP_ASCO = -I../../include
 LIBP_ASCO = -L../../build

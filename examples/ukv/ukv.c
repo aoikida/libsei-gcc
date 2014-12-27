@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "hashtable/hashtable.h"
 #include "ukv.h"
 

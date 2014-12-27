@@ -35,13 +35,14 @@ void __assert_fail (const char *__assertion, const char *__file,
     __attribute__((transaction_pure));
 
 #ifdef __APPLE__
-ASCO_DECLP(int, __maskrune, (__darwin_ct_rune_t _c, unsigned long _f))
-ASCO_DECLP(int*, __error, (void))
-ASCO_DECLP(size_t, __builtin_object_size, (void * ptr, int type))
-ASCO_DECLP(void* , __builtin___memcpy_chk, (void* dst, const void* src, size_t size, size_t len))
-ASCO_DECLP(void* , __builtin___strcpy_chk, (void* dst, const void* src, size_t len))
-ASCO_DECLP(void* , __builtin___memset_chk, (void *s, int c, size_t n, size_t len))
-#endif 
+ASCO_DECL(int, __maskrune, (__darwin_ct_rune_t _c, unsigned long _f))
+ASCO_DECL(int*, __error, (void))
+ASCO_DECL(size_t, __builtin_object_size, (void * ptr, int type))
+ASCO_DECL(void* , __builtin___memcpy_chk, (void* dst, const void* src, size_t size, size_t len))
+ASCO_DECL(void* , __builtin___strcpy_chk, (void* dst, const void* src, size_t len))
+ASCO_DECL(void* , __builtin___memset_chk, (void *s, int c, size_t n, size_t x))
+ASCO_DECL(double, ceil, (double x))
+#endif
 
 ASCO_DECLP(size_t, strlen,  (const char*))
 ASCO_DECLP(int,    strcmp,  (const char*, const char*))
