@@ -76,10 +76,29 @@ _ZGTt6strcmp(const char *s1, const char *s2)
 }
 #endif
 
-int* _ZGT11__error_bsd();
-int* _ZGT11__error()
+int _ZGTt10__maskrune(__darwin_ct_rune_t _c, unsigned long _f)
 {
-    return _ZGT11__error_bsd();
+    return 0;
+}
+
+int* _ZGTt7__error()
+{
+    return (int*) malloc(sizeof(int));
+}
+
+double _ZGTt4ceil(double x)
+{
+    return (double) (((long) x) + 1);
+}
+
+void* _ZGTt12__memset_chk(void* dst, int c, size_t size, size_t len)
+{
+    return NULL;
+}
+
+void* _ZGTt12__strcpy_chk(void* dst, const void* src, size_t len)
+{
+    return NULL;
 }
 
 /* ----------------------------------------------------------------------------

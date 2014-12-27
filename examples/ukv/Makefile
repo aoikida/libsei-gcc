@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -Wall -v -Wl,-t -fno-builtin
+CFLAGS  = -g -O0 -Wall -v -Wl,-t -fno-builtin -DFORTIFY_SOURCE=0
 BUILD   = build
 
 # there are two main targets: ukv-server and ukv-server.tmasco
