@@ -136,7 +136,8 @@ $(BUILD)/tmasco_asm.o: src/tmasco_asm.S
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/tmasco_support.o: src/tmasco_support.c
-	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
+	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -D_FORTIFY_SOURCE=0 \
+	-I include -c -o $@ $<
 
 $(BUILD)/asco-inline.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 	@echo > $(BUILD)/asco-inline.c
