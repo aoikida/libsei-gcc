@@ -16,7 +16,7 @@
 #include "libc/stdlib/strtol.c"
 #include "libc/stdlib/strtoll.c"
 #include "libc/stdlib/strtoul.c"
-#include "libc/stdlib/strtoull.c"
+//#include "libc/stdlib/strtoull.c"
 #include "libc/string/memmove.c"
 #include "libc/string/strdup.c"
 #include "libc/string/strncpy.c"

@@ -29,20 +29,22 @@ handler(state_t* state, input_t* input, uint32_t crc, uint32_t* crco)
 
     // at this point we received the message (input, crc)
     // prepare traversal
-    __asco_prepare(input, sizeof(input_t), crc, 1);
+    if (__asco_prepare(input, sizeof(input_t), crc, 1)) { 
 
-    // asco_begin says next heap is p.
-    __asco_begin(handler);
+        // asco_begin says next heap is p.
+        __asco_begin(handler);
 
-    // Call event handler with input and state.
-    output = foo(state, input);
+        // Call event handler with input and state.
+        output = foo(state, input);
 
-    // jump back to begin() in first execution
-    __asco_end(handler);
+        // jump back to begin() in first execution
+        __asco_end(handler);
 
-    // get message CRC
-    *crco = __asco_output_next();
-
+        // get message CRC
+        *crco = __asco_output_next();
+    } else {
+        printf("skip invalid input\n");
+    }
     return output;
 }
 
@@ -56,13 +58,16 @@ main()
     state_t* state = (state_t*) malloc(sizeof(state_t));
     state->sum = 0;
 
-    // loop for 10 input values
+    // loop for NREQ input values
     for (input.a = 1; input.a <= NREQ; input.a++) {
-        // we receive a message and its CRC
-
+        // Mock: we receive a message and its CRC
+        // we use the input variable with its default value as message and calculate its CRC
         uint32_t crc = crc_compute((const char*)&input, sizeof(input_t));
-        uint32_t crco; // crc of output
 
+        // crc of output 
+        uint32_t crco;
+
+        // we are ready to call the handler
         output_t* output = handler(state, &input, crc, &crco);
 
         // check CRC (this should be done on the receiver)
@@ -80,5 +85,7 @@ main()
     }
 
     free(state);
+
+    printf("done. compared processed %d messages\n", NREQ);
     return 0;
 }

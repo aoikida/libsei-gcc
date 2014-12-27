@@ -4,6 +4,7 @@
 # ------------------------------------------------------------------------------
 
 CFLAGS  = -g -O0 -Wall
+CFLAGS += -fno-builtin -D_FORTIFY_SOURCE=0 -fno-omit-frame-pointer
 BUILD   = build
 
 # there are two main targets: ukv-server and ukv-server.tmasco
@@ -44,7 +45,7 @@ ifeq ($(CC), clang)
 TMFLAGS = -DINC_SUPPORT -ftm -DTMASCO_ENABLED
 else
 CC = gcc
-TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
+TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED # -DCOW_ROPURE
 endif
 
 .PHONY: all clean

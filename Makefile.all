@@ -99,6 +99,11 @@ libasco-cowh.a: | lib
 		CFLAGS="-DCOW_USEHEAP"
 	mv build-cowh/libasco.a lib/libasco-cowh.a
 
+libasco-cowh-opt.a: | lib
+	make BUILD=build-cowh-opt clean all MODE=cow \
+		COW_ASMREAD=1 COW_ROPURE=1 CFLAGS="-DCOW_USEHEAP"
+	mv build-cowh-opt/libasco.a lib/libasco-cowh-opt.a
+
 libasco-cowp.a: | lib
 	make BUILD=build-cowp clean all MODE=cow \
 		CFLAGS="-DHEAP_PROTECT -DCOW_APPEND_ONLY -DCOW_USEHEAP"

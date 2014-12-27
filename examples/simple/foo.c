@@ -7,6 +7,7 @@
 #include "types.h"
 #include "foo.h"
 
+output_t* foo(state_t* state, input_t* input) TMASCO_SAFE;
 output_t*
 foo(state_t* state, input_t* input)
 {

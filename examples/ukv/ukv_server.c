@@ -13,6 +13,9 @@
 
 #include "ukv.h"
 #include "ukv_net.h"
+#ifdef TMASCO_ENABLED
+# include <tmasco.h>
+#endif
 
 #define BUFSIZE 1024
 

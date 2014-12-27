@@ -418,17 +418,21 @@ inline void*
 _ITM_malloc(size_t size)
 {
     if (__asco_ignore_all) {
-	void* r = asco_malloc(__tmasco->asco, size);
-	tmasco_ignore_addr(r, (uint8_t*)r + size);
-	return r;
-    }
-    else    
-    	return asco_malloc(__tmasco->asco, size);
+        void* r = malloc(size); //asco_malloc(__tmasco->asco, size);
+        tmasco_ignore_addr(r, (uint8_t*)r + size);
+        return r;
+    } else return asco_malloc(__tmasco->asco, size);
 }
 
 inline void
 _ITM_free(void* ptr)
 {
+    int i;
+    for (i = 0; i < __asco_ignore_num; ++i)
+            if (ptr == __asco_ignore_addr_s[i]) {
+                free(ptr);
+                return;
+            }
     asco_free(__tmasco->asco, ptr);
 }
 
