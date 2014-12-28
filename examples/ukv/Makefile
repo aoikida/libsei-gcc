@@ -21,7 +21,7 @@ CC = gcc
 # OS-dependent options
 UNAME = $(shell uname -s)
 ifeq ($(UNAME),Darwin)
-	CFLAGS += -v -Wl,-t -fno-builtin -DFORTIFY_SOURCE=0
+	CFLAGS += -v -Wl,-t -fno-builtin -D_FORTIFY_SOURCE=0
 	LIBS += -lcrt1.o -lc
 	CC = $(GCC)
 #INCP = -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/tr1/ -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/
