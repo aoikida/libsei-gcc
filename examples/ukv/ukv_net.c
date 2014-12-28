@@ -25,7 +25,7 @@
 #include <string.h>
 #include "ukv.h"
 
-const char*
+const char* __attribute__((transaction_safe))
 ukv_recv(ukv_t* ukv, const char* msg)
 {
     int cmd = msg[0];

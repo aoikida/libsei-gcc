@@ -25,7 +25,7 @@ static const unsigned int prime_table_length = sizeof(primes)/sizeof(primes[0]);
 static const float max_load_factor = 0.65;
 
 /*****************************************************************************/
-struct hashtable *
+struct hashtable * __attribute__((transaction_safe))
 create_hashtable(unsigned int minsize,
                  unsigned int (*hashf) (void*),
                  int (*eqf) (void*,void*))
@@ -68,7 +68,7 @@ hash(struct hashtable *h, void *k)
 }
 
 /*****************************************************************************/
-static int
+static int __attribute__((transaction_safe))
 hashtable_expand(struct hashtable *h)
 {
     /* Double the size of the table to accomodate more entries */
@@ -134,7 +134,7 @@ hashtable_count(struct hashtable *h)
 }
 
 /*****************************************************************************/
-int
+int __attribute__((transaction_safe))
 hashtable_insert(struct hashtable *h, void *k, void *v)
 {
     /* This method allows duplicate keys - but they shouldn't be used */

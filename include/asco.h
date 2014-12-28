@@ -21,10 +21,16 @@ int     asco_getp(asco_t* asco);
 void    asco_setp(asco_t* asco, int p);
 int     asco_shift(asco_t* asco, int handle);
 
+/* wts functions */
+void*   asco_get_wts(asco_t* asco);
+
+
+/* heap-mode functions */
 void*   asco_malloc2(asco_t* asco, size_t size);
 void    asco_free2(asco_t* asco, void* ptr1, void* ptr2);
 void*   asco_other(asco_t* asco, void* addr);
 
+/* prepare and output functions */
 int      asco_prepare(asco_t* asco, const void* ptr, size_t size, uint32_t crc,
                       int ro);
 void     asco_prepare_nm(asco_t* asco);
@@ -32,6 +38,7 @@ void     asco_output_append(asco_t* asco, const void* ptr, size_t size);
 void     asco_output_done(asco_t* asco);
 uint32_t asco_output_next(asco_t* asco);
 
+/* memory interface */
 uint8_t  asco_read_uint8_t (asco_t* asco, const uint8_t*  addr);
 uint16_t asco_read_uint16_t(asco_t* asco, const uint16_t* addr);
 uint32_t asco_read_uint32_t(asco_t* asco, const uint32_t* addr);

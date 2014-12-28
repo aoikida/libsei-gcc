@@ -7,20 +7,20 @@ TARGETS_DISABLED = 		\
 	libasco-instr.a		\
 	libasco-cowa.a		\
 	libasco-cow.a		\
-	libasco-instr-opt.a	\
 
 
-TARGETS ?= 			\
-	libasco-cow-opt.a	\
-	libasco-cow-opt-mtl.a	\
-	libasco-cow-opt-mtl2.a	\
-	libasco-cow-opt-2pl.a	\
-	libasco-cowa-opt.a	\
-	libasco-cowa-opt-mtl.a	\
-	libasco-cowa-opt-mtl2.a	\
-	libasco-cowa-opt-2pl.a	\
-	libasco-cowa-opt-2plb.a	\
-	libasco-cor.a		\
+TARGETS ?=                  \
+	libasco-instr-opt.a     \
+	libasco-cow-opt.a       \
+	libasco-cow-opt-mtl.a   \
+	libasco-cow-opt-mtl2.a  \
+	libasco-cow-opt-2pl.a   \
+	libasco-cowa-opt.a      \
+	libasco-cowa-opt-mtl.a  \
+	libasco-cowa-opt-mtl2.a \
+	libasco-cowa-opt-2pl.a  \
+	libasco-cowa-opt-2plb.a \
+	libasco-cor.a           \
 	libasco-cor-tbar.a
 
 

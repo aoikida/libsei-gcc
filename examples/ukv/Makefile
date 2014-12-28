@@ -3,11 +3,29 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -Wall
-CFLAGS += -fno-builtin -D_FORTIFY_SOURCE=0 -fno-omit-frame-pointer
+CFLAGS  = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer
 BUILD   = build
 
-# there are two main targets: ukv-server and ukv-server.tmasco
+# Libraries and paths
+INCP =
+LIBP =
+LIBS = -lm -ldl
+
+INCP_ASCO = -I../../include
+LIBP_ASCO = -L../../build
+LIBS_ASCO = -lasco $(LIBS)
+
+TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
+CC = gcc
+
+# OS-dependent options
+UNAME = $(shell uname -s)
+ifeq ($(UNAME),Darwin)
+	CFLAGS += -v -Wl,-t -fno-builtin -DFORTIFY_SOURCE=0
+	LIBS += -lcrt1.o -lc
+	CC = $(GCC)
+#INCP = -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/tr1/ -I/usr/local/Cellar/gcc/4.9.2/lib/gcc/x86_64-apple-darwin14.0.0/4.9.2/include/c++/
+endif
 
 # UKVSRCS are the sources for the ukv core functionality
 UKVSRCS = ukv.c \
@@ -27,27 +45,11 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 
 # $(info $(OBJS))
 
-# The targets
+# there are two main targets: ukv-server and ukv-server.tmasco
 TARGET      = ukv-server
 TARGET_ASCO = ukv-server.asco
 
-# Libraries and paths
-INCP =
-LIBP =
-LIBS = -lm -ldl
-
-INCP_ASCO = -I../../include
-LIBP_ASCO = -L../../build
-LIBS_ASCO = -lasco $(LIBS)
-
-# ASCO specific flags
-ifeq ($(CC), clang)
-TMFLAGS = -DINC_SUPPORT -ftm -DTMASCO_ENABLED
-else
-CC = gcc
-TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED # -DCOW_ROPURE
-endif
-
+# rules
 .PHONY: all clean
 
 all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_ASCO)
@@ -79,3 +81,4 @@ $(BUILD)/ukv_test: ukv_test.c $(addprefix $(BUILD)/, $(UKVSRCS:.c=.o))
 
 $(BUILD)/ukv_net_test: ukv_net_test.c $(addprefix $(BUILD)/, $(UKVNSRC:.c=.o))
 	$(CC) $(CFLAGS) $(INCP) $(LIBP) -o $@ $^ $(LIBS)
+

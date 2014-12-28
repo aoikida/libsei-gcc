@@ -10,15 +10,31 @@ CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG #-DASCO_STATS
 # -Werror
 ifdef DEBUG
-override CFLAGS += $(CFLAGS_DBG) -Iinclude -frecord-gcc-switches
+override CFLAGS += $(CFLAGS_DBG) -Iinclude
 else
-override CFLAGS += $(CFLAGS_REL) -Iinclude -frecord-gcc-switches
+override CFLAGS += $(CFLAGS_REL) -Iinclude -D_FORTIFY_SOURCE=0
+#-U_FORTIFY_SOURCE
 endif
 
 # debugging level 0-3
 ifdef DEBUG
 override CFLAGS += -DDEBUG=$(DEBUG)
 endif
+
+# OS-dependent options
+UNAME=$(shell uname -s)
+
+ifeq ($(UNAME),Darwin)
+INCS = 
+override CFLAGS += -std=gnu89 -arch x86_64 $(INCS)
+else
+ifeq ($(UNAME),Linux)
+override CFLAGS += -frecord-gcc-switches
+else
+$(error OS not supported)
+endif
+endif 
+
 
 # ASCO options
 AFLAGS = -DTMASCO_ENABLED
@@ -40,8 +56,8 @@ ifeq ($(MODE), cor)
 AFLAGS += -DMODE=3 -DASCO_MT
 endif
 else # !MODE
-AFLAGS += -DMODE=1
-MODE=heap
+AFLAGS += -DMODE=2
+MODE=cow
 endif
 
 ifdef COW_ASMREAD
@@ -73,17 +89,22 @@ AFLAGS += -DASCO_TBAR
 endif
 
 # compiler
-TMFLAGS = -fgnu-tm
 ifndef CC
+ifeq ($(UNAME),Darwin)
+CC = /usr/local/Cellar/gcc/4.9.2/bin/gcc-4.9 
+else
 CC = gcc
+endif
 endif
 
 # pick TM flags for compiler
+TMFLAGS = -fgnu-tm
 ifeq ($(CC), clang)
 TMFLAGS = -ftm
 endif
 
 $(info ======================)
+$(info UNAME : $(UNAME))
 $(info MODE  : $(MODE))
 $(info DEBUG : $(DEBUG))
 $(info CFLAGS: $(CFLAGS))
@@ -136,8 +157,7 @@ $(BUILD)/tmasco_asm.o: src/tmasco_asm.S
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/tmasco_support.o: src/tmasco_support.c
-	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -D_FORTIFY_SOURCE=0 \
-	-I include -c -o $@ $<
+	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/asco-inline.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 	@echo > $(BUILD)/asco-inline.c

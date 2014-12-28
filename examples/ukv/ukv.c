@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "hashtable/hashtable.h"
 #include "ukv.h"
 
@@ -44,7 +45,7 @@ eqfn(void* k1, void* k2)
  * constructor/destructor
  * -------------------------------------------------------------------------- */
 
-ukv_t*
+ukv_t* __attribute__((transaction_safe))
 ukv_init()
 {
     ukv_t* ukv = (ukv_t*) malloc(sizeof(ukv_t));
@@ -77,7 +78,7 @@ ukv_get(ukv_t* ukv, const char* key)
     return value;
 }
 
-const char*
+const char* __attribute__((transaction_safe))
 ukv_set(ukv_t* ukv, char* key, char* value)
 {
     assert (ukv != NULL);

@@ -76,60 +76,31 @@ _ZGTt6strcmp(const char *s1, const char *s2)
 }
 #endif
 
-/* ----------------------------------------------------------------------------
- * clang tricks
- * ------------------------------------------------------------------------- */
+#ifdef __APPLE__
 
-#ifdef USE_CLANG
-/* ___string_mock() calls all functions from libc string inside a
- * transaction. This forces the compiler to generate a transactional
- * version from each of these functions.
- *
- * Note that ___string_mock() does invalid calls and should never be
- * called by any real code.
- */
-
-void*
-___string_mock() {
-    assert (0 && "this function should never be called");
-
-    __transaction_atomic {
-
-        char* str1 = "hello";
-        char* str2 = "world";
-
-        // strdup and strndup
-        char* x = strdup(str1);
-        x = strndup(str1, 2);
-
-        size_t s = strlen(str1);
-
-        // strcpy and strncpy
-        x = strcpy(str1, str2);
-        x = strncpy(str1, str2, 1);
-
-        // memcpy
-        void* y = memcpy(str1, str2, 10);
-
-        // memcmp
-        if (memcmp(str1, str2, 2) == 0) {
-            ;
-        }
-
-        // strncmp
-        if (strncmp(str1, str2, 2) == 0) {
-            ;
-        }
-        if (strchr(str1, '\n') == NULL) {
-            ;
-        }
-
-
-        // remove 'unused variable' warnings
-        y = x;
-        y = str1 + s;
-        y = str2;
-        return y;
-    }
+int _ZGTt10__maskrune(__darwin_ct_rune_t _c, unsigned long _f)
+{
+    return 0;
 }
-#endif
+
+int* _ZGTt7__error()
+{
+    return (int*) malloc(sizeof(int));
+}
+
+double _ZGTt4ceil(double x)
+{
+    return (double) (((long) x) + 1);
+}
+
+void* _ZGTt12__memset_chk(void* dst, int c, size_t size, size_t len)
+{
+    return NULL;
+}
+
+void* _ZGTt12__strcpy_chk(void* dst, const void* src, size_t len)
+{
+    return NULL;
+}
+#endif /* __APPLE__ */
+
