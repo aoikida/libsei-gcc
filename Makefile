@@ -8,18 +8,32 @@ CFLAGS_DBG  = -msse4.2 -g -O0 -Wall #-Werror
 	#-DASCO_STACK_INFO
 	#-DASCO_STACK_INFO_CMD=
 CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG #-DASCO_STATS
-INCS = 
 # -Werror
 ifdef DEBUG
-override CFLAGS += $(CFLAGS_DBG) $(INCS) -arch x86_64 -Iinclude -std=gnu89
+override CFLAGS += $(CFLAGS_DBG) -Iinclude
 else
-override CFLAGS += $(CFLAGS_REL) $(INCS) -arch x86_64 -Iinclude -std=gnu89
+override CFLAGS += $(CFLAGS_REL) -Iinclude
 endif
 
 # debugging level 0-3
 ifdef DEBUG
 override CFLAGS += -DDEBUG=$(DEBUG)
 endif
+
+# OS-dependent options
+UNAME=$(shell uname -s)
+
+ifeq ($(UNAME),Darwin)
+INCS = 
+override CFLAGS += -std=gnu89 -arch x86_64 $(INCS)
+else
+ifeq ($(UNAME),Linux)
+# no options
+else
+$(error OS not supported)
+endif
+endif 
+
 
 # ASCO options
 AFLAGS = -DTMASCO_ENABLED
@@ -41,8 +55,8 @@ ifeq ($(MODE), cor)
 AFLAGS += -DMODE=3 -DASCO_MT
 endif
 else # !MODE
-AFLAGS += -DMODE=1
-MODE=heap
+AFLAGS += -DMODE=2
+MODE=cow
 endif
 
 ifdef COW_ASMREAD
@@ -85,6 +99,7 @@ TMFLAGS = -ftm
 endif
 
 $(info ======================)
+$(info UNAME : $(UNAME))
 $(info MODE  : $(MODE))
 $(info DEBUG : $(DEBUG))
 $(info CFLAGS: $(CFLAGS))
