@@ -118,12 +118,7 @@ SRCS    = heap.c cow.c asco.c tmasco.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c wts.c
 SUPPORT = tmasco_support.c
 LIBASCO = libasco.a
-
-ifdef DEBUG
-OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
-else
-OBJS    = $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
-endif
+OBJS    =
 
 ifndef TMASCO_NOASM
 OBJS   += $(BUILD)/tmasco_asm.o
@@ -131,6 +126,12 @@ endif
 
 ifdef COW_ASMREAD
 OBJS   += $(BUILD)/tmasco_read.o
+endif
+
+ifdef DEBUG
+OBJS   += $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
+else
+OBJS   += $(BUILD)/asco-inline.o $(BUILD)/tmasco_support.o
 endif
 
 # TESTS
@@ -153,7 +154,7 @@ $(BUILD):
 $(BUILD)/tmasco_read.o: src/tmasco_read.S
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/tmasco_asm.o: src/tmasco_asm.S
+$(BUILD)/tmasco_asm.o: src/tmasco_asm.S | $(BUILD)
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/tmasco_support.o: src/tmasco_support.c
