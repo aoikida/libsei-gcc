@@ -22,7 +22,6 @@
 #include "cfc.h"
 #include "stash.h"
 #include "config.h"
-#include "asco-cow_mode.h"
 
 #ifdef ASCO_WRAP_SC
 #include "wts.h"
