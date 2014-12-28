@@ -13,9 +13,7 @@
 
 #include "ukv.h"
 #include "ukv_net.h"
-#ifdef TMASCO_ENABLED
-# include <tmasco.h>
-#endif
+#include <tmasco.h>
 
 #define BUFSIZE 1024
 
@@ -63,20 +61,11 @@ main(const int argc, const char* argv[])
     }
 
     // initialize ukv service
-#ifndef TMASCO_ENABLED
     ukv_t* ukv = ukv_init();
-#else
-    ukv_t* ukv1 = NULL;
-    ukv_t* ukv2 = NULL;
-
+    __asco_prepare_nm();
     __asco_begin(1);
-    ukv2 = ukv_init();
-    __asco_switch(1);
-    ukv1 = ukv2;
-    __asco_commit(1);
-
-    printf("ukv1 = %p ukv2 = %p\n", ukv1, ukv2);
-#endif
+    ukv = ukv_init();
+    __asco_end(1);
 
     while (1) {
 
@@ -97,6 +86,7 @@ main(const int argc, const char* argv[])
         // once a connection is accepted, read from the connection
         // until it is closed
         while (1) {
+            const char* r = NULL;
             read = recvfrom(cfd, buffer, BUFSIZE, 0,
                             (struct sockaddr*) &caddr, &len);
             if (read <= 0) {
@@ -110,59 +100,32 @@ main(const int argc, const char* argv[])
             // we assume that we received the whole message. This is
             // definitely not correct.
 
-#ifndef TMASCO_ENABLED
-            const char* r =  ukv_recv(ukv, buffer);
+            __asco_prepare_nm();
+            __asco_begin(2);
+            r =  ukv_recv(ukv, buffer);
+            __asco_end(2);
             if (!r) goto fini;
 
             sendto(cfd, r, strlen(r), 0,
                    (struct sockaddr*) &caddr, sizeof(caddr));
             printf("replied: %s\n", r);
 
-            ukv_done(ukv, r);
-#else
-            ukv_t* ukv = ukv1;
-            const char* r1 = NULL;
-            const char* r2 = NULL;
-            __asco_begin(2);
-            r2 = ukv_recv(ukv, buffer);
-            __asco_switch(2);
-            r1 = r2;
-            ukv = ukv2;
-            __asco_commit(2);
-            printf ("r1 = %p r2 = %p\n", r1, r2);
-
-            if (!r1) goto fini;
-
-            assert (strcmp(r1, r2) == 0);
-
-            printf("replied: %s\n", r1);
-            sendto(cfd, r1, strlen(r1), 0,
-                   (struct sockaddr*) &caddr, sizeof(caddr));
-
-            ukv = ukv1;
+            __asco_prepare_nm();
             __asco_begin(3);
-            ukv_done(ukv, r1);
-            __asco_switch(3);
-            r1 = r2;
-            ukv = ukv2;
-            __asco_commit(3);
+            ukv_done(ukv, r);
+            __asco_end(3);
+
             printf("---------------------\n");
-#endif
         }
         close(cfd);
     }
   fini:
     close(fd);
 
-#ifndef TMASCO_ENABLED
-    ukv_fini(ukv);
-#else
+    __asco_prepare_nm();
     __asco_begin(4);
-    ukv_fini(ukv1);
-    __asco_switch(4);
-    ukv1 = ukv2;
-    __asco_commit(4);
-#endif
+    ukv_fini(ukv);
+    __asco_end(4);
 
     return 0;
 }

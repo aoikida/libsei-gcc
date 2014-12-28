@@ -7,7 +7,7 @@ CFLAGS  = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer
 BUILD   = build
 
 # Libraries and paths
-INCP =
+INCP = -I../../include
 LIBP =
 LIBS = -lm -ldl
 
