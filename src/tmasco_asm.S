@@ -82,7 +82,7 @@ _ITM_beginTransaction:
 	// for the first argument passed to beginTransaction, so we
 	// overwrite it.
 	movq	%rsp, %rdi
-	call	tmasco_begin
+	call	_tmasco_begin
 
 	/* function epilogue typically looks like this:
 
@@ -109,15 +109,15 @@ _ITM_beginTransaction.end:
 	.size	_ITM_beginTransaction, .- _ITM_beginTransaction
 #endif
 
-/* --- tmasco_switch ------------------------------------------------------- */
+/* --- _tmasco_switch ------------------------------------------------------- */
 	.text
 	.align	4
-	.globl	tmasco_switch
+	.globl	_tmasco_switch
 #ifndef __APPLE__	
-	.type	tmasco_switch, @function
+	.type	_tmasco_switch, @function
 #endif
 
-tmasco_switch:
+_tmasco_switch:
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -139,21 +139,21 @@ tmasco_switch:
 	// now return
 	jmpq *%rdx
 
-tmasco_switch.end:
+_tmasco_switch.end:
 #ifndef __APPLE__	
-	.size	tmasco_switch, .- tmasco_switch
+	.size	_tmasco_switch, .- _tmasco_switch
 #endif
 
 
 /* --- tmasco_switch2 ------------------------------------------------------ */
 	.text
 	.align	4
-	.globl	tmasco_switch2
+	.globl	_tmasco_switch2
 #ifndef __APPLE__
-	.type   tmasco_switch2, @function
+	.type   _tmasco_switch2, @function
 #endif
 
-tmasco_switch2:
+_tmasco_switch2:
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -167,7 +167,7 @@ tmasco_switch2:
 	movq       %rcx,  %r15  // rcx caller-save
 	
 	// copy whole context using rdi, rsi, rdx
-	call	memcpy
+	call	_memcpy
 
 	movq       %r15, %rcx   // restore rcx
 	movq	40(%rcx), %r15	// restore callee-save register
@@ -182,7 +182,7 @@ tmasco_switch2:
 	// now return
 	jmpq *%rdx
 
-tmasco_switch2.end:
+_tmasco_switch2.end:
 #ifndef __APPLE__	
-	.size	tmasco_switch2, .- tmasco_switch2
+	.size	_tmasco_switch2, .- _tmasco_switch2
 #endif
