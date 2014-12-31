@@ -4,6 +4,13 @@
 ** Distributed under the MIT license. See accompanying file LICENSE.
 ** ------------------------------------------------------------------------- */
 
+/* function prefix */
+#ifdef __APPLE__
+# define FUNC(X) _##X
+#else
+# define FUNC(X) X
+#endif
+
 /*
 ** There are two things we do in assembly:
 ** 1. we save the caller stack boundaries to be able to filter out calls to
@@ -82,7 +89,7 @@ _ITM_beginTransaction:
 	// for the first argument passed to beginTransaction, so we
 	// overwrite it.
 	movq	%rsp, %rdi
-	call	tmasco_begin
+	call	FUNC(tmasco_begin)
 
 	/* function epilogue typically looks like this:
 
@@ -105,20 +112,19 @@ _ITM_beginTransaction.end:
 	// Every function terminated with a .size line which tells the
 	// assembler to calculate the distance from here up to the
 	// _ITM_beginTransaction label.
-#ifndef __APPLE__
+#ifndef __APPLE__	
 	.size	_ITM_beginTransaction, .- _ITM_beginTransaction
 #endif
-
 
 /* --- tmasco_switch ------------------------------------------------------- */
 	.text
 	.align	4
-#ifndef __APPLE__
-	.globl	tmasco_switch
-	.type	tmasco_switch, @function
+	.globl	FUNC(tmasco_switch)
+#ifndef __APPLE__	
+	.type	FUNC(tmasco_switch), @function
 #endif
 
-tmasco_switch:
+FUNC(tmasco_switch):
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -140,20 +146,21 @@ tmasco_switch:
 	// now return
 	jmpq *%rdx
 
-tmasco_switch.end:
-#ifndef __APPLE__
-	.size	tmasco_switch, .- tmasco_switch
+FUNC(tmasco_switch.end):
+#ifndef __APPLE__	
+	.size	FUNC(tmasco_switch), .- FUNC(tmasco_switch)
 #endif
+
 
 /* --- tmasco_switch2 ------------------------------------------------------ */
 	.text
 	.align	4
+	.globl	FUNC(tmasco_switch2)
 #ifndef __APPLE__
-	.globl	tmasco_switch2
-	.type   tmasco_switch2, @function
+	.type   FUNC(tmasco_switch2), @function
 #endif
 
-tmasco_switch2:
+FUNC(tmasco_switch2):
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -167,7 +174,7 @@ tmasco_switch2:
 	movq       %rcx,  %r15  // rcx caller-save
 	
 	// copy whole context using rdi, rsi, rdx
-	call	memcpy
+	call	FUNC(memcpy)
 
 	movq       %r15, %rcx   // restore rcx
 	movq	40(%rcx), %r15	// restore callee-save register
@@ -182,7 +189,7 @@ tmasco_switch2:
 	// now return
 	jmpq *%rdx
 
-tmasco_switch2.end:
+FUNC(tmasco_switch2.end):
 #ifndef __APPLE__	
-	.size	tmasco_switch2, .- tmasco_switch2
+	.size	FUNC(tmasco_switch2), .- FUNC(tmasco_switch2)
 #endif
