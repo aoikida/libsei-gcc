@@ -27,9 +27,9 @@ main(const int argc, const char* argv[])
         return EXIT_FAILURE;
     }
 
-    int fd, cfd, port;
+	int fd, cfd, port;
 	uint32_t crc; 
-    struct sockaddr_in addr, caddr;
+	struct sockaddr_in addr, caddr;
 	ssize_t read, msg_len;
 	socklen_t len;
 	char buffer[BUFSIZE+1];
@@ -38,7 +38,7 @@ main(const int argc, const char* argv[])
 	ukv_t* ukv;
 
 	len   = sizeof(caddr);
-    port  = atoi(argv[1]);
+	port  = atoi(argv[1]);
 	state = INIT;
 
 	while(1) {
@@ -98,7 +98,7 @@ main(const int argc, const char* argv[])
 				// once a connection is accepted, read from the connection
 				// until it is closed
 				read = recvfrom(cfd, buffer, BUFSIZE, 0,
-							   	(struct sockaddr*) &caddr, &len);
+			   	                (struct sockaddr*) &caddr, &len);
 				if (read <= 0) {
 					perror("recvfrom");
 					close(cfd);
@@ -159,10 +159,10 @@ main(const int argc, const char* argv[])
 				memcpy(response, &ocrc, sizeof(int));
 				memcpy(response + sizeof(int), r, strlen(r));
 				sendto(cfd, response, msg_len, 0,
-					   (struct sockaddr*) &caddr, sizeof(caddr));
+				       (struct sockaddr*) &caddr, sizeof(caddr));
 #else
 				sendto(cfd, r, strlen(r), 0,
-					   (struct sockaddr*) &caddr, sizeof(caddr));
+				       (struct sockaddr*) &caddr, sizeof(caddr));
 #endif
 				printf("replied: %s", r);
 
