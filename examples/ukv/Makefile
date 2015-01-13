@@ -3,17 +3,18 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS  = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer
+CFLAGS  = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer 
 BUILD   = build
 
 # Libraries and paths
-INCP = -I../../include
-LIBP =
+INCP = -I../../include 
+LIBP = 
 LIBS = -lm -ldl
 
-INCP_ASCO = -I../../include
-LIBP_ASCO = -L../../build
-LIBS_ASCO = -lasco $(LIBS)
+SRCP_ASCO = ../../src
+INCP_ASCO = -I../../include -I../../src
+LIBP_ASCO = -L../../lib
+LIBS_ASCO = -lasco-cowa-opt $(LIBS)
 
 TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
 CC = gcc
@@ -39,6 +40,8 @@ UKVNSRC = ukv_net.c $(UKVSRCS)
 # UKVSERV are the sources for the real networking
 UKVSERV = ukv_server.c $(UKVNSRC)
 
+UKVCLNT = ukv_client.c $(SRCP_ASCO)/crc.c
+
 # The following variables keep the complete sources
 SRCS    = $(UKVSERV)
 OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
@@ -48,11 +51,12 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 # there are two main targets: ukv-server and ukv-server.tmasco
 TARGET      = ukv-server
 TARGET_ASCO = ukv-server.asco
+TARGET_CLNT = ukv-client
 
 # rules
 .PHONY: all clean
 
-all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_ASCO)
+all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_ASCO) $(BUILD)/$(TARGET_CLNT)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -68,6 +72,9 @@ $(BUILD)/$(TARGET_ASCO): tmasco_glue.c
 	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_ASCO) -o $@ $< \
 	$(LIBP_ASCO) $(LIBS_ASCO)
 
+$(BUILD)/$(TARGET_CLNT): ukv_client.c $(SRCP_ASCO)/crc.c
+	$(CC) -msse4.2 $(LIBP) $(INCP_ASCO) -o $@ $^ $(LIBS) 
+
 clean:
 	rm -rf $(BUILD)
 
@@ -81,4 +88,3 @@ $(BUILD)/ukv_test: ukv_test.c $(addprefix $(BUILD)/, $(UKVSRCS:.c=.o))
 
 $(BUILD)/ukv_net_test: ukv_net_test.c $(addprefix $(BUILD)/, $(UKVNSRC:.c=.o))
 	$(CC) $(CFLAGS) $(INCP) $(LIBP) -o $@ $^ $(LIBS)
-
