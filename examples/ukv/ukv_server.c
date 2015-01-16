@@ -22,10 +22,10 @@ enum {INIT, ACCT, RECV, PROC, SEND, FINI, CORR} state;
 int
 main(const int argc, const char* argv[])
 {
-    if (argc < 2) {
-        printf("usage: %s <port>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+	if (argc < 2) {
+		printf("usage: %s <port>\n", argv[0]);
+		return EXIT_FAILURE;
+	}
 
 	int fd, cfd, port;
 	uint32_t crc; 

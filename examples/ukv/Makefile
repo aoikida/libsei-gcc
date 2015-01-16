@@ -13,8 +13,8 @@ LIBS = -lm -ldl
 
 SRCP_ASCO = ../../src
 INCP_ASCO = -I../../include -I../../src
-LIBP_ASCO = -L../../lib
-LIBS_ASCO = -lasco-cowa-opt $(LIBS)
+LIBP_ASCO = -L../../build
+LIBS_ASCO = -lasco $(LIBS)
 
 TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
 CC = gcc
