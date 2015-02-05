@@ -103,10 +103,10 @@ main(int argc, char** args) {
 	size_t   ilen, olen;
 
 	/* initialize the state using a hardened event handler which will be
-	 * executed twice. Since no message is received, use a local handler */
-	__begin_lh();
+	 * executed twice. Since no message is received, use __begin_nm - no message */
+	__begin_nm();
 	init_counter();
-	__end_lh();
+	__end_nm();
 
 	while(1) {
 		ilen = recv_msg_and_crc(&imsg, &crc);
