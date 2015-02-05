@@ -11,7 +11,7 @@
 #define BUFSIZE 1024
 
 /* counter represents the global state we wish to protect. All updates of the
- * state should be carried out within an event handler. */
+ * state should be carried out within a hardened handler. */
 size_t counter;
 
 FILE *ifile = NULL, *ofile = NULL;
