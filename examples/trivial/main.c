@@ -10,7 +10,9 @@
 
 #define BUFSIZE 1024
 
-size_t counter = 0;
+/* counter represents the global state we wish to protect. All updates of the
+ * state should be carried out within an event handler. */
+size_t counter;
 
 FILE *ifile = NULL, *ofile = NULL;
 char* buffer;
@@ -23,6 +25,11 @@ void exit(int status) TMASCO_PURE;
 FILE *fopen(const char *path, const char *mode) TMASCO_PURE;
 int fclose(FILE *fp) TMASCO_PURE;
 int sprintf(char *str, const char *format, ...) TMASCO_PURE;
+
+/* initialize the state */
+void init_counter() {
+	counter = 0;
+}
 
 /* extract crc from the message
  * to simplify the example we read input messages from a file */
@@ -95,11 +102,16 @@ main(int argc, char** args) {
 	uint32_t crc;
 	size_t   ilen, olen;
 
+	/* initialize the state using a hardened event handler which will be
+	 * executed twice. Since no message is received, use a local handler */
+	__begin_lh();
+	init_counter();
+	__end_lh();
+
 	while(1) {
 		ilen = recv_msg_and_crc(&imsg, &crc);
 
-		/* hardened event handler, will be executed twice
-		 * __begin checks if incoming message is correct
+		/* __begin checks if incoming message is correct
 		 * must be called within if-statement   */
 		if (__begin(imsg, ilen, crc)) { 
 
