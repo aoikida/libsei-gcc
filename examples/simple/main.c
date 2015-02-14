@@ -3,7 +3,7 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------- */
 
-#include "sei.h"
+#include <sei.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
