@@ -1,4 +1,4 @@
-#include <tmasco.h>
+#include <sei.h>
 
 size_t strlen(const char *s) TMASCO_PURE;
 int strcmp(const char *s1, const char *s2) TMASCO_PURE;

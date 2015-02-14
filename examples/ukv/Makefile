@@ -12,7 +12,7 @@ LIBP =
 LIBS = -lm -ldl
 
 SRCP_ASCO = ../../src
-INCP_ASCO = -I../../include -I../../src
+INCP_ASCO = -I../../include
 LIBP_ASCO = -L../../build
 LIBS_ASCO = -lasco $(LIBS)
 
@@ -40,7 +40,7 @@ UKVNSRC = ukv_net.c $(UKVSRCS)
 # UKVSERV are the sources for the real networking
 UKVSERV = ukv_server.c $(UKVNSRC)
 
-UKVCLNT = ukv_client.c $(SRCP_ASCO)/crc.c
+UKVCLNT = ukv_client.c 
 
 # The following variables keep the complete sources
 SRCS    = $(UKVSERV)
@@ -68,12 +68,12 @@ $(BUILD)/%.o : %.c | $(BUILD)
 $(BUILD)/$(TARGET): $(OBJS)
 	$(CC) $(LIBP) -o $@ $^ $(LIBS)
 
-$(BUILD)/$(TARGET_ASCO): tmasco_glue.c
+$(BUILD)/$(TARGET_ASCO): sei_glue.c
 	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_ASCO) -o $@ $< \
 	$(LIBP_ASCO) $(LIBS_ASCO)
 
-$(BUILD)/$(TARGET_CLNT): ukv_client.c $(SRCP_ASCO)/crc.c
-	$(CC) -msse4.2 $(LIBP) $(INCP_ASCO) -o $@ $^ $(LIBS) 
+$(BUILD)/$(TARGET_CLNT): ukv_client.c 
+	$(CC) $(LIBP) $(INCP_ASCO) $(LIBP_ASCO) -o $@ $^ $(LIBS_ASCO) 
 
 clean:
 	rm -rf $(BUILD)

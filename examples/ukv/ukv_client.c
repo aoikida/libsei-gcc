@@ -11,8 +11,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "crc.h"
-
 #define BUFSIZE 1024
 
 int
