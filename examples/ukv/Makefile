@@ -50,8 +50,8 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 
 # there are two main targets: ukv-server and ukv-server.tmasco
 TARGET      = ukv-server
-TARGET_ASCO = ukv-server.asco
-TARGET_CLNT = ukv-client
+TARGET_ASCO = ukv-server.sei
+TARGET_CLNT = ukv-client.sei
 
 # rules
 .PHONY: all clean

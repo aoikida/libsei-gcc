@@ -101,6 +101,7 @@ main(const int argc, const char* argv[])
 				if (read <= 0) {
 					perror("recvfrom");
 					close(cfd);
+
 					state = ACCT;
 					break;
 				}
