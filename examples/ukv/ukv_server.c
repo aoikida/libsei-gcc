@@ -76,10 +76,9 @@ main(const int argc, const char* argv[])
 
 				// initialize ukv service
 				ukv = ukv_init();
-				__asco_prepare_nm();
-				__asco_begin(1);
+				__begin_nm();
 				ukv = ukv_init();
-				__asco_end(1);
+				__end_nm();
 
 				state = ACCT;
 				break;
@@ -125,34 +124,37 @@ main(const int argc, const char* argv[])
 				break;
 			}
 			case PROC: {
-				// check CRC of the incoming message
-				if (!__asco_prepare(msg, msg_len, crc, 0)) {
-					// the message is corrupted, drop it
-					state = CORR;
-					break;
-				}
 
 				r = NULL;
+				// check CRC of the incoming message
+				if (__begin(msg, msg_len, crc)) {
 
-				__asco_begin(2);
-				r =  ukv_recv(ukv, msg);
+					r =  ukv_recv(ukv, msg);
 
-				// calculate CRC of the response message
-				__asco_output_append(r, strlen(r));
-				__asco_output_done();
+					// calculate CRC of the response message
+					__output_append(r, strlen(r));
 
-				__asco_end(2);
-				if (!r) 
-					state = FINI;
-				else
-					state = SEND;
+					// since the message is complete, finalize CRC
+					__output_done();
+
+					__end();
+
+					if (!r) 
+						state = FINI;
+					else
+						state = SEND;
+
+				} else {
+					// the message is corrupted, drop it
+					state = CORR;
+				}
 
 				break;
 			}
 			case SEND: {
 #ifdef TMASCO_ENABLED
 				// read the calculated CRC and add it to the response
-				uint32_t ocrc =  __asco_output_next();
+				uint32_t ocrc =  __crc_pop();
 				msg_len = sizeof(uint32_t) + strlen(r);
 				char response[msg_len];
 
@@ -166,10 +168,9 @@ main(const int argc, const char* argv[])
 #endif
 				printf("replied: %s", r);
 
-				__asco_prepare_nm();
-				__asco_begin(3);
+				__begin_nm();
 				ukv_done(ukv, r);
-				__asco_end(3);
+				__end_nm();
 				printf("---------------------\n");
 				
 				state = RECV;
@@ -179,21 +180,20 @@ main(const int argc, const char* argv[])
 				// if we received a corrupted message, send a response to the
 				// client anyway
 				char* reply;
-				__asco_prepare_nm();
-				__asco_begin(4);
+				__begin_nm();
 				reply = strdup("%error\r\n");
 				if (!r)
 					return EXIT_FAILURE;
 
-				__asco_output_append(reply, strlen(reply));
-				__asco_output_done();
+				__output_append(reply, strlen(reply));
+				__output_done();
 
-				__asco_end(4);
+				__end_nm();
 				printf("replied: %s", reply);
 				printf("---------------------\n");
 
 #ifdef TMASCO_ENABLED
-				uint32_t ocrc =  __asco_output_next();
+				uint32_t ocrc =  __crc_pop();
 				msg_len = sizeof(uint32_t) + strlen(reply);
 				char response[msg_len];
 
@@ -213,10 +213,9 @@ main(const int argc, const char* argv[])
 			}
 			case FINI: 
 				close(fd);
-				__asco_prepare_nm();
-				__asco_begin(5);
+				__begin_nm();
 				ukv_fini(ukv);
-				__asco_end(5);
+				__end_nm();
 
 				return 0;
 		}
