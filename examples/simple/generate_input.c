@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "crc.h"
+#include <stdint.h>
 
 int
 main(const int argc, const char* argv[])

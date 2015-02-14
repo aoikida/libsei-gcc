@@ -12,20 +12,16 @@ INCP_ASCO = -I../../include
 LIBP_ASCO = -L../../build
 LIBS_ASCO = -lasco $(LIBS)
 
-# Needed for generate_input
-INCP_ASCO+= -I../../src
-SRCP_ASCO = ../../src
-
 .PHONY: all clean
 
-all: trivial generate_input
+all: simple generate_input
 
-trivial: $(SRCS)
+simple: $(SRCS)
 	$(CC) $(CFLAGS) $(AFLAGS) $(INCP_ASCO) $(LIBP_ASCO) \
 		-o $@ $(SRCS) $(LIBS_ASCO) 
 
-generate_input: generate_input.c $(SRCP_ASCO)/crc.c
-	$(CC) -msse4.2 $(INCP_ASCO) -o $@ $^ 
+generate_input: generate_input.c
+	$(CC) $(INCP_ASCO) $(LIBP_ASCO) -o $@ $^ $(LIBS_ASCO)
 
 clean:
-	rm -f trivial generate_input
+	rm -f simple generate_input
