@@ -20,11 +20,11 @@ char* buffer;
 /* library calls within event handlers need to be annotated with TMASCO_PURE to
  * instruct the compiler not to instrument them */
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, 
-				FILE *stream) TMASCO_PURE;
-void exit(int status) TMASCO_PURE;
-FILE *fopen(const char *path, const char *mode) TMASCO_PURE;
-int fclose(FILE *fp) TMASCO_PURE;
-int sprintf(char *str, const char *format, ...) TMASCO_PURE;
+              FILE *stream) TMASCO_PURE;
+void   exit(int status) TMASCO_PURE;
+FILE*  fopen(const char *path, const char *mode) TMASCO_PURE;
+int    fclose(FILE *fp) TMASCO_PURE;
+int    sprintf(char *str, const char *format, ...) TMASCO_PURE;
 
 /* initialize the state */
 void init_counter() {
