@@ -11,10 +11,10 @@ INCP = -I../../include
 LIBP = 
 LIBS = -lm -ldl
 
-SRCP_ASCO = ../../src
-INCP_ASCO = -I../../include
-LIBP_ASCO = -L../../build
-LIBS_ASCO = -lasco $(LIBS)
+SRCP_SEI = ../../src
+INCP_SEI = -I../../include
+LIBP_SEI = -L../../build
+LIBS_SEI = -lasco $(LIBS)
 
 TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
 CC = gcc
@@ -50,13 +50,13 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 
 # there are two main targets: ukv-server and ukv-server.tmasco
 TARGET      = ukv-server
-TARGET_ASCO = ukv-server.sei
+TARGET_SEI  = ukv-server.sei
 TARGET_CLNT = ukv-client.sei
 
 # rules
 .PHONY: all clean
 
-all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_ASCO) $(BUILD)/$(TARGET_CLNT)
+all: $(BUILD)/$(TARGET) $(BUILD)/$(TARGET_SEI) $(BUILD)/$(TARGET_CLNT)
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -68,12 +68,12 @@ $(BUILD)/%.o : %.c | $(BUILD)
 $(BUILD)/$(TARGET): $(OBJS)
 	$(CC) $(LIBP) -o $@ $^ $(LIBS)
 
-$(BUILD)/$(TARGET_ASCO): sei_glue.c
-	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_ASCO) -o $@ $< \
-	$(LIBP_ASCO) $(LIBS_ASCO)
+$(BUILD)/$(TARGET_SEI): sei_glue.c
+	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_SEI) -o $@ $< \
+	$(LIBP_SEI) $(LIBS_SEI)
 
 $(BUILD)/$(TARGET_CLNT): ukv_client.c 
-	$(CC) $(LIBP) $(INCP_ASCO) $(LIBP_ASCO) -o $@ $^ $(LIBS_ASCO) 
+	$(CC) $(LIBP) $(INCP_SEI) $(LIBP_SEI) -o $@ $^ $(LIBS_SEI) 
 
 clean:
 	rm -rf $(BUILD)
