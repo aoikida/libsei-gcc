@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #define TMASCO_IMPL
-#include <tmasco_support.h>
+#include <support/tmasco_support.h>
 
 
 /* ----------------------------------------------------------------------------
