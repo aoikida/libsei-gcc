@@ -122,4 +122,7 @@ void  tmasco_unprotect(void* addr, size_t size);
 
 #endif
 
+#define SEI_PURE TMASCO_PURE
+#define SEI_SAFE TMASCO_SAFE
+
 #endif /* _TMASCO_H_ */
