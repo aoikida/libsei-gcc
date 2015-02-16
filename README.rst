@@ -1,15 +1,18 @@
-libasco
+libsei
 =======
 
+libsei is a library designed to automatically harden crash-tolerant distributed
+systems. libsei does not require re-developing the system from scratch, enabling
+existing code to be hardened with minimal effort.
+
+
+Compilation
+-----------
 
 Compile the library::
 
   % make [OPTIONS]
 
-
-Then copy ``build/libasco.a`` to your somewhere in your
-LD_LIBRARY_PATH and copy ``include/*.h`` to an include directory used
-by your compiler.
 
 Options are:
 
@@ -20,6 +23,11 @@ Options are:
 - ``MODE=heap|cow``: ``heap`` use two heaps and ``cow`` uses only
   copy-on-write buffers.
 
+
+Copy ``build/libasco.a`` to a directory in your LD_LIBRARY_PATH and copy
+``include/*.h`` to an include directory used by your compiler. See
+``examples/simple`` for a template Makefile that demonstrates compilation of the
+target application against libsei.
 
 COW mode
 ~~~~~~~~
@@ -37,10 +45,26 @@ COW mode comes in the following flavors:
 .. and ``instr`` only instruments the code.
 
 
-Example:
+libsei interface
+----------------
+
+if (__begin(...)) {
+  //handler code
+
+  __end();
+} else 
+  continue; // skip corrupted message
+
+If the input message is modified during traversal, __begin_rw(...) and
+__end_rw() should be used instead.
+
+If the handler is local, i.e., it updates global state without receiving any
+input message, __begin_nm() and __end_nm() can be used.
+
+Examples
 --------
 
-See ``examples/ukv``.
+See ``examples/simple`` and ``examples/ukv``.
 
 ..
    Step into example and call::
@@ -69,6 +93,8 @@ See ``examples/ukv``.
 
 References
 ----------
+* `Scalable error isolation for distributed systems
+  <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ - Behrens et al.
 
 * `Practical Hardening of Crash-Tolerant Systems
   <https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems>`_ - Correia et al.
