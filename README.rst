@@ -48,6 +48,17 @@ COW mode comes in the following flavors:
 libsei interface
 ----------------
 
+int      __begin(const void* ptr, size_t size, uint32_t crc);
+void     __end();
+void     __begin_nm();
+void     __end_nm();
+void     __output_append(const void* ptr, size_t size);
+void     __output_done();
+uint32_t __crc_pop();
+
+
+Hardening of an event handler can be done in the following way:
+
 if (__begin(...)) {
   //handler code
 
