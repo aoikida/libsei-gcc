@@ -5,6 +5,10 @@
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
 
+#ifdef SEI_ENABLED
+#define TMASCO_ENABLED
+#endif
+
 #define TMASCO_HANDLE_INIT -1
 
 #ifdef  TMASCO_INSTR

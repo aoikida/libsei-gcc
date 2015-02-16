@@ -14,9 +14,9 @@ LIBS = -lm -ldl
 SRCP_SEI = ../../src
 INCP_SEI = -I../../include
 LIBP_SEI = -L../../build
-LIBS_SEI = -lasco $(LIBS)
+LIBS_SEI = -lsei $(LIBS)
 
-TMFLAGS = -DNDEBUG -fgnu-tm -DTMASCO_ENABLED
+TMFLAGS = -DNDEBUG -fgnu-tm -DSEI_ENABLED
 CC = gcc
 
 # OS-dependent options
@@ -48,7 +48,7 @@ OBJS    = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 
 # $(info $(OBJS))
 
-# there are two main targets: ukv-server and ukv-server.tmasco
+# there are three main targets: ukv-server, ukv-server.sei and ukv-client.sei
 TARGET      = ukv-server
 TARGET_SEI  = ukv-server.sei
 TARGET_CLNT = ukv-client.sei

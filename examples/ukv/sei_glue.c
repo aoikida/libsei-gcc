@@ -1,7 +1,12 @@
+/* ----------------------------------------------------------------------------
+ * Copyright (c) 2013,2014 Diogo Behrens
+ * Distributed under the MIT license. See accompanying file LICENSE.
+ * ------------------------------------------------------------------------- */
+
 #include <sei.h>
 
-size_t strlen(const char *s) TMASCO_PURE;
-int strcmp(const char *s1, const char *s2) TMASCO_PURE;
+size_t strlen(const char *s) SEI_PURE;
+int    strcmp(const char *s1, const char *s2) SEI_PURE;
 
 #include "ukv.c"
 #include "hashtable/hashtable.c"

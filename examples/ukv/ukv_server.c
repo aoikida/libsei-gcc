@@ -75,7 +75,6 @@ main(const int argc, const char* argv[])
 				}
 
 				// initialize ukv service
-				ukv = ukv_init();
 				__begin_nm();
 				ukv = ukv_init();
 				__end_nm();
@@ -111,11 +110,12 @@ main(const int argc, const char* argv[])
 				// we assume that we received the whole message. This is
 				// definitely not correct.
 				
-#ifdef TMASCO_ENABLED
+#ifdef SEI_ENABLED
 				// assume first four bytes are CRC of the request
 				crc     = *(uint32_t*)buffer;
 				msg     = buffer + sizeof(crc);
 				msg_len = read - sizeof(crc);
+				printf("crc: %d \n", crc);
 #else
 				msg = buffer;
 #endif
@@ -153,7 +153,7 @@ main(const int argc, const char* argv[])
 				break;
 			}
 			case SEND: {
-#ifdef TMASCO_ENABLED
+#ifdef SEI_ENABLED
 				// read the calculated CRC and add it to the response
 				uint32_t ocrc =  __crc_pop();
 				msg_len = sizeof(uint32_t) + strlen(r);
@@ -183,7 +183,7 @@ main(const int argc, const char* argv[])
 				char* reply;
 				__begin_nm();
 				reply = strdup("%error\r\n");
-				if (!r)
+				if (!reply)
 					return EXIT_FAILURE;
 
 				__output_append(reply, strlen(reply));
@@ -193,7 +193,7 @@ main(const int argc, const char* argv[])
 				printf("replied: %s", reply);
 				printf("---------------------\n");
 
-#ifdef TMASCO_ENABLED
+#ifdef SEI_ENABLED
 				uint32_t ocrc =  __crc_pop();
 				msg_len = sizeof(uint32_t) + strlen(reply);
 				char response[msg_len];
