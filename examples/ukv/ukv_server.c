@@ -115,7 +115,6 @@ main(const int argc, const char* argv[])
 				crc     = *(uint32_t*)buffer;
 				msg     = buffer + sizeof(crc);
 				msg_len = read - sizeof(crc);
-				printf("crc: %d \n", crc);
 #else
 				msg = buffer;
 #endif
@@ -129,22 +128,21 @@ main(const int argc, const char* argv[])
 				r = NULL;
 				// check CRC of the incoming message
 				if (__begin(msg, msg_len, crc)) {
-
 					r =  ukv_recv(ukv, msg);
-
-					// calculate CRC of the response message
-					__output_append(r, strlen(r));
-
-					// since the message is complete, finalize CRC
-					__output_done();
-
-					__end();
 
 					if (!r) 
 						state = FINI;
-					else
-						state = SEND;
+					else {
+						// calculate CRC of the response message
+						__output_append(r, strlen(r));
 
+						// since the message is complete, finalize CRC
+						__output_done();
+
+						state = SEND;
+					}
+
+					__end();
 				} else {
 					// the message is corrupted, drop it
 					state = CORR;
