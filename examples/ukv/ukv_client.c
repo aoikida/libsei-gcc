@@ -31,7 +31,6 @@ main(const int argc, const char* argv[])
 	size_t l = 0;
 
 	port = atoi(argv[2]);
-	crc_init();
 
 	// create socket and connect
 	fd = socket(AF_INET, SOCK_STREAM, 0);

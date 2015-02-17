@@ -35,9 +35,14 @@ $(error OS not supported)
 endif
 endif 
 
+COW_ASMREAD=1 
+COW_APPEND_ONLY=1 
+COW_ROPURE=1 
+COW_WT=1
+MODE=cow
 
 # ASCO options
-AFLAGS = -DTMASCO_ENABLED
+AFLAGS = -DTMASCO_ENABLED 
 ifdef MODE
 ifeq ($(MODE), instr)
 AFLAGS = -DMODE=0

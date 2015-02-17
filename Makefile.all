@@ -1,27 +1,27 @@
 # -*- Makefile -*-
 
 TARGETS_DISABLED = 		\
-	libasco-cowp.a		\
-	libasco-cown.a		\
-	libasco-cowah.a		\
-	libasco-instr.a		\
-	libasco-cowa.a		\
-	libasco-cow.a		\
+	libsei-cowp.a		\
+	libsei-cown.a		\
+	libsei-cowah.a		\
+	libsei-instr.a		\
+	libsei-cowa.a		\
+	libsei-cow.a		\
 
 
 TARGETS ?=                  \
-	libasco-instr-opt.a     \
-	libasco-cow-opt.a       \
-	libasco-cow-opt-mtl.a   \
-	libasco-cow-opt-mtl2.a  \
-	libasco-cow-opt-2pl.a   \
-	libasco-cowa-opt.a      \
-	libasco-cowa-opt-mtl.a  \
-	libasco-cowa-opt-mtl2.a \
-	libasco-cowa-opt-2pl.a  \
-	libasco-cowa-opt-2plb.a \
-	libasco-cor.a           \
-	libasco-cor-tbar.a
+	libsei-instr-opt.a     \
+	libsei-cow-opt.a       \
+	libsei-cow-opt-mtl.a   \
+	libsei-cow-opt-mtl2.a  \
+	libsei-cow-opt-2pl.a   \
+	libsei-cowa-opt.a      \
+	libsei-cowa-opt-mtl.a  \
+	libsei-cowa-opt-mtl2.a \
+	libsei-cowa-opt-2pl.a  \
+	libsei-cowa-opt-2plb.a \
+	libsei-cor.a           \
+	libsei-cor-tbar.a
 
 
 all: $(TARGETS)
@@ -29,106 +29,106 @@ all: $(TARGETS)
 lib:
 	mkdir -p lib
 
-libasco-cow.a: | lib
+libsei-cow.a: | lib
 	make BUILD=build-cow clean all MODE=cow
-	mv build-cow/libasco.a lib/libasco-cow.a
+	mv build-cow/libsei.a lib/libsei-cow.a
 
-libasco-cown.a: | lib
+libsei-cown.a: | lib
 	make BUILD=build-cown clean all MODE=cow \
 		COW_WB=1
-	mv build-cown/libasco.a lib/libasco-cown.a
+	mv build-cown/libsei.a lib/libsei-cown.a
 
-libasco-cow-opt.a: | lib
+libsei-cow-opt.a: | lib
 	make BUILD=build-cow-opt clean all MODE=cow \
 		COW_ASMREAD=1 COW_ROPURE=1
-	mv build-cow-opt/libasco.a lib/libasco-cow-opt.a
+	mv build-cow-opt/libsei.a lib/libsei-cow-opt.a
 
-libasco-cow-opt-mtl.a: | lib
+libsei-cow-opt-mtl.a: | lib
 	make BUILD=build-cow-opt-mtl clean all MODE=cow \
 		COW_ASMREAD=1 COW_ROPURE=1 ASCO_MTL=1
-	mv build-cow-opt-mtl/libasco.a lib/libasco-cow-opt-mtl.a
+	mv build-cow-opt-mtl/libsei.a lib/libsei-cow-opt-mtl.a
 
-libasco-cow-opt-mtl2.a: | lib
+libsei-cow-opt-mtl2.a: | lib
 	make BUILD=build-cow-opt-mtl2 clean all MODE=cow \
 		COW_ASMREAD=1 COW_ROPURE=1 ASCO_MTL2=1
-	mv build-cow-opt-mtl2/libasco.a lib/libasco-cow-opt-mtl2.a
+	mv build-cow-opt-mtl2/libsei.a lib/libsei-cow-opt-mtl2.a
 
-libasco-cow-opt-2pl.a: | lib
+libsei-cow-opt-2pl.a: | lib
 	make BUILD=build-cow-opt-2pl clean all MODE=cow \
 		COW_ASMREAD=1 COW_ROPURE=1 ASCO_2PL=1
-	mv build-cow-opt-2pl/libasco.a lib/libasco-cow-opt-2pl.a
+	mv build-cow-opt-2pl/libsei.a lib/libsei-cow-opt-2pl.a
 
-libasco-cowa.a: | lib
+libsei-cowa.a: | lib
 	make BUILD=build-cowa clean all MODE=cow \
 		COW_APPEND_ONLY=1
-	mv build-cowa/libasco.a lib/libasco-cowa.a
+	mv build-cowa/libsei.a lib/libsei-cowa.a
 
-libasco-cowa-opt.a: | lib
+libsei-cowa-opt.a: | lib
 	make BUILD=build-cowa-opt clean all MODE=cow \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1
-	mv build-cowa-opt/libasco.a lib/libasco-cowa-opt.a
+	mv build-cowa-opt/libsei.a lib/libsei-cowa-opt.a
 
-libasco-cowa-opt-mtl.a: | lib
+libsei-cowa-opt-mtl.a: | lib
 	make BUILD=build-cowa-opt-mtl clean all MODE=cow \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_MTL=1
-	mv build-cowa-opt-mtl/libasco.a lib/libasco-cowa-opt-mtl.a
+	mv build-cowa-opt-mtl/libsei.a lib/libsei-cowa-opt-mtl.a
 
-libasco-cowa-opt-mtl2.a: | lib
+libsei-cowa-opt-mtl2.a: | lib
 	make BUILD=build-cowa-opt-mtl2 clean all MODE=cow \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_MTL2=1
-	mv build-cowa-opt-mtl2/libasco.a lib/libasco-cowa-opt-mtl2.a
+	mv build-cowa-opt-mtl2/libsei.a lib/libsei-cowa-opt-mtl2.a
 
-libasco-cowa-opt-2pl.a: | lib
+libsei-cowa-opt-2pl.a: | lib
 	make BUILD=build-cowa-opt-2pl clean all MODE=cow \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_2PL=1
-	mv build-cowa-opt-2pl/libasco.a lib/libasco-cowa-opt-2pl.a
+	mv build-cowa-opt-2pl/libsei.a lib/libsei-cowa-opt-2pl.a
 
-libasco-cowa-opt-2plb.a: | lib
+libsei-cowa-opt-2plb.a: | lib
 	make BUILD=build-cowa-opt-2plb clean all MODE=cow ASCO_TBAR=1 \
 		COW_ASMREAD=1 COW_APPEND_ONLY=1 COW_ROPURE=1 ASCO_2PL=1
-	mv build-cowa-opt-2plb/libasco.a lib/libasco-cowa-opt-2plb.a
+	mv build-cowa-opt-2plb/libsei.a lib/libsei-cowa-opt-2plb.a
 
-libasco-cowah.a: | lib
+libsei-cowah.a: | lib
 	make BUILD=build-cowah clean all MODE=cow \
 		COW_ASMREAD=1 \
 		CFLAGS="-DCOW_APPEND_ONLY -DCOW_USEHEAP -DCOW_ROPURE"
-	mv build-cowah/libasco.a lib/libasco-cowah.a
+	mv build-cowah/libsei.a lib/libsei-cowah.a
 
-libasco-cowh.a: | lib
+libsei-cowh.a: | lib
 	make BUILD=build-cowh clean all MODE=cow \
 		CFLAGS="-DCOW_USEHEAP"
-	mv build-cowh/libasco.a lib/libasco-cowh.a
+	mv build-cowh/libsei.a lib/libsei-cowh.a
 
-libasco-cowh-opt.a: | lib
+libsei-cowh-opt.a: | lib
 	make BUILD=build-cowh-opt clean all MODE=cow \
 		COW_ASMREAD=1 COW_ROPURE=1 CFLAGS="-DCOW_USEHEAP"
-	mv build-cowh-opt/libasco.a lib/libasco-cowh-opt.a
+	mv build-cowh-opt/libsei.a lib/libsei-cowh-opt.a
 
-libasco-cowp.a: | lib
+libsei-cowp.a: | lib
 	make BUILD=build-cowp clean all MODE=cow \
 		CFLAGS="-DHEAP_PROTECT -DCOW_APPEND_ONLY -DCOW_USEHEAP"
-	mv build-cowp/libasco.a lib/libasco-cowp.a
+	mv build-cowp/libsei.a lib/libsei-cowp.a
 
-libasco-cor.a: | lib
+libsei-cor.a: | lib
 	make BUILD=build-cor clean all MODE=cor ASCO_MT=1
-	mv build-cor/libasco.a lib/libasco-cor.a
+	mv build-cor/libsei.a lib/libsei-cor.a
 
-libasco-cor-tbar.a: | lib
+libsei-cor-tbar.a: | lib
 	make BUILD=build-cor-tbar clean all MODE=cor ASCO_MT=1 ASCO_TBAR=1
-	mv build-cor-tbar/libasco.a lib/libasco-cor-tbar.a
+	mv build-cor-tbar/libsei.a lib/libsei-cor-tbar.a
 
-libasco-instr.a: | lib
+libsei-instr.a: | lib
 	make BUILD=build-instr clean all MODE=instr
-	mv build-instr/libasco.a lib/libasco-instr.a
+	mv build-instr/libsei.a lib/libsei-instr.a
 
-libasco-instr-opt.a: | lib
+libsei-instr-opt.a: | lib
 	make BUILD=build-instr-opt clean all MODE=instr \
 		COW_ASMREAD=1 #CFLAGS="-DCOW_ROPURE"
-	mv build-instr-opt/libasco.a lib/libasco-instr-opt.a
+	mv build-instr-opt/libsei.a lib/libsei-instr-opt.a
 
-libasco-heap.a: | lib
+libsei-heap.a: | lib
 	make BUILD=build-heap clean all MODE=heap
-	mv build-heap/libasco.a lib/libasco-heap.a
+	mv build-heap/libsei.a lib/libsei-heap.a
 
 clean:
 	rm -rf build-* lib

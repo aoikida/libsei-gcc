@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <asco.h>
+#include "asco.h"
 #include "debug.h"
 
 /* ----------------------------------------------------------------------------

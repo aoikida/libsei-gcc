@@ -25,6 +25,7 @@ void   exit(int status) SEI_PURE;
 FILE*  fopen(const char *path, const char *mode) SEI_PURE;
 int    fclose(FILE *fp) SEI_PURE;
 int    sprintf(char *str, const char *format, ...) SEI_PURE;
+size_t strlen(const char *s) SEI_PURE;
 
 /* initialize the state */
 void init_counter() {
