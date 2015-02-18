@@ -5,7 +5,7 @@
 #ifndef _TMASCO_H_
 #define _TMASCO_H_
 
-#ifdef SEI_ENABLED
+#ifndef SEI_DISABLED
 #define TMASCO_ENABLED
 #endif
 
