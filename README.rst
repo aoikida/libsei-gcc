@@ -48,29 +48,27 @@ COW mode comes in the following flavors:
 libsei interface
 ----------------
 
-int      __begin(const void* ptr, size_t size, uint32_t crc);
-void     __end();
-void     __begin_nm();
-void     __end_nm();
-void     __output_append(const void* ptr, size_t size);
-void     __output_done();
-uint32_t __crc_pop();
+`int      __begin(const void* ptr, size_t size, uint32_t crc);`
+`void     __end();`
+`void     __begin_nm();`
+`void     __output_append(const void* ptr, size_t size);`
+`void     __output_done();`
+`uint32_t __crc_pop();`
 
 
 Hardening of an event handler can be done in the following way:
 
-if (__begin(...)) {
+`if (__begin(...)) {
   //handler code
 
   __end();
 } else 
-  continue; // skip corrupted message
+  continue; // skip corrupted message`
 
-If the input message is modified during traversal, __begin_rw(...) and
-__end_rw() should be used instead.
+If the input message is modified during traversal, __begin_rw(...) should be used instead.
 
 If the handler is local, i.e., it updates global state without receiving any
-input message, __begin_nm() and __end_nm() can be used.
+input message, __begin_nm() should be used.
 
 Examples
 --------
