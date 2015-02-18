@@ -2,8 +2,8 @@ CC        = gcc
 CFLAGS    = -g -O0 -Wall
 # Flag to enable transactional memory
 AFLAGS    = -fgnu-tm
-# Comment next line to disable libsei
-AFLAGS   += -DSEI_ENABLED
+# Uncomment next line to disable libsei
+#AFLAGS   += -DSEI_DISABLED
 LIBS      = -ldl
 SRCS      = main.c
 # Path to sei.h

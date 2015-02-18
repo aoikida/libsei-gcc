@@ -127,12 +127,12 @@ static tbar_t* __tbar = NULL;
 #endif /* ASCO_MT */
 
 #ifdef ASCO_WRAP_SC
-socket_f* __socket = NULL;
-close_f* __close = NULL;
-bind_f* __bind = NULL;
+socket_f*  __socket  = NULL;
+close_f*   __close   = NULL;
+bind_f*    __bind    = NULL;
 connect_f* __connect = NULL;
-send_f* __send = NULL;
-sendto_f* __sendto = NULL;
+send_f*    __send    = NULL;
+sendto_f*  __sendto  = NULL;
 #endif
 
 /* ----------------------------------------------------------------------------
@@ -178,18 +178,11 @@ tmasco_init()
     HEAP_PROTECT_INIT;
 
 #ifdef ASCO_WRAP_SC
-    SYSCALL_WRAPPER_INIT(socket);
-    SYSCALL_WRAPPER_INIT(bind);
-    SYSCALL_WRAPPER_INIT(close);
-    SYSCALL_WRAPPER_INIT(connect);
-    SYSCALL_WRAPPER_INIT(send);
-    SYSCALL_WRAPPER_INIT(sendto);
-
     __tmasco->abuf_sc = abuf_init(SC_MAX_CALLS);
-#endif /* ASCO_WRAP_SC */
+#endif
 
 #else
-    printf("Wrapping libpthread\n");
+    DLOG1("Wrapping libpthread\n");
     __pthread_handle = dlopen("libpthread.so.0", RTLD_NOW);
     if (!__pthread_handle) {
         fprintf(stderr, "%s\n", dlerror());
@@ -230,6 +223,15 @@ tmasco_init()
 #endif
     }
 #endif
+
+#ifdef ASCO_WRAP_SC
+    SYSCALL_WRAPPER_INIT(socket);
+    SYSCALL_WRAPPER_INIT(bind);
+    SYSCALL_WRAPPER_INIT(close);
+    SYSCALL_WRAPPER_INIT(connect);
+    SYSCALL_WRAPPER_INIT(send);
+    SYSCALL_WRAPPER_INIT(sendto);
+#endif /* ASCO_WRAP_SC */
 }
 
 #ifdef ASCO_MT
@@ -265,6 +267,9 @@ tmasco_thread_init()
     __tmasco->tbar  = tbar_init(ASCO_MAX_THREADS, __tbar);
     __tmasco->stash = stash_init();
 #endif /* ASCO_TBAR */
+#ifdef ASCO_WRAP_SC
+    __tmasco->abuf_sc = abuf_init(SC_MAX_CALLS);
+#endif
 }
 #endif
 

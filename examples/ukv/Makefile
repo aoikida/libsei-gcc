@@ -4,6 +4,8 @@
 # ------------------------------------------------------------------------------
 
 CFLAGS  = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer 
+SFLAGS := $(CFLAGS)
+CFLAGS += -DSEI_DISABLED
 BUILD   = build
 
 # Libraries and paths
@@ -16,7 +18,7 @@ INCP_SEI = -I../../include
 LIBP_SEI = -L../../build
 LIBS_SEI = -lsei $(LIBS)
 
-TMFLAGS = -DNDEBUG -fgnu-tm -DSEI_ENABLED
+TMFLAGS = -DNDEBUG -fgnu-tm
 CC = gcc
 
 # OS-dependent options
@@ -69,7 +71,7 @@ $(BUILD)/$(TARGET): $(OBJS)
 	$(CC) $(LIBP) -o $@ $^ $(LIBS)
 
 $(BUILD)/$(TARGET_SEI): sei_glue.c
-	$(CC) $(CFLAGS) $(TMFLAGS) $(INCP_SEI) -o $@ $< \
+	$(CC) $(SFLAGS) $(TMFLAGS) $(INCP_SEI) -o $@ $< \
 	$(LIBP_SEI) $(LIBS_SEI)
 
 $(BUILD)/$(TARGET_CLNT): ukv_client.c 

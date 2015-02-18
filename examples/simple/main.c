@@ -108,7 +108,7 @@ main(int argc, char** args) {
      * message */
     __begin_nm();
     init_counter();
-    __end_nm();
+    __end();
 
     while(1) {
         ilen = recv_msg_and_crc(&imsg, &crc);

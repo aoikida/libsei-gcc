@@ -78,7 +78,7 @@ main(const int argc, const char* argv[])
                 // initialize ukv service
                 __begin_nm();
                 ukv = ukv_init();
-                __end_nm();
+                __end();
 
                 state = ACCT;
                 break;
@@ -111,7 +111,7 @@ main(const int argc, const char* argv[])
                 // we assume that we received the whole message. This is
                 // definitely not correct.
                 
-#ifdef SEI_ENABLED
+#ifndef SEI_DISABLED
                 // assume first four bytes are CRC of the request
                 crc     = *(uint32_t*)buffer;
                 msg     = buffer + sizeof(crc);
@@ -152,7 +152,7 @@ main(const int argc, const char* argv[])
                 break;
             }
             case SEND: {
-#ifdef SEI_ENABLED
+#ifndef SEI_DISABLED
                 // read the calculated CRC and add it to the response
                 uint32_t ocrc =  __crc_pop();
                 msg_len = sizeof(uint32_t) + strlen(r);
@@ -170,7 +170,7 @@ main(const int argc, const char* argv[])
 
                 __begin_nm();
                 ukv_done(ukv, r);
-                __end_nm();
+                __end();
                 printf("---------------------\n");
                 
                 state = RECV;
@@ -188,11 +188,11 @@ main(const int argc, const char* argv[])
                 __output_append(reply, strlen(reply));
                 __output_done();
 
-                __end_nm();
+                __end();
                 printf("replied: %s", reply);
                 printf("---------------------\n");
 
-#ifdef SEI_ENABLED
+#ifndef SEI_DISABLED
                 uint32_t ocrc =  __crc_pop();
                 msg_len = sizeof(uint32_t) + strlen(reply);
                 char response[msg_len];
@@ -215,7 +215,7 @@ main(const int argc, const char* argv[])
                 close(fd);
                 __begin_nm();
                 ukv_fini(ukv);
-                __end_nm();
+                __end();
 
                 return 0;
         }
