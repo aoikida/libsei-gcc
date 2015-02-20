@@ -87,7 +87,6 @@ Finalize CRC.
 
 Read CRC.
 
-
 Hardening of an event handler can be done in the following way:
 ::
 
@@ -99,7 +98,6 @@ Hardening of an event handler can be done in the following way:
     continue; // skip corrupted message
 
 Note that ``__begin()`` should always be called within an if statement.
-
 
 |
 |

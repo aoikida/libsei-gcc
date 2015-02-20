@@ -238,7 +238,7 @@ tmasco_init()
 static void
 tmasco_thread_init()
 {
-    fprintf(stderr, "initializing tmasco thread\n");
+    DLOG1("initializing tmasco thread\n");
 #ifndef NDEBUG
     int r =
 #endif
