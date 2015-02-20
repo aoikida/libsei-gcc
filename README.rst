@@ -6,7 +6,20 @@ libsei is a library designed to automatically harden crash-tolerant distributed
 systems. libsei does not require re-developing the system from scratch, enabling
 existing code to be hardened with minimal effort.
 
-|
+Hardening an event handler using libsei only requires: (i) marking the beginning
+and the end of an event handler using the macro functions ``__begin()`` and
+``__end();`` (ii) calling ``__output_append(var, var len)`` to indicate that a
+variable var is added to the current output messages; (iii) calling ``__output
+done()`` to indicate that the output message is complete and its CRC can be
+finalized and added to the output buffer; (iv) appending CRCs to output messages
+after retrieving them by calling ``__crc pop();`` and finally (v) starting the
+compiler as described below.  The developer must include all operations
+modifying the state of the process as part of the event handler enclosed by
+``__begin()`` and ``__end()``. During run time, the event handler is executed
+twice with mechanism similar to setjmp/longjmp implemented in libsei. Event
+dispatching and message sending are external to libsei and do not require
+interaction with the library.
+
 |
 
 Compilation
@@ -54,7 +67,6 @@ SBUF mode comes in the following flavors:
   and ``instr`` only instruments the code.
 
 |
-|
 
 libsei interface
 --------------------
@@ -69,23 +81,23 @@ Marks end of an event handler.
 
 ``void __begin_nm()``
 
-Should be used instead of ``__begin()`` if the hardened handler updates global state without receiving a message
+Should be used instead of ``__begin()`` if the hardened handler updates global state without receiving a message.
 
 ``int __begin_rw(const void* ptr, size_t size, uint32_t crc)``
 
-Should be used instead of ``__begin()`` if the hardened handler modifies input message
+Should be used instead of ``__begin()`` if the hardened handler modifies input message.
 
-``void __output_append(const void* ptr, size_t size);``
+``void __output_append(const void* ptr, size_t size)``
 
-Calculate a partial checksum of output message. Can be called multiple times.
+Calculate a partial checksum of output message. 
 
-``void __output_done();``
+``void __output_done()``
 
-Finalize CRC.
+Finalize CRC of output message and add to the output buffer. Can be called multiple times for different messages.
 
-``uint32_t __crc_pop();``
+``uint32_t __crc_pop()``
 
-Read CRC.
+Retrieve CRC(s) of output message(s).
 
 Hardening of an event handler can be done in the following way:
 ::
@@ -99,7 +111,6 @@ Hardening of an event handler can be done in the following way:
 
 Note that ``__begin()`` should always be called within an if statement.
 
-|
 |
 
 Examples
