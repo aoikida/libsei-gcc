@@ -8,11 +8,11 @@ existing code to be hardened with minimal effort.
 
 Hardening an event handler using libsei only requires: (i) marking the beginning
 and the end of an event handler using the macro functions ``__begin()`` and
-``__end();`` (ii) calling ``__output_append(var, var len)`` to indicate that a
+``__end()``; (ii) calling ``__output_append(var, var len)`` to indicate that a
 variable var is added to the current output messages; (iii) calling ``__output
 done()`` to indicate that the output message is complete and its CRC can be
 finalized and added to the output buffer; (iv) appending CRCs to output messages
-after retrieving them by calling ``__crc pop();`` and finally (v) starting the
+after retrieving them by calling ``__crc pop()``; and finally (v) starting the
 compiler as described below.  The developer must include all operations
 modifying the state of the process as part of the event handler enclosed by
 ``__begin()`` and ``__end()``. During run time, the event handler is executed
@@ -148,5 +148,7 @@ References
 ----------------
 * `Scalable error isolation for distributed systems
   <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ -  Diogo Behrens, *Technische Universität Dresden*; Marco Serafini, *Qatar Computing Research Institute*; Flavio P. Junqueira, *Microsoft Research*; and Sergei Arnautov and Christof Fetzer, *Technische Universität Dresden*. To appear in 12th USENIX Symposium on Networked Systems Design and Implementation (NSDI'15)
+* `Towards Transparent Hardening of Distributed Systems
+ <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer *Technische Universität Dresden*; Flavio P. Junqueira *Microsoft Research*, Marco Serafini *Qatar Computing Research Institute*), In Proceedings of the 9th Workshop on Hot Topics in Dependable Systems, ACM, 2013
 
 .. _PASC: https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems
