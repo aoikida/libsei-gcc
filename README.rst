@@ -149,6 +149,6 @@ References
 * `Scalable error isolation for distributed systems
   <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ -  Diogo Behrens, *Technische Universität Dresden*; Marco Serafini, *Qatar Computing Research Institute*; Flavio P. Junqueira, *Microsoft Research*; and Sergei Arnautov and Christof Fetzer, *Technische Universität Dresden*. To appear in 12th USENIX Symposium on Networked Systems Design and Implementation (NSDI'15)
 * `Towards Transparent Hardening of Distributed Systems
- <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer *Technische Universität Dresden*; Flavio P. Junqueira *Microsoft Research*, Marco Serafini *Qatar Computing Research Institute*), In Proceedings of the 9th Workshop on Hot Topics in Dependable Systems, ACM, 2013
+  <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer *Technische Universität Dresden*; Flavio P. Junqueira *Microsoft Research*, Marco Serafini *Qatar Computing Research Institute*, In Proceedings of the 9th Workshop on Hot Topics in Dependable Systems, ACM, 2013
 
 .. _PASC: https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems
