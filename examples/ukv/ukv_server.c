@@ -28,14 +28,17 @@ main(const int argc, const char* argv[])
     }
 
     int fd, cfd, port;
-    uint32_t crc; 
     struct sockaddr_in addr, caddr;
-    ssize_t read, msg_len;
+    ssize_t read;
     socklen_t len;
     char buffer[BUFSIZE+1];
     char*  msg;
     const char* r;
     ukv_t* ukv;
+#ifndef SEI_DISABLED
+    ssize_t msg_len;
+    uint32_t crc; 
+#endif
 
     len   = sizeof(caddr);
     port  = atoi(argv[1]);
