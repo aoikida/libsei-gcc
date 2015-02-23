@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- * Copyright (c) 2013,2014 Diogo Behrens
+ * Copyright (c) 2013,2014,2015 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "asco.h"
+#include "sei.h"
 #include "debug.h"
 #include "fail.h"
 
@@ -23,7 +23,7 @@
 #include "stash.h"
 #include "config.h"
 
-#ifdef ASCO_WRAP_SC
+#ifdef SEI_WRAP_SC
 #include "wts.h"
 #endif
 
@@ -49,13 +49,13 @@
 # define HEAP_SIZE (HEAP_1GB + HEAP_500MB)
 #endif
 
-#ifdef ASCO_STATS
+#ifdef SEI_STATS
 # include "ilog.h"
 # include "cpu_stats.h"
 # include "now.h"
 #endif
 
-struct asco {
+struct sei {
     int       p;       /* the actual process (0 or 1) */
     heap_t*   heap;    /* optional heap               */
 #ifndef COW_APPEND_ONLY
@@ -69,7 +69,7 @@ struct asco {
     ibuf_t*   ibuf;    /* input message buffer        */
     cfc_t     cf[2];   /* control flags               */
     stash_t*  stash;   /* obuf contexts               */
-#ifdef ASCO_WRAP_SC
+#ifdef SEI_WRAP_SC
     wts_t*	  wts;	   /* waitress for delayed calls  */
 #endif
 
@@ -77,7 +77,7 @@ struct asco {
     abuf_t*   wpages;  /* list of written pages       */
 #endif
 
-#ifdef ASCO_STATS
+#ifdef SEI_STATS
     ilog_t*   ilog;    /* stats logger                */
 
     struct {
@@ -99,52 +99,52 @@ struct asco {
  * stats helpers
  * ------------------------------------------------------------------------- */
 
-#ifdef ASCO_STATS
-#define ASCO_STATS_RESET() do {                   \
-        asco->stats.ntrav      = 0;               \
-        asco->stats.nmalloc    = 0;               \
-        asco->stats.nfree      = 0;               \
-        asco->stats.nwuint8_t  = 0;               \
-        asco->stats.nwuint16_t = 0;               \
-        asco->stats.nwuint32_t = 0;               \
-        asco->stats.nwuint64_t = 0;               \
-        asco->stats.nprotect   = 0;               \
+#ifdef SEI_STATS
+#define SEI_STATS_RESET() do {                   \
+        sei->stats.ntrav      = 0;               \
+        sei->stats.nmalloc    = 0;               \
+        sei->stats.nfree      = 0;               \
+        sei->stats.nwuint8_t  = 0;               \
+        sei->stats.nwuint16_t = 0;               \
+        sei->stats.nwuint32_t = 0;               \
+        sei->stats.nwuint64_t = 0;               \
+        sei->stats.nprotect   = 0;               \
     } while (0)
-#define ASCO_STATS_INIT() do {                          \
-        asco->ilog = ilog_init("asco-stats.log");       \
-        ASCO_STATS_RESET();                             \
-        asco->cpu_stats = cpu_stats_init();             \
+#define SEI_STATS_INIT() do {                          \
+        sei->ilog = ilog_init("sei-stats.log");       \
+        SEI_STATS_RESET();                             \
+        sei->cpu_stats = cpu_stats_init();             \
     } while (0)
-#define ASCO_STATS_FINI() do {           \
-        ilog_fini(asco->ilog);           \
-        cpu_stats_fini(asco->cpu_stats); \
+#define SEI_STATS_FINI() do {           \
+        ilog_fini(sei->ilog);           \
+        cpu_stats_fini(sei->cpu_stats); \
     } while (0)
-#define ASCO_STATS_INC(X) (++asco->stats.X)
-#define ASCO_STATS_REPORT() do {                                        \
+#define SEI_STATS_INC(X) (++sei->stats.X)
+#define SEI_STATS_REPORT() do {                                        \
         static uint64_t _now = 0;                                       \
         if (now() - _now > NOW_1S) {                                    \
             char buffer[1024];                                          \
             sprintf(buffer, "%u %u %u %u %u %u %u %u",                  \
-                    asco->stats.ntrav,                                  \
-                    asco->stats.nmalloc,                                \
-                    asco->stats.nfree,                                  \
-                    asco->stats.nwuint8_t,                              \
-                    asco->stats.nwuint16_t,                             \
-                    asco->stats.nwuint32_t,                             \
-                    asco->stats.nwuint64_t,                             \
-                    asco->stats.nprotect                                \
+                    sei->stats.ntrav,                                  \
+                    sei->stats.nmalloc,                                \
+                    sei->stats.nfree,                                  \
+                    sei->stats.nwuint8_t,                              \
+                    sei->stats.nwuint16_t,                             \
+                    sei->stats.nwuint32_t,                             \
+                    sei->stats.nwuint64_t,                             \
+                    sei->stats.nprotect                                \
                 );                                                      \
-            ilog_push(asco->ilog, __FILE__, buffer);                    \
-            cpu_stats_report(asco->cpu_stats, asco->ilog);              \
+            ilog_push(sei->ilog, __FILE__, buffer);                    \
+            cpu_stats_report(sei->cpu_stats, sei->ilog);              \
             _now = now();                                               \
         }                                                               \
     } while (0)
 #else
-#define ASCO_STATS_INIT()
-#define ASCO_STATS_FINI()
-#define ASCO_STATS_RESET()
-#define ASCO_STATS_INC(X)
-#define ASCO_STATS_REPORT()
+#define SEI_STATS_INIT()
+#define SEI_STATS_FINI()
+#define SEI_STATS_RESET()
+#define SEI_STATS_INC(X)
+#define SEI_STATS_REPORT()
 #endif
 
 
@@ -153,90 +153,90 @@ struct asco {
  * constructor/destructor
  * ------------------------------------------------------------------------- */
 
-asco_t*
-asco_init()
+sei_t*
+sei_init()
 {
-    asco_t* asco = (asco_t*) malloc(sizeof(asco_t));
-    assert(asco);
+    sei_t* sei = (sei_t*) malloc(sizeof(sei_t));
+    assert(sei);
 #ifndef COW_APPEND_ONLY
-    asco->cow[0] = cow_init(0, COW_SIZE);
-    asco->cow[1] = cow_init(0, COW_SIZE);
+    sei->cow[0] = cow_init(0, COW_SIZE);
+    sei->cow[1] = cow_init(0, COW_SIZE);
 #else
-    asco->cow[0] = abuf_init(COW_SIZE);
-    asco->cow[1] = abuf_init(COW_SIZE);
+    sei->cow[0] = abuf_init(COW_SIZE);
+    sei->cow[1] = abuf_init(COW_SIZE);
 #endif
 
 #ifdef HEAP_PROTECT
-    asco->wpages = abuf_init(100);
+    sei->wpages = abuf_init(100);
 #endif
 
 #ifdef COW_USEHEAP
-    asco->heap   = heap_init(HEAP_SIZE);
+    sei->heap   = heap_init(HEAP_SIZE);
 
 #if defined(HEAP_PROTECT) && HEAP_SIZE != HEAP_NP
     // if the heap is preallocated, protect whole heap
-    //protect_mem(asco->heap, HEAP_SIZE + sizeof(heap_t), READ);
+    //protect_mem(sei->heap, HEAP_SIZE + sizeof(heap_t), READ);
 #endif
 
 #else  /* !COW_USEHEAP */
-    asco->heap   = NULL;
+    sei->heap   = NULL;
 #endif /* !COW_USEHEAP */
 
-    asco->tbin   = tbin_init(TBIN_SIZE, asco->heap);
-    asco->talloc = talloc_init(asco->heap);
-    asco->obuf   = obuf_init(OBUF_SIZE);
-    asco->ibuf   = ibuf_init();
-    asco->stash  = stash_init();
-#ifdef ASCO_WRAP_SC
-    asco->wts	 = wts_init(SC_MAX_CALLS);
+    sei->tbin   = tbin_init(TBIN_SIZE, sei->heap);
+    sei->talloc = talloc_init(sei->heap);
+    sei->obuf   = obuf_init(OBUF_SIZE);
+    sei->ibuf   = ibuf_init();
+    sei->stash  = stash_init();
+#ifdef SEI_WRAP_SC
+    sei->wts	 = wts_init(SC_MAX_CALLS);
 #endif
-    ASCO_STATS_INIT();
+    SEI_STATS_INIT();
 
     // initialize with invalid execution number
-    asco->p = -1;
+    sei->p = -1;
 
-    DLOG3("asco_init addr: %p (heap = {%p})\n", asco, asco->heap);
+    DLOG3("sei_init addr: %p (heap = {%p})\n", sei, sei->heap);
 
-    return asco;
+    return sei;
 }
 
 void
-asco_fini(asco_t* asco)
+sei_fini(sei_t* sei)
 {
-    assert(asco);
+    assert(sei);
 #ifndef COW_APPEND_ONLY
-    cow_fini(asco->cow[0]);
-    cow_fini(asco->cow[1]);
+    cow_fini(sei->cow[0]);
+    cow_fini(sei->cow[1]);
 #else
-    abuf_fini(asco->cow[0]);
-    abuf_fini(asco->cow[1]);
+    abuf_fini(sei->cow[0]);
+    abuf_fini(sei->cow[1]);
 #endif
 
-    tbin_fini(asco->tbin);
-    talloc_fini(asco->talloc);
-    ibuf_fini(asco->ibuf);
-    if (stash_size(asco->stash)) {
+    tbin_fini(sei->tbin);
+    talloc_fini(sei->talloc);
+    ibuf_fini(sei->ibuf);
+    if (stash_size(sei->stash)) {
         int i;
-        for (i = 0; i < stash_size(asco->stash); ++i) {
-            obuf_fini((obuf_t*) stash_get(asco->stash, i));
+        for (i = 0; i < stash_size(sei->stash); ++i) {
+            obuf_fini((obuf_t*) stash_get(sei->stash, i));
         }
     } else {
-        obuf_fini(asco->obuf);
+        obuf_fini(sei->obuf);
     }
 
-#ifdef ASCO_WRAP_SC
-    wts_fini(asco->wts);
+#ifdef SEI_WRAP_SC
+    wts_fini(sei->wts);
 #endif
 
 #ifdef COW_USEHEAP
-    heap_fini(asco->heap);
+    heap_fini(sei->heap);
 #endif
 
 #ifdef HEAP_PROTECT
-    abuf_fini(asco->wpages);
+    abuf_fini(sei->wpages);
 #endif
 
-    ASCO_STATS_FINI();
+    SEI_STATS_FINI();
 }
 
 
@@ -245,136 +245,136 @@ asco_fini(asco_t* asco)
  * ------------------------------------------------------------------------- */
 
 int
-asco_prepare(asco_t* asco, const void* ptr, size_t size, uint32_t crc, int ro)
+sei_prepare(sei_t* sei, const void* ptr, size_t size, uint32_t crc, int ro)
 {
     assert (ptr != NULL);
-    assert (asco->p == -1);
+    assert (sei->p == -1);
 
     // check input message
-    return ibuf_prepare(asco->ibuf, ptr, size, crc, ro ? READ_ONLY:READ_WRITE);
+    return ibuf_prepare(sei->ibuf, ptr, size, crc, ro ? READ_ONLY:READ_WRITE);
 }
 
 void
-asco_prepare_nm(asco_t* asco)
+sei_prepare_nm(sei_t* sei)
 {
     // empty message
-    (void) ibuf_prepare(asco->ibuf, NULL, 0, crc_init(), READ_ONLY);
+    (void) ibuf_prepare(sei->ibuf, NULL, 0, crc_init(), READ_ONLY);
 }
 
 void
-asco_begin(asco_t* asco)
+sei_begin(sei_t* sei)
 {
-    if (asco->p == -1) {
+    if (sei->p == -1) {
         DLOG2("First execution\n");
-        asco->p = 0;
-        //assert (obuf_size(asco->obuf) == 0);
-        cfc_reset(&asco->cf[0]);
-        cfc_reset(&asco->cf[1]);
+        sei->p = 0;
+        //assert (obuf_size(sei->obuf) == 0);
+        cfc_reset(&sei->cf[0]);
+        cfc_reset(&sei->cf[1]);
     }
 
-    if (asco->p == 1) {
+    if (sei->p == 1) {
         DLOG2("Second execution\n");
     }
 }
 
 void
-asco_switch(asco_t* asco)
+sei_switch(sei_t* sei)
 {
-    DLOG2("Switch: %d\n", asco->p);
-    asco->p = 1;
-    DLOG2("Switched: %d\n", asco->p);
-    talloc_switch(asco->talloc);
-    obuf_close(asco->obuf);
-    ibuf_switch(asco->ibuf);
+    DLOG2("Switch: %d\n", sei->p);
+    sei->p = 1;
+    DLOG2("Switched: %d\n", sei->p);
+    talloc_switch(sei->talloc);
+    obuf_close(sei->obuf);
+    ibuf_switch(sei->ibuf);
 
 #ifdef COW_WT
 #ifdef COW_APPEND_ONLY
-    abuf_swap(asco->cow[0]);
+    abuf_swap(sei->cow[0]);
 #else
-    cow_swap(asco->cow[0]);
+    cow_swap(sei->cow[0]);
 #endif
 #endif
-    cfc_alog(&asco->cf[0]);
-    int r = cfc_amog(&asco->cf[0]);
+    cfc_alog(&sei->cf[0]);
+    int r = cfc_amog(&sei->cf[0]);
     fail_ifn(r, "control flow error");
 }
 
 void
-asco_commit(asco_t* asco)
+sei_commit(sei_t* sei)
 {
-    DLOG2("COMMIT: %d\n", asco->p);
-    asco->p = -1;
+    DLOG2("COMMIT: %d\n", sei->p);
+    sei->p = -1;
 
-    int r = cfc_amog(&asco->cf[1]);
+    int r = cfc_amog(&sei->cf[1]);
     fail_ifn(r, "control flow error");
-    cfc_alog(&asco->cf[1]);
+    cfc_alog(&sei->cf[1]);
 
 #ifndef COW_APPEND_ONLY
-    cow_show(asco->cow[0]);
-    cow_show(asco->cow[1]);
-    cow_apply_cmp(asco->cow[0], asco->cow[1]);
+    cow_show(sei->cow[0]);
+    cow_show(sei->cow[1]);
+    cow_apply_cmp(sei->cow[0], sei->cow[1]);
 #else
-    abuf_cmp_heap(asco->cow[0], asco->cow[1]);
-    abuf_clean(asco->cow[0]);
-    abuf_clean(asco->cow[1]);
+    abuf_cmp_heap(sei->cow[0], sei->cow[1]);
+    abuf_clean(sei->cow[0]);
+    abuf_clean(sei->cow[1]);
 #endif
 
-#ifdef ASCO_WRAP_SC
-    wts_flush(asco->wts);
+#ifdef SEI_WRAP_SC
+    wts_flush(sei->wts);
 #endif
 
-    tbin_flush(asco->tbin);
-    talloc_clean(asco->talloc);
-    obuf_close(asco->obuf);
+    tbin_flush(sei->tbin);
+    talloc_clean(sei->talloc);
+    obuf_close(sei->obuf);
 
-    r = cfc_check(&asco->cf[0]);
+    r = cfc_check(&sei->cf[0]);
     assert (r && "control flow error");
-    r = cfc_check(&asco->cf[1]);
+    r = cfc_check(&sei->cf[1]);
     assert (r && "control flow error");
 
-    r = ibuf_correct(asco->ibuf);
+    r = ibuf_correct(sei->ibuf);
     assert (r == 1 && "input message modified");
 
-    ASCO_STATS_INC(ntrav);
-    ASCO_STATS_REPORT();
+    SEI_STATS_INC(ntrav);
+    SEI_STATS_REPORT();
 #ifdef HEAP_PROTECT
     int i;
-    for (i = 0; i < abuf_size(asco->wpages); ++i) {
+    for (i = 0; i < abuf_size(sei->wpages); ++i) {
         uint64_t size;
-        void* ptr = abuf_pop(asco->wpages, &size);
+        void* ptr = abuf_pop(sei->wpages, &size);
         protect_mem(ptr, size, READ);
-        ASCO_STATS_INC(nprotect);
+        SEI_STATS_INC(nprotect);
     }
-    abuf_clean(asco->wpages);
+    abuf_clean(sei->wpages);
 #endif
 }
 
 inline int
-asco_getp(asco_t* asco)
+sei_getp(sei_t* sei)
 {
-    return asco->p;
+    return sei->p;
 }
 
 inline void
-asco_setp(asco_t* asco, int p)
+sei_setp(sei_t* sei, int p)
 {
-    asco->p = p;
+    sei->p = p;
 }
 
 int
-asco_shift(asco_t* asco, int handle)
+sei_shift(sei_t* sei, int handle)
 {
     if (handle == -1) {
         // create new obuf and exchange; use current if first time
-        if (stash_size(asco->stash) != 0) {
+        if (stash_size(sei->stash) != 0) {
             // here we assume that current obuf already in stash
-            asco->obuf = obuf_init(OBUF_SIZE);
+            sei->obuf = obuf_init(OBUF_SIZE);
         }
         // add to stash
-        handle = stash_add(asco->stash, asco->obuf);
+        handle = stash_add(sei->stash, sei->obuf);
     } else {
         // exchange obuf
-        asco->obuf = (obuf_t*) stash_get(asco->stash, handle);
+        sei->obuf = (obuf_t*) stash_get(sei->stash, handle);
     }
 
     return handle;
@@ -385,10 +385,10 @@ asco_shift(asco_t* asco, int handle)
  * ------------------------------------------------------------------------- */
 
 inline void*
-asco_malloc(asco_t* asco, size_t size)
+sei_malloc(sei_t* sei, size_t size)
 {
-    ASCO_STATS_INC(nmalloc);
-    void* ptr = talloc_malloc(asco->talloc, size);
+    SEI_STATS_INC(nmalloc);
+    void* ptr = talloc_malloc(sei->talloc, size);
 #if defined(HEAP_PROTECT)
     // && (!defined(COW_USEHEAP) || HEAP_SIZE == HEAP_NP)
     // if heap has to be protected and
@@ -396,7 +396,7 @@ asco_malloc(asco_t* asco, size_t size)
     // we do use heap_t but it's not preallocated (HEAP_NP)
     // then we have to protect the heap whever we do a malloc
 
-    if (asco->p == 0) {
+    if (sei->p == 0) {
         // we don't have to protect that for the second execution
         protect_mem(ptr, size, READ);
     }
@@ -405,14 +405,14 @@ asco_malloc(asco_t* asco, size_t size)
 }
 
 inline void
-asco_free(asco_t* asco, void* ptr)
+sei_free(sei_t* sei, void* ptr)
 {
-    ASCO_STATS_INC(nfree);
-    tbin_add(asco->tbin, ptr, asco->p);
+    SEI_STATS_INC(nfree);
+    tbin_add(sei->tbin, ptr, sei->p);
 }
 
 void*
-asco_calloc(asco_t* asco, size_t nmemb, size_t size)
+sei_calloc(sei_t* sei, size_t nmemb, size_t size)
 {
     assert (0 && "not implemented");
     return NULL;
@@ -423,40 +423,40 @@ asco_calloc(asco_t* asco, size_t nmemb, size_t size)
  * ------------------------------------------------------------------------- */
 
 void*
-asco_malloc2(asco_t* asco, size_t size)
+sei_malloc2(sei_t* sei, size_t size)
 {
     return malloc(size);
 }
 
 void
-asco_free2(asco_t* asco, void* ptr1, void* ptr2)
+sei_free2(sei_t* sei, void* ptr1, void* ptr2)
 {
-    assert (0 && "asco not compiled with HEAP_MODE");
+    assert (0 && "sei not compiled with HEAP_MODE");
 }
 
 inline void*
-asco_other(asco_t* asco, void* addr)
+sei_other(sei_t* sei, void* addr)
 {
-    assert (0 && "asco not compiled with HEAP_MODE");
+    assert (0 && "sei not compiled with HEAP_MODE");
     return NULL;
 }
 
 void*
-asco_memcpy2(asco_t* asco, void* dest, const void* src, size_t n)
+sei_memcpy2(sei_t* sei, void* dest, const void* src, size_t n)
 {
-    assert (0 && "asco not compiled with HEAP_MODE");
+    assert (0 && "sei not compiled with HEAP_MODE");
     return NULL;
 }
 
 #ifdef HEAP_PROTECT
 void
-asco_unprotect(asco_t* asco, void* addr, size_t size)
+sei_unprotect(sei_t* sei, void* addr, size_t size)
 {
-    if (asco->p == 1) {
+    if (sei->p == 1) {
         assert (0 && "straaaange");
     }
-    if (asco->p == 0 || asco->p == -1) {
-        abuf_push(asco->wpages, addr, size);
+    if (sei->p == 0 || sei->p == -1) {
+        abuf_push(sei->wpages, addr, size);
         protect_mem(addr, size, WRITE);
     }
 }
@@ -468,93 +468,93 @@ asco_unprotect(asco_t* asco, void* addr, size_t size)
  * ------------------------------------------------------------------------- */
 
 #ifndef COW_APPEND_ONLY
-#define ASCO_READ(type) inline                                          \
-    type asco_read_##type(asco_t* asco, const type* addr)               \
+#define SEI_READ(type) inline                                          \
+    type sei_read_##type(sei_t* sei, const type* addr)               \
     {                                                                   \
-        DLOG3("asco_read_%s(%d) addr = %p", #type, asco->p, addr);      \
-        cow_t* cow = asco->cow[asco->p];                                \
+        DLOG3("sei_read_%s(%d) addr = %p", #type, sei->p, addr);      \
+        cow_t* cow = sei->cow[sei->p];                                \
         type value = cow_read_##type(cow, addr);                        \
         DLOG3("= %lx, %lx\n", (uint64_t) *addr, value);                 \
         return value;                                                   \
     }
-ASCO_READ(uint8_t)
-ASCO_READ(uint16_t)
-ASCO_READ(uint32_t)
-ASCO_READ(uint64_t)
+SEI_READ(uint8_t)
+SEI_READ(uint16_t)
+SEI_READ(uint32_t)
+SEI_READ(uint64_t)
 
-#define ASCO_WRITE(type) inline                                         \
-    void asco_write_##type(asco_t* asco, type* addr, type value)        \
+#define SEI_WRITE(type) inline                                         \
+    void sei_write_##type(sei_t* sei, type* addr, type value)        \
     {                                                                   \
-        ASCO_STATS_INC(nw##type);                                       \
-        assert (asco->p == 0 || asco->p == 1);                          \
-        DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
+        SEI_STATS_INC(nw##type);                                       \
+        assert (sei->p == 0 || sei->p == 1);                          \
+        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,        \
               addr, (uint64_t) value);                                  \
-        cow_t* cow = asco->cow[asco->p];                                \
+        cow_t* cow = sei->cow[sei->p];                                \
         cow_write_##type(cow, addr, value);                             \
     }
-ASCO_WRITE(uint8_t)
-ASCO_WRITE(uint16_t)
-ASCO_WRITE(uint32_t)
-ASCO_WRITE(uint64_t)
+SEI_WRITE(uint8_t)
+SEI_WRITE(uint16_t)
+SEI_WRITE(uint32_t)
+SEI_WRITE(uint64_t)
 #else
 
-#define ASCO_READ(type) inline                                          \
-    type asco_read_##type(asco_t* asco, const type* addr)               \
+#define SEI_READ(type) inline                                          \
+    type sei_read_##type(sei_t* sei, const type* addr)               \
     {                                                                   \
-        DLOG3("asco_read_%s(%d) %p = %lx", #type, asco->p, addr,        \
+        DLOG3("sei_read_%s(%d) %p = %lx", #type, sei->p, addr,        \
               (uint64_t) *addr);                                        \
         return *addr;                                                   \
     }
-ASCO_READ(uint8_t)
-ASCO_READ(uint16_t)
-ASCO_READ(uint32_t)
-ASCO_READ(uint64_t)
+SEI_READ(uint8_t)
+SEI_READ(uint16_t)
+SEI_READ(uint32_t)
+SEI_READ(uint64_t)
 
-#define ASCO_WRITE(type) inline                                         \
-    void asco_write_##type(asco_t* asco, type* addr, type value)        \
+#define SEI_WRITE(type) inline                                         \
+    void sei_write_##type(sei_t* sei, type* addr, type value)        \
     {                                                                   \
-   	    ASCO_STATS_INC(nw##type);                                       \
-   	    assert (asco->p == 0 || asco->p == 1);                          \
-        DLOG3("asco_write_%s(%d): %p <- %llx\n", #type, asco->p,        \
+   	    SEI_STATS_INC(nw##type);                                       \
+   	    assert (sei->p == 0 || sei->p == 1);                          \
+        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,        \
               addr, (uint64_t) value);                                  \
-        abuf_push_##type(asco->cow[asco->p], addr, *addr);              \
+        abuf_push_##type(sei->cow[sei->p], addr, *addr);              \
         *addr = value;                                                  \
     }
-ASCO_WRITE(uint8_t)
-ASCO_WRITE(uint16_t)
-ASCO_WRITE(uint32_t)
-ASCO_WRITE(uint64_t)
+SEI_WRITE(uint8_t)
+SEI_WRITE(uint16_t)
+SEI_WRITE(uint32_t)
+SEI_WRITE(uint64_t)
 #endif
 
 /* ----------------------------------------------------------------------------
  * output messages
  * ------------------------------------------------------------------------- */
 
-/* asco_output_append and asco_output_done can be called from outside
+/* sei_output_append and sei_output_done can be called from outside
  * a handler with no effect.
  *
- * asco_output_next can only be called from outside the handler.
+ * sei_output_next can only be called from outside the handler.
  */
 void
-asco_output_append(asco_t* asco, const void* ptr, size_t size)
+sei_output_append(sei_t* sei, const void* ptr, size_t size)
 {
-    if (asco->p == -1) return;
-    obuf_push(asco->obuf, ptr, size);
+    if (sei->p == -1) return;
+    obuf_push(sei->obuf, ptr, size);
 }
 
 void
-asco_output_done(asco_t* asco)
+sei_output_done(sei_t* sei)
 {
-    if (asco->p == -1) return;
-    obuf_done(asco->obuf);
+    if (sei->p == -1) return;
+    obuf_done(sei->obuf);
 }
 
 uint32_t
-asco_output_next(asco_t* asco)
+sei_output_next(sei_t* sei)
 {
-    assert (asco->p == -1);
-    assert (obuf_size(asco->obuf) > 0 && "no CRC to pop");
-    uint32_t crc = obuf_pop(asco->obuf);
+    assert (sei->p == -1);
+    assert (obuf_size(sei->obuf) > 0 && "no CRC to pop");
+    uint32_t crc = obuf_pop(sei->obuf);
 
     return crc;
 }
@@ -564,7 +564,7 @@ asco_output_next(asco_t* asco)
  * ------------------------------------------------------------------------- */
 
 void*
-asco_get_wts(asco_t* asco)
+sei_get_wts(sei_t* sei)
 {
-	return asco->wts;
+	return sei->wts;
 }

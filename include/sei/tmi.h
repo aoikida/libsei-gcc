@@ -2,131 +2,118 @@
  * Copyright (c) 2013,2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _TMASCO_H_
-#define _TMASCO_H_
+#ifndef _TMI_H_
+#define _TMI_H_
 
 #ifndef SEI_DISABLED
-#define TMASCO_ENABLED
+#define SEI_ENABLED
 #endif
 
-#define TMASCO_HANDLE_INIT -1
+#define TMI_HANDLE_INIT -1
 
-#ifdef  TMASCO_INSTR
-#define TMASCO_ENABLED
-#define TMASCO_DISABLE_OUTPUT_CHECKS
-#define TMASCO_DISABLE_INPUT_CHECKS
-#define TMASCO_DISABLE_PROTECTION
+#ifdef  TMI_INSTR
+#define SEI_ENABLED
+#define TMI_DISABLE_OUTPUT_CHECKS
+#define TMI_DISABLE_INPUT_CHECKS
+#define TMI_DISABLE_PROTECTION
 #endif
 
-#ifndef TMASCO_ENABLED
-#define TMASCO_DISABLE_OUTPUT_CHECKS
-#define TMASCO_DISABLE_INPUT_CHECKS
-#define TMASCO_DISABLE_PROTECTION
-#define TMASCO_DISABLE_IGNORE
+#ifndef SEI_ENABLED
+#define TMI_DISABLE_OUTPUT_CHECKS
+#define TMI_DISABLE_INPUT_CHECKS
+#define TMI_DISABLE_PROTECTION
+#define TMI_DISABLE_IGNORE
 #endif
-
-
 
 #include "support.h"
 #include <stdint.h>
 #include <setjmp.h>
 #include <errno.h>
 
-#ifdef TMASCO_DEBUG
+#ifdef TMI_DEBUG
 #define D(...) printf(__VA_ARGS__)
 #else
 #define D(...)
 #endif
 
-#ifdef TMASCO_ENABLED
-#define TMASCO_PURE __attribute__((transaction_pure));
-#define TMASCO_SAFE __attribute__((transaction_safe));
+#ifdef SEI_ENABLED
+#define SEI_PURE __attribute__((transaction_pure));
+#define SEI_SAFE __attribute__((transaction_safe));
 #else
-#define TMASCO_PURE
-#define TMASCO_SAFE
+#define SEI_PURE
+#define SEI_SAFE
 #endif
 
-void  tmasco_begin(uintptr_t bp);
-int   tmasco_switched();
-void  tmasco_switch();
-void  tmasco_commit();
-void* tmasco_malloc(size_t size);
-void* tmasco_other(void* addr);
-int   tmasco_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
-void  tmasco_prepare_nm();
-int   tmasco_shift(int handle);
-int   tmasco_bar();
+void  __sei_begin(uintptr_t bp);
+int   __sei_switched();
+void  __sei_switch();
+void  __sei_commit();
+void* __sei_malloc(size_t size);
+void* __sei_other(void* addr);
+int   __sei_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
+void  __sei_prepare_nm();
+int   __sei_shift(int handle);
+int   __sei_bar();
 
-void     tmasco_output_append(const void* ptr, size_t size) TMASCO_PURE;
-void     tmasco_output_done() TMASCO_PURE;
-uint32_t tmasco_output_next();
+void     __sei_output_append(const void* ptr, size_t size) SEI_PURE;
+void     __sei_output_done() SEI_PURE;
+uint32_t __sei_output_next();
 
-void tmasco_ignore_addr(void* start, void* end) TMASCO_PURE;
-void tmasco_ignore_all(uint32_t v) TMASCO_PURE;
-void tmasco_ignore(int v) TMASCO_PURE;
+void __sei_ignore_addr(void* start, void* end) SEI_PURE;
+void __sei_ignore_all(uint32_t v) SEI_PURE;
+void __sei_ignore(int v) SEI_PURE;
 
-#ifdef TMASCO_DISABLE_OUTPUT_CHECKS
-#define __asco_output_append(ptr, size)
-#define __asco_output_done()
-#define __asco_output_next() 0
+#ifdef TMI_DISABLE_OUTPUT_CHECKS
+#define __tmi_output_append(ptr, size)
+#define __tmi_output_done()
+#define __tmi_output_next() 0
 #else
-#define __asco_output_append(ptr, size) tmasco_output_append(ptr, size)
-#define __asco_output_done() tmasco_output_done()
-#define __asco_output_next() tmasco_output_next()
+#define __tmi_output_append(ptr, size) __sei_output_append(ptr, size)
+#define __tmi_output_done() __sei_output_done()
+#define __tmi_output_next() __sei_output_next()
 #endif
 
-#ifdef TMASCO_DISABLE_PROTECTION
-#define __asco_unprotect(ptr, size)
+#ifdef TMI_DISABLE_PROTECTION
+#define __tmi_unprotect(ptr, size)
 #else
-void  tmasco_unprotect(void* addr, size_t size);
-#define __asco_unprotect(ptr, size) tmasco_unprotect(ptr,size)
+void  __sei_unprotect(void* addr, size_t size);
+#define __tmi_unprotect(ptr, size) __sei_unprotect(ptr,size)
 #endif
 
-#ifdef TMASCO_DISABLE_INPUT_CHECKS
-#define __asco_prepare(ptr, size, crc, ro) 1
-#define __asco_prepare_nm(ptr)
+#ifdef TMI_DISABLE_INPUT_CHECKS
+#define __tmi_prepare(ptr, size, crc, ro) 1
+#define __tmi_prepare_nm(ptr)
 #else
-#define __asco_prepare(ptr, size, crc, ro) tmasco_prepare(ptr, size, crc, ro)
-#define __asco_prepare_nm(ptr) tmasco_prepare_nm()
+#define __tmi_prepare(ptr, size, crc, ro) __sei_prepare(ptr, size, crc, ro)
+#define __tmi_prepare_nm(ptr) __sei_prepare_nm()
 #endif
 
-#ifdef TMASCO_DISABLE_IGNORE
-#define __asco_ignore_addr(start, end) 
-#define __asco_ignore_all(v) 
-#define __asco_ignore(v)
+#ifdef TMI_DISABLE_IGNORE
+#define __tmi_ignore_addr(start, end) 
+#define __tmi_ignore_all(v) 
+#define __tmi_ignore(v)
 #else
-#define __asco_ignore_addr(start, end) tmasco_ignore_addr(start, end)  
-#define __asco_ignore_all(v) tmasco_ignore_all(v) 
-#define __asco_ignore(v) tmasco_ignore(v)
+#define __tmi_ignore_addr(start, end) __sei_ignore_addr(start, end)  
+#define __tmi_ignore_all(v) __sei_ignore_all(v) 
+#define __tmi_ignore(v) __sei_ignore(v)
 #endif
 
-#define __asco_begin(x)  __tmasco_begin(x)
-#define __asco_switch(x) __tmasco_switch(x)
-#define __asco_commit(x) __tmasco_commit(x)
-#define __asco_end(x)    __tmasco_switch(x); __tmasco_commit(x)
+#if defined(TMI_INSTR)
 
-#if defined(TMASCO_INSTR)
+#define __tmi_begin(X)  __transaction_atomic {
+#define __tmi_end(X) }
 
-#define __tmasco_begin(X)  __transaction_atomic {
-#define __tmasco_switch(X) }
-#define __tmasco_commit(X)
+#elif defined(SEI_ENABLED)
 
-#elif defined(TMASCO_ENABLED)
-
-#define __tmasco_begin(X) D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
+#define __tmi_begin(X) D("Begin(%s): %s:%d\n", #X, __FILE__, __LINE__); \
     __transaction_atomic {
-#define __tmasco_switch(X) }
-#define __tmasco_commit(X) D("Commit(%s): %s:%d\n", #X, __FILE__, __LINE__);
+#define __tmi_end(X) } D("Commit(%s): %s:%d\n", #X, __FILE__, __LINE__);
 
 #else
 
-#define __tmasco_begin(X)
-#define __tmasco_switch(X)
-#define __tmasco_commit(X)
+#define __tmi_begin(X)
+#define __tmi_end(X)
 
 #endif
 
-#define SEI_PURE TMASCO_PURE
-#define SEI_SAFE TMASCO_SAFE
-
-#endif /* _TMASCO_H_ */
+#endif /* _TMI_H_ */
