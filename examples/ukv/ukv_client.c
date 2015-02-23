@@ -7,11 +7,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define BUFSIZE 1024
+
 
 int
 main(const int argc, const char* argv[])
@@ -24,11 +25,13 @@ main(const int argc, const char* argv[])
 
     int fd;
     struct sockaddr_in addr;
+    struct in_addr a;
     int port;
     char* req = NULL;
     ssize_t read;
     char buffer[BUFSIZE+1];
     size_t l = 0;
+    struct hostent *he;
 
     port = atoi(argv[2]);
 
@@ -38,10 +41,17 @@ main(const int argc, const char* argv[])
         perror("failed to create a socket");
         return EXIT_FAILURE;
     }
+         
+    if ((he = gethostbyname(argv[1])) == NULL) {
+        perror("gethostbyname");
+        return EXIT_FAILURE;
+    }
+
+    memcpy(&a, he->h_addr, he->h_length);
 
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(argv[1]);
+    addr.sin_addr.s_addr = a.s_addr;
     addr.sin_port = htons(port);
     
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
