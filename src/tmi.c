@@ -12,15 +12,15 @@
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
-#include "tmasco_mt.h"
+#include "tmi_mt.h"
 #include "config.h"
 
 #ifndef TMASCO_ENABLED
-#include "tmasco_instr.c"
+#include "tmi_mock.c"
 #else /* TMASCO_ENABLED */
 
 #ifdef ASCO_WRAP_SC
-#include "tmasco_sc.h"
+#include "tmi_sc.h"
 #include "wts.h"
 #endif
 

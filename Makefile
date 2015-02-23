@@ -12,8 +12,8 @@ SEI_2PL=1
 SEI_ASMREAD=1 
 SEI_APPEND_ONLY=1 
 SEI_ROPURE=1 
-SEI_WT=1
-SEI_MODE=cow
+ALGO=sbuf
+MODE=cow
 # -----------------------------------------------------------------------------
 
 ifdef DEBUG
@@ -44,23 +44,27 @@ endif
 
 # SEI options
 AFLAGS = -DTMASCO_ENABLED 
-ifdef SEI_MODE
-ifeq ($(SEI_MODE), instr)
+ifdef MODE
+ifeq ($(MODE), instr)
 AFLAGS = -DMODE=0
 endif
-ifeq ($(SEI_MODE), heap)
+ifeq ($(MODE), heap)
 AFLAGS += -DMODE=1
 TMASCO_NOASM = 1
-endif
-ifeq ($(SEI_MODE), cow)
- AFLAGS += -DMODE=2
- ifndef SEI_WB
-  AFLAGS += -DCOW_WT
- endif
 endif
 else # !MODE
 AFLAGS += -DMODE=2
 MODE=cow
+endif
+
+ifeq ($(MODE), cow)
+AFLAGS += -DMODE=2
+ifeq ($(ALGO),sbuf)
+ AFLAGS += -DCOW_WT
+endif
+ifeq ($(ALGO),clog)
+ AFLAGS += -DCOW_WB
+endif
 endif
 
 ifdef SEI_ASMREAD
@@ -106,6 +110,7 @@ TMFLAGS = -fgnu-tm
 $(info ======================)
 $(info UNAME : $(UNAME))
 $(info MODE  : $(MODE))
+$(info ALGO  : $(ALGO))
 $(info DEBUG : $(DEBUG))
 $(info CFLAGS: $(CFLAGS))
 $(info AFLAGS: $(AFLAGS))
@@ -114,24 +119,35 @@ $(info ----------------------)
 
 # --- targets -----------------------------------------------------------------
 BUILD  ?= build
-SRCS    = heap.c cow.c asco.c tmi.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
+SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c wts.c
 SUPPORT = support.c
 LIBASCO = libsei.a
 OBJS    =
 
+ifeq ($(MODE),cow)
+SRCS   += mode_cow.c tmi.c
+endif
+ifeq ($(MODE),heap)
+SRCS   += mode_heap.c tmi.c
+endif
+ifeq ($(MODE),instr)
+SRCS    = tmi_mock.c
+endif
+
+
 ifndef TMASCO_NOASM
-OBJS   += $(BUILD)/tmasco_asm.o
+OBJS   += $(BUILD)/tmi_asm.o
 endif
 
 ifdef SEI_ASMREAD
-OBJS   += $(BUILD)/tmasco_read.o
+OBJS   += $(BUILD)/tmi_read.o
 endif
 
 ifdef DEBUG
 OBJS   += $(addprefix $(BUILD)/, $(SRCS:.c=.o) $(SUPPORT:.c=.o))
 else
-OBJS   += $(BUILD)/asco-inline.o $(BUILD)/support.o
+OBJS   += $(BUILD)/inlined.o $(BUILD)/support.o
 endif
 
 # TESTS
@@ -151,19 +167,19 @@ test: $(TESTS)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmasco_read.o: src/tmasco_read.S
+$(BUILD)/tmi_read.o: src/tmi_read.S
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/tmasco_asm.o: src/tmasco_asm.S | $(BUILD)
+$(BUILD)/tmi_asm.o: src/tmi_asm.S | $(BUILD)
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/support.o: src/support.c
 	$(CC) $(CFLAGS) $(AFLAGS) $(TMFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/asco-inline.o: $(addprefix src/, $(SRCS)) | $(BUILD)
-	@echo > $(BUILD)/asco-inline.c
-	@echo $(foreach f, $^, "#include \"../$(f)\"\n")>> $(BUILD)/asco-inline.c
-	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $(BUILD)/asco-inline.c
+$(BUILD)/inlined.o: $(addprefix src/, $(SRCS)) | $(BUILD)
+	@echo > $(BUILD)/inlined.c
+	@echo $(foreach f, $^, "#include \"../$(f)\"\n")>> $(BUILD)/inlined.c
+	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $(BUILD)/inlined.c
 
 $(BUILD)/%.o: src/%.c | $(BUILD)
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<

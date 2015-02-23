@@ -7,7 +7,7 @@
 #define _ASCO_WAITRESS_H_
 
 #include <stdint.h>
-#include "tmasco_sc.h"
+#include "tmi_sc.h"
 
 
 typedef struct wts wts_t;
