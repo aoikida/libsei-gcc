@@ -234,19 +234,19 @@ sei_memcpy2(sei_t* sei, void* dest, const void* src, size_t n)
  * load and stores
  * ------------------------------------------------------------------------- */
 
-#define ASCO_READ(type) inline                                          \
+#define SEI_READ(type) inline                                           \
     type sei_read_##type(sei_t* sei, const type* addr)                  \
     {                                                                   \
         assert (sei->p == 0 || sei->p == 1);                            \
         DLOG3("sei_read_%s addr = %p", #type, addr);                    \
         if (heap_in(sei->heap[1-sei->p], (void*) addr)) {               \
-            ASCO_FAIL("ERROR, reading from other heap %p\n", addr);     \
+            SEI_FAIL("ERROR, reading from other heap %p\n", addr);      \
             assert (0);                                                 \
         }                                                               \
         if (!heap_in(sei->heap[sei->p], (void*) addr)) {                \
             DLOG3("(not in heap) = %"PRIu64" x%"PRIx64" \n",            \
                   (uint64_t) *addr, (uint64_t) *addr);                  \
-            /* ASCO_FAIL("ERROR, reading from no heap"); */             \
+            /* SEI_FAIL("ERROR, reading from no heap"); */              \
             return *addr;                                               \
         }                                                               \
         DLOG3("(in heap) = %"PRId64" x%"PRIx64"\n",                     \
@@ -272,12 +272,12 @@ sei_memcpy2(sei_t* sei, void* dest, const void* src, size_t n)
         cow_t* cow = sei->cow[sei->p];                                  \
         return cow_read_##type(cow, addr);                              \
     }
-ASCO_READ(uint8_t)
-ASCO_READ(uint16_t)
-ASCO_READ(uint32_t)
-ASCO_READ(uint64_t)
+SEI_READ(uint8_t)
+SEI_READ(uint16_t)
+SEI_READ(uint32_t)
+SEI_READ(uint64_t)
 
-#define ASCO_WRITE(type) inline                                         \
+#define SEI_WRITE(type) inline                                          \
     void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
         assert (sei->p == 0 || sei->p == 1);                            \
@@ -296,7 +296,7 @@ ASCO_READ(uint64_t)
         cow_t* cow = sei->cow[sei->p];                                  \
         cow_write_##type(cow, addr, value);                             \
     }
-ASCO_WRITE(uint8_t)
-ASCO_WRITE(uint16_t)
-ASCO_WRITE(uint32_t)
-ASCO_WRITE(uint64_t)
+SEI_WRITE(uint8_t)
+SEI_WRITE(uint16_t)
+SEI_WRITE(uint32_t)
+SEI_WRITE(uint64_t)

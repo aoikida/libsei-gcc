@@ -17,7 +17,7 @@ size_t counter;
 FILE *ifile = NULL, *ofile = NULL;
 char* buffer;
 
-/* library calls within event handlers need to be annotated with TMASCO_PURE to
+/* library calls within event handlers need to be annotated with SEI_PURE to
  * instruct the compiler not to instrument them */
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, 
               FILE *stream) SEI_PURE;

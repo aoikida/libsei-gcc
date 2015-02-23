@@ -18,7 +18,7 @@
 
 #include "wts.h"
 #include "heap.h"
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #include "sinfo.h"
 #endif
 
@@ -27,7 +27,7 @@ typedef struct  {
     uint32_t anum[2];			// number of arguments
     uint64_t args[2][WTS_MAX_ARG];	// arguments for the call, also stack args
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     sinfo_t* sinfo[2];
 #endif
 } wts_item_t;
@@ -88,7 +88,7 @@ wts_flush(wts_t* wts)
 
         it->func[0]((uint64_t*)&it->args[0]);
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
         sinfo_fini(it->sinfo[0]);
         sinfo_fini(it->sinfo[1]);
         it->sinfo[0] = it->sinfo[1] = NULL;
@@ -121,7 +121,7 @@ wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...)
 
 	va_end (ap);
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     	assert (it->sinfo[p] == NULL);
     	it->sinfo[p] = sinfo_init(fp);
 #endif

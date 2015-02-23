@@ -3,8 +3,8 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
-#ifndef _TMASCO_SC_H_
-#define _TMASCO_SC_H_
+#ifndef _TMI_SC_H_
+#define _TMI_SC_H_
 
 /* ----------------------------------------------------------------------------
 * Typedefs for wrapped system calls
@@ -24,4 +24,4 @@ typedef ssize_t (send_f)(int socket, const void *buffer, size_t size,
 typedef ssize_t (sendto_f)(int sockfd, const void *buf, size_t len, int flags,
                       const struct sockaddr *dest_addr, socklen_t addrlen);
 
-#endif /* _TMASCO_SC_H_ */
+#endif /* _TMI_SC_H_ */

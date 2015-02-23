@@ -3,8 +3,8 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
-#ifndef _ASCO_WAITRESS_H_
-#define _ASCO_WAITRESS_H_
+#ifndef _SEI_WAITRESS_H_
+#define _SEI_WAITRESS_H_
 
 #include <stdint.h>
 #include "tmi_sc.h"
@@ -19,4 +19,4 @@ void	wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...);
 void	wts_flush(wts_t* wts);
 
 
-#endif /* _ASCO_WAITRESS_H_ */
+#endif /* _SEI_WAITRESS_H_ */

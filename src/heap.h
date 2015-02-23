@@ -2,8 +2,8 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_HEAP_H_
-#define _ASCO_HEAP_H_
+#ifndef _SEI_HEAP_H_
+#define _SEI_HEAP_H_
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -31,4 +31,4 @@ void*   heap_get(heap_t* heap, size_t rel);
 #define HEAP_500MB 500*HEAP_1MB
 #define HEAP_1GB   1000*HEAP_1MB
 
-#endif /* _ASCO_HEAP_H_ */
+#endif /* _SEI_HEAP_H_ */

@@ -15,7 +15,7 @@
 #include "debug.h"
 #include "config.h"
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #include "sinfo.h"
 #endif
 
@@ -45,7 +45,7 @@ typedef struct abuf_entry {
     struct abuf_entry* next;
 #endif
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     sinfo_t* sipop;
     sinfo_t* sipush;
 #endif
@@ -134,7 +134,7 @@ abuf_fini(abuf_t* abuf)
 inline void
 abuf_clean(abuf_t* abuf)
 {
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     int i;
     for (i = 0; i < abuf->pushed; ++i) {
         abuf_entry_t* e = &abuf->buf[i];
@@ -160,7 +160,7 @@ abuf_size(abuf_t* abuf)
     return abuf->pushed - abuf->poped;
 }
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #define ABUF_SINFO_POP(e, addr) do {                                    \
         if (e->sipop == NULL) e->sipop = sinfo_init((void*) addr);      \
         else sinfo_update(e->sipop, (void*) addr);                      \

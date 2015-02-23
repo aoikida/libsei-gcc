@@ -2,8 +2,8 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_OBUF_H_
-#define _ASCO_OBUF_H_
+#ifndef _SEI_OBUF_H_
+#define _SEI_OBUF_H_
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -17,4 +17,4 @@ void     obuf_done(obuf_t* obuf);
 void     obuf_close(obuf_t* obuf);
 uint32_t obuf_pop(obuf_t* obuf);
 
-#endif /* _ASCO_OBUF_H_ */
+#endif /* _SEI_OBUF_H_ */

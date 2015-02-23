@@ -2,8 +2,8 @@
  * Copyright (c) 2013,2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_DEBUG_H_
-#define _ASCO_DEBUG_H_
+#ifndef _SEI_DEBUG_H_
+#define _SEI_DEBUG_H_
 #include <stdio.h>
 
 #if DEBUG >= 1
@@ -24,4 +24,4 @@
 #define DLOG3(...)
 #endif
 
-#endif /* _ASCO_DEBUG_H_ */
+#endif /* _SEI_DEBUG_H_ */

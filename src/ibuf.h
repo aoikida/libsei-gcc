@@ -2,8 +2,8 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_IBUF_H_
-#define _ASCO_IBUF_H_
+#ifndef _SEI_IBUF_H_
+#define _SEI_IBUF_H_
 #include <stdint.h>
 #include <stdlib.h>
 #include "crc.h"
@@ -17,4 +17,4 @@ int     ibuf_prepare(ibuf_t* ibuf, const void* ptr, size_t size, uint32_t crc,
 int     ibuf_correct(ibuf_t* ibuf);
 void    ibuf_switch(ibuf_t* ibuf);
 
-#endif /* _ASCO_IBUF_H_ */
+#endif /* _SEI_IBUF_H_ */

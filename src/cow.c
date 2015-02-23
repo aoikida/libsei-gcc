@@ -15,7 +15,7 @@
 #include "cow.h"
 #include "heap.h"
 #include "debug.h"
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #include "sinfo.h"
 #endif
 
@@ -41,7 +41,7 @@ typedef struct cow_entry {
     uintptr_t  wkey;
     cow_word_t wvalue;
     struct cow_entry* next;
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     sinfo_t* sinfo;
 #endif
 } cow_entry_t;
@@ -163,7 +163,7 @@ cow_apply_cmp(cow_t* cow1, cow_t* cow2)
             fail_ifn(v1 == v2, "cow entries differ (value)");
 #endif /* COW_WT */
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
             if (e1->sinfo) {
                 sinfo_fini(e1->sinfo);
                 e1->sinfo = NULL;
@@ -233,7 +233,7 @@ cow_apply_heap(cow_t* cow1, cow_t* cow2)
             *(addr_t*) GETWADDR(cow1->heap, e1->wkey) = v1;
             *(addr_t*) GETWADDR(cow2->heap, e2->wkey) = v2;
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
             if (e1->sinfo) {
                 sinfo_fini(e1->sinfo);
                 e1->sinfo = NULL;
@@ -284,7 +284,7 @@ cow_apply(cow_t* cow)
             cow_entry_t* e = &cow->table[i][j];
             uintptr_t addr = GETWADDR(cow->heap, e->wkey);
             *((addr_t*) addr) = WVAL(e);
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
             if (e->sinfo) {
                 sinfo_fini(e->sinfo);
                 e->sinfo = NULL;
@@ -376,7 +376,7 @@ COW_READ(uint16_t)
 COW_READ(uint32_t)
 COW_READ(uint64_t)
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #define SINFO_UPDATE(e, addr) do {                                    \
         if (e->sinfo == NULL) e->sinfo = sinfo_init((void*) addr);    \
         else sinfo_update(e->sinfo, (void*) addr);                    \

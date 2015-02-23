@@ -19,13 +19,13 @@
 #include "config.h"
 #include "talloc.h"
 #include "heap.h"
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #include "sinfo.h"
 #endif
 
 typedef struct {
     void* addr;
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     sinfo_t* sinfo[2];
 #endif
 } talloc_allocation_t;
@@ -82,13 +82,13 @@ talloc_malloc(talloc_t* talloc, size_t size)
         else
             a->addr = malloc(size);
         assert (a->addr && "out of memory");
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
         a->sinfo[0] = sinfo_init(a->addr);
 #endif
     } else {
         assert (talloc->p == 1);
         a = &talloc->allocations[talloc->size[1]++];
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
         a->sinfo[1] = sinfo_init(a->addr);
 #endif
     }
@@ -113,7 +113,7 @@ talloc_clean(talloc_t* talloc)
    fail_ifn(talloc->size[0] == talloc->size[1],
             "number of allocations in traversals differ");
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
    int i;
    for (i = 0; i < talloc->size[0]; ++i) {
        talloc_allocation_t* a = &talloc->allocations[i];

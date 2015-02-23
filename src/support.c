@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------- */
 #include <assert.h>
 #include <stdlib.h>
-#define TMASCO_IMPL
+#define TMI_IMPL
 #include <sei/support.h>
 
 

@@ -2,8 +2,8 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_SINFO_H_
-#define _ASCO_SINFO_H_
+#ifndef _SEI_SINFO_H_
+#define _SEI_SINFO_H_
 
 #define MAX_DEPTH 24
 
@@ -14,4 +14,4 @@ void     sinfo_fini(sinfo_t* sinfo);
 void     sinfo_update(sinfo_t* sinfo, void* addr);
 void     sinfo_show(sinfo_t*);
 
-#endif /* _ASCO_SINFO_H_ */
+#endif /* _SEI_SINFO_H_ */

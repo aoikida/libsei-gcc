@@ -2,8 +2,8 @@
  * Copyright (c) 2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_TBAR_H_
-#define _ASCO_TBAR_H_
+#ifndef _SEI_TBAR_H_
+#define _SEI_TBAR_H_
 #include <stdint.h>
 
 typedef struct tbar tbar_t;
@@ -15,4 +15,4 @@ void    tbar_enter(tbar_t* tbar);
 void    tbar_leave(tbar_t* tbar);
 int     tbar_check(tbar_t* tbar);
 
-#endif /* _ASCO_TBAR_H_ */
+#endif /* _SEI_TBAR_H_ */

@@ -15,13 +15,13 @@
 
 #include "tbin.h"
 #include "heap.h"
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
 #include "sinfo.h"
 #endif
 
 typedef struct {
     void* ptr[2];
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     sinfo_t* sinfo[2];
 #endif
 } tbin_item_t;
@@ -74,7 +74,7 @@ tbin_add(tbin_t* tbin, void* ptr, int p)
     tbin_item_t* it = &tbin->items[tbin->nitems[p]++];
     it->ptr[p] = ptr;
 
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
     assert (it->sinfo[p] == NULL);
     it->sinfo[p] = sinfo_init(ptr);
 #endif
@@ -97,7 +97,7 @@ tbin_flush(tbin_t* tbin)
         else
             free(it->ptr[0]);
         it->ptr[0] = it->ptr[1] = NULL;
-#ifdef ASCO_STACK_INFO
+#ifdef SEI_STACK_INFO
         sinfo_fini(it->sinfo[0]);
         sinfo_fini(it->sinfo[1]);
         it->sinfo[0] = it->sinfo[1] = NULL;

@@ -2,8 +2,8 @@
  * Copyright (c) 2013 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_COW_H_
-#define _ASCO_COW_H_
+#ifndef _SEI_COW_H_
+#define _SEI_COW_H_
 #include <stdint.h>
 #include <stdlib.h> // size_t
 
@@ -29,4 +29,4 @@ uint16_t cow_read_uint16_t(cow_t* cow, const uint16_t* oaddr);
 uint32_t cow_read_uint32_t(cow_t* cow, const uint32_t* addr);
 uint64_t cow_read_uint64_t(cow_t* cow, const uint64_t* addr);
 
-#endif /* _ASCO_COW_H_ */
+#endif /* _SEI_COW_H_ */

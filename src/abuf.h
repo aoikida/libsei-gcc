@@ -2,8 +2,8 @@
  * Copyright (c) 2013,2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _ASCO_ABUF_H_
-#define _ASCO_ABUF_H_
+#ifndef _SEI_ABUF_H_
+#define _SEI_ABUF_H_
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -31,4 +31,4 @@ uint16_t abuf_pop_uint16_t(abuf_t* abuf, const uint16_t* addr);
 uint32_t abuf_pop_uint32_t(abuf_t* abuf, const uint32_t* addr);
 uint64_t abuf_pop_uint64_t(abuf_t* abuf, const uint64_t* addr);
 
-#endif /* _ASCO_ABUF_H_ */
+#endif /* _SEI_ABUF_H_ */

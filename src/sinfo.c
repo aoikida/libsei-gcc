@@ -70,7 +70,7 @@ sinfo_show(sinfo_t* sinfo)
     int i;
     // use an offset of 2 to remove malloc_info and wrapper frames
     for (i = 2; i < sinfo->ssize; ++i) {
-#ifdef ASCO_STACK_INFO_CMD
+#ifdef SEI_STACK_INFO_CMD
 #define STR_(x) #x
 #define STR(x) STR_(x)
         char cmd[1024];
@@ -79,7 +79,7 @@ sinfo_show(sinfo_t* sinfo)
         char addr[24];
         strncpy(addr, p1+1, p2-p1-1);
         addr[p2-p1-1] = '\0';
-        sprintf(cmd, "addr2line -e %s %s", STR(ASCO_STACK_INFO_CMD), addr);
+        sprintf(cmd, "addr2line -e %s %s", STR(SEI_STACK_INFO_CMD), addr);
         int r = system(cmd);
         if (r != 0) {
             perror("addr2line");

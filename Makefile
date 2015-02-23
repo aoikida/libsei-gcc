@@ -43,14 +43,14 @@ endif
 endif 
 
 # SEI options
-AFLAGS = -DTMASCO_ENABLED 
+AFLAGS = -DSEI_ENABLED 
 ifdef MODE
 ifeq ($(MODE), instr)
 AFLAGS = -DMODE=0
 endif
 ifeq ($(MODE), heap)
 AFLAGS += -DMODE=1
-TMASCO_NOASM = 1
+SEI_NOASM = 1
 endif
 else # !MODE
 AFLAGS += -DMODE=2
@@ -80,19 +80,19 @@ AFLAGS += -DCOW_ROPURE
 endif
 
 ifdef SEI_MTL
-AFLAGS += -DASCO_MTL
+AFLAGS += -DSEI_MTL
 endif
 
 ifdef SEI_MTL2
-AFLAGS += -DASCO_MTL2
+AFLAGS += -DSEI_MTL2
 endif
 
 ifdef SEI_2PL
-AFLAGS += -DASCO_2PL
+AFLAGS += -DSEI_2PL
 endif
 
 ifdef SEI_TBAR
-AFLAGS += -DASCO_TBAR
+AFLAGS += -DSEI_TBAR
 endif
 
 # compiler
@@ -122,7 +122,7 @@ BUILD  ?= build
 SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c wts.c
 SUPPORT = support.c
-LIBASCO = libsei.a
+LIBSEI  = libsei.a
 OBJS    =
 
 ifeq ($(MODE),cow)
@@ -136,7 +136,7 @@ SRCS    = tmi_mock.c
 endif
 
 
-ifndef TMASCO_NOASM
+ifndef SEI_NOASM
 OBJS   += $(BUILD)/tmi_asm.o
 endif
 
@@ -154,7 +154,7 @@ endif
 TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
-_TARGETS = $(LIBASCO)
+_TARGETS = $(LIBSEI)
 override TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # --- rules -------------------------------------------------------------------
@@ -184,7 +184,7 @@ $(BUILD)/inlined.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 $(BUILD)/%.o: src/%.c | $(BUILD)
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/$(LIBASCO): $(OBJS)
+$(BUILD)/$(LIBSEI): $(OBJS)
 	ar rvs $@ $^
 
 $(BUILD)/%.test: src/%.c $(OBJS)

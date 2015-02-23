@@ -2,28 +2,28 @@
  * Copyright (c) 2014 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
-#ifndef _TMASCO_MT_H_
-#define _TMASCO_MT_H_
+#ifndef _SEI_MT_H_
+#define _SEI_MT_H_
 
-#define ASCO_MAX_THREADS 16 // maximum number of threads
+#define SEI_MAX_THREADS 16 // maximum number of threads
 
-#if defined(ASCO_2PL) || defined(ASCO_MTL) || defined(ASCO_MTL2)
-# ifndef ASCO_MT
-#  define ASCO_MT
+#if defined(SEI_2PL) || defined(SEI_MTL) || defined(SEI_MTL2)
+# ifndef SEI_MT
+#  define SEI_MT
 # endif
 #endif
 
-#if defined(ASCO_MTL2) && !defined(ASCO_MTL)
-# define ASCO_MTL
+#if defined(SEI_MTL2) && !defined(SEI_MTL)
+# define SEI_MTL
 #endif
 
-#if defined(ASCO_2PL) && defined(ASCO_MTL)
+#if defined(SEI_2PL) && defined(SEI_MTL)
 # error Cant support 2PL and MTL together
 #endif
 
 # include "abuf.h"
 
-#if defined(ASCO_MT) && defined(ASCO_TBAR)
+#if defined(SEI_MT) && defined(SEI_TBAR)
 # include "tbar.h"
 # include "stash.h"
 #endif
@@ -37,4 +37,4 @@ typedef int (pthread_mutex_lock_f)(pthread_mutex_t* mutex);
 typedef int (pthread_mutex_trylock_f)(pthread_mutex_t* mutex);
 typedef int (pthread_mutex_unlock_f)(pthread_mutex_t* mutex);
 
-#endif /* _TMASCO_MT_H_ */
+#endif /* _SEI_MT_H_ */
