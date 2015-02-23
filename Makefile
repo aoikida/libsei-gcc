@@ -19,8 +19,8 @@ SEI_MODE=cow
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
 else
-override CFLAGS += $(CFLAGS_REL) -Iinclude -D_FORTIFY_SOURCE=0
-#-U_FORTIFY_SOURCE
+override CFLAGS += $(CFLAGS_REL) -Iinclude -U_FORTIFY_SOURCE
+#-D_FORTIFY_SOURCE=0
 endif
 
 # debugging level 0-3
@@ -41,8 +41,6 @@ else
 $(error OS not supported)
 endif
 endif 
-
-
 
 # SEI options
 AFLAGS = -DTMASCO_ENABLED 

@@ -147,8 +147,9 @@ See ``examples/simple`` and ``examples/ukv``.
 References
 ----------------
 * `Scalable error isolation for distributed systems
-  <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ -  Diogo Behrens, *Technische Universität Dresden*; Marco Serafini, *Qatar Computing Research Institute*; Flavio P. Junqueira, *Microsoft Research*; and Sergei Arnautov and Christof Fetzer, *Technische Universität Dresden*. To appear in 12th USENIX Symposium on Networked Systems Design and Implementation (NSDI'15)
-* `Towards Transparent Hardening of Distributed Systems
-  <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer *Technische Universität Dresden*; Flavio P. Junqueira *Microsoft Research*, Marco Serafini *Qatar Computing Research Institute*, In Proceedings of the 9th Workshop on Hot Topics in Dependable Systems, ACM, 2013
+  <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ -  Diogo Behrens, Marco Serafini, Sergei Arnautov, Flavio P. Junqueira, and Christof Fetzer. *12th USENIX Symposium on Networked Systems Design and Implementation (NSDI'15)*
 
-.. _PASC: https://www.usenix.org/conference/usenixfederatedconferencesweek/practical-hardening-crash-tolerant-systems
+..
+  * `Towards Transparent Hardening of Distributed Systems
+  <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer, Flavio P. Junqueira, Marco Serafini, In Proceedings of the 9th Workshop on Hot Topics in Dependable Systems, ACM, 2013
+
