@@ -3,8 +3,8 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
-#ifndef _ASCO_CONFIG_H_
-#define _ASCO_CONFIG_H_
+#ifndef _SEI_CONFIG_H_
+#define _SEI_CONFIG_H_
 
 #define ABUF_MAX_CONFLICTS 8000
 
@@ -13,15 +13,15 @@
 #define TBIN_SIZE 10000     // at most 10 frees per traversal
 #define TALLOC_MAX_ALLOCS 20000
 
-#ifndef ASCO_MT
+#ifndef SEI_MT
 /* provide wrappers for system calls */
-#define ASCO_WRAP_SC
+#define SEI_WRAP_SC
 #endif
 
-#ifdef ASCO_WRAP_SC
+#ifdef SEI_WRAP_SC
 #define SC_MAX_CALLS 100 // at most 10 system calls inside a traversal
 #endif
 
 #define WTS_MAX_ARG 32	// maximum number of arguments for a wrapped call
 
-#endif /* _ASCO_CONFIG_H_ */
+#endif /* _SEI_CONFIG_H_ */

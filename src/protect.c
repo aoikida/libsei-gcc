@@ -25,12 +25,10 @@ protect_setsignal()
     }
 }
 
-//printf("si->si_addr = %p (p=%d)\n", si->si_addr, __tmasco.asco->p);
-
 #define PROTECT_HANDLER                                                 \
     void protect_handler(int sig, siginfo_t* si, void* args)            \
     {                                                                   \
-        asco_unprotect(__tmasco->asco, si->si_addr, 1);                 \
+        sei_unprotect(__sei_thread->sei, si->si_addr, 1);                \
     }
 
 

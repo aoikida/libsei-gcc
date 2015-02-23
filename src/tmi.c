@@ -13,7 +13,7 @@
 #include <string.h>
 #include <string.h>
 #include <stdlib.h>
-#include "asco.h"
+#include "sei.h"
 #include "debug.h"
 #include "heap.h"
 #include "cow.h"
@@ -47,7 +47,7 @@ typedef struct {
 #ifdef SEI_MT
     char pad1[64];
 #endif
-    asco_t* asco;
+    sei_t* sei;
     uintptr_t low;
     uintptr_t high;
     sei_ctx_t ctx;
@@ -141,7 +141,7 @@ sendto_f*  __sendto  = NULL;
  * ------------------------------------------------------------------------- */
 
 #ifdef HEAP_PROTECT
-void asco_unprotect(asco_t* asco, void* addr, size_t size);
+void sei_unprotect(sei_t* sei, void* addr, size_t size);
 #  include "protect.c"
 #  define HEAP_PROTECT_INIT protect_setsignal()
 PROTECT_HANDLER
@@ -166,16 +166,16 @@ PROTECT_HANDLER
  * init and fini
  * ------------------------------------------------------------------------- */
 
-/* initialize library and allocate an asco object. This is called once
+/* initialize library and allocate an sei object. This is called once
  * the library is loaded. If static liked should be called on
  * initialization of the program. */
 static void __attribute__((constructor))
 __sei_init()
 {
 #ifndef SEI_MT
-    assert (__sei_thread->asco == NULL);
-    __sei_thread->asco = asco_init();
-    assert (__sei_thread->asco);
+    assert (__sei_thread->sei == NULL);
+    __sei_thread->sei = sei_init();
+    assert (__sei_thread->sei);
     HEAP_PROTECT_INIT;
 
 #ifdef SEI_WRAP_SC
@@ -255,9 +255,9 @@ __sei_thread_init()
     __sei_thread = &___sei_thread[me];
     assert (r == 0 && "error releasing lock");
 
-    assert (__sei_thread->asco == NULL);
-    __sei_thread->asco = asco_init();
-    assert (__sei_thread->asco);
+    assert (__sei_thread->sei == NULL);
+    __sei_thread->sei = sei_init();
+    assert (__sei_thread->sei);
     __sei_thread->abuf = abuf_init(100);
     __sei_thread->wrapped = 0;
 #ifdef SEI_2PL
@@ -283,13 +283,13 @@ __sei_fini()
     abuf_fini(__sei_thread->abuf_sc);
 #endif /* SEI_WRAP_SC */
 
-    assert (__sei_thread->asco);
-    asco_fini(__sei_thread->asco);
+    assert (__sei_thread->sei);
+    sei_fini(__sei_thread->sei);
 
 #else /* SEI_MT */
     int i;
     for (i = 0; i < __sei_thread_count; ++i) {
-        assert (___sei_thread[i].asco);
+        assert (___sei_thread[i].sei);
         if (___sei_thread[i].abuf)
             abuf_fini(___sei_thread[i].abuf);
 #ifdef SEI_2PL
@@ -308,7 +308,7 @@ __sei_fini()
                 tbar_fini(___sei_thread[i].tbar);
         }
 #endif /* SEI_TBAR */
-        asco_fini(___sei_thread[i].asco);
+        sei_fini(___sei_thread[i].sei);
     }
 
 #ifdef SEI_TBAR
@@ -348,35 +348,35 @@ getbp()
 
 #if 1
 #define SEI_MAX_IGNORE 1000
-void* __asco_ignore_addr_s[SEI_MAX_IGNORE];
-void* __asco_ignore_addr_e[SEI_MAX_IGNORE];
-uint32_t __asco_ignore_num = 0;
-uint32_t __asco_ignore_all = 0;
-int __asco_write_disable = 0;
+void* __sei_ignore_addr_s[SEI_MAX_IGNORE];
+void* __sei_ignore_addr_e[SEI_MAX_IGNORE];
+uint32_t __sei_ignore_num = 0;
+uint32_t __sei_ignore_allf = 0;
+int __sei_write_disable = 0;
 #endif
 
 void __sei_ignore(int v) {
-	__asco_write_disable = v;
+	__sei_write_disable = v;
 }
 
 void __sei_ignore_all(uint32_t v) {
-	__asco_ignore_all = v;
+	__sei_ignore_allf = v;
 }
 
 void __sei_ignore_addr(void* start, void* end) {
-	if (asco_getp(__sei_thread->asco) == -1)
+	if (sei_getp(__sei_thread->sei) == -1)
 		return;
 	int i;
-	for (i = 0; i < __asco_ignore_num; ++i) {
-		if (__asco_ignore_addr_s[i] == start &&
-		    __asco_ignore_addr_e[i] == end)
+	for (i = 0; i < __sei_ignore_num; ++i) {
+		if (__sei_ignore_addr_s[i] == start &&
+		    __sei_ignore_addr_e[i] == end)
 			return;
 	}
 
-	__asco_ignore_addr_s[__asco_ignore_num] = start;
-	__asco_ignore_addr_e[__asco_ignore_num] = end;
-	__asco_ignore_num++;
-	assert(SEI_MAX_IGNORE >= __asco_ignore_num && "not enough ignore slots");
+	__sei_ignore_addr_s[__sei_ignore_num] = start;
+	__sei_ignore_addr_e[__sei_ignore_num] = end;
+	__sei_ignore_num++;
+	assert(SEI_MAX_IGNORE >= __sei_ignore_num && "not enough ignore slots");
 	DLOG3("Ignore range from %p to %p\n", start, end);
 }
 
@@ -388,7 +388,7 @@ static int inline ignore_addr(const void* ptr) __attribute__((always_inline));
 static int inline
 ignore_addr(const void* ptr)
 {
-    if (__asco_write_disable || IN_STACK(ptr)) {
+    if (__sei_write_disable || IN_STACK(ptr)) {
         DLOG3("Ignore address: %p\n", ptr);
         return 1;
     }// else return 0;
@@ -397,8 +397,8 @@ ignore_addr(const void* ptr)
 //    if ((uintptr_t) ptr < (uintptr_t) &edata) return 1;
 
         int i;
-        for (i = 0; i < __asco_ignore_num; ++i)
-            if (ptr >= __asco_ignore_addr_s[i] && ptr <= __asco_ignore_addr_e[i]) {
+        for (i = 0; i < __sei_ignore_num; ++i)
+            if (ptr >= __sei_ignore_addr_s[i] && ptr <= __sei_ignore_addr_e[i]) {
             	DLOG3("(hack) Ignore address: %p from range %d \n", ptr, i);
             	return 1;
             }
@@ -423,36 +423,36 @@ _ITM_commitTransaction()
 inline void*
 _ITM_malloc(size_t size)
 {
-    if (__asco_ignore_all) {
-        void* r = malloc(size); //asco_malloc(__sei_thread->asco, size);
+    if (__sei_ignore_allf) {
+        void* r = malloc(size); //sei_malloc(__sei_thread->sei, size);
         __sei_ignore_addr(r, (uint8_t*)r + size);
         return r;
-    } else return asco_malloc(__sei_thread->asco, size);
+    } else return sei_malloc(__sei_thread->sei, size);
 }
 
 inline void
 _ITM_free(void* ptr)
 {
     int i;
-    for (i = 0; i < __asco_ignore_num; ++i)
-            if (ptr == __asco_ignore_addr_s[i]) {
+    for (i = 0; i < __sei_ignore_num; ++i)
+            if (ptr == __sei_ignore_addr_s[i]) {
                 free(ptr);
                 return;
             }
-    asco_free(__sei_thread->asco, ptr);
+    sei_free(__sei_thread->sei, ptr);
 }
 
 inline void*
 _ITM_calloc(size_t nmemb, size_t size)
 {
-    return asco_malloc(__sei_thread->asco, nmemb*size);
+    return sei_malloc(__sei_thread->sei, nmemb*size);
 }
 #ifndef COW_WT
 #define ITM_READ(type, prefix, suffix) inline                   \
     type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
         if (ignore_addr(addr)) return *addr;                    \
-        else return asco_read_##type(__sei_thread->asco, addr);     \
+        else return sei_read_##type(__sei_thread->sei, addr);     \
     }
 #else
 #ifdef COW_ASMREAD
@@ -490,7 +490,7 @@ ITM_READ_ALL(uint64_t, U8)
                 sizeof(type),                                   \
                 ((void*)(uintptr_t) pthread_self())             \
                 );                                              \
-            asco_write_##type(__sei_thread->asco, addr, value);     \
+            sei_write_##type(__sei_thread->sei, addr, value);     \
         }                                                       \
     }
 
@@ -577,7 +577,7 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     		unal = sizeof(uint32_t) - unal;
 
 			do {
-				asco_write_uint8_t(__sei_thread->asco, (void*) (destination + i),
+				sei_write_uint8_t(__sei_thread->sei, (void*) (destination + i),
 						   *(uint8_t*) (source + i));
 			} while (++i < unal);
 		}
@@ -587,7 +587,7 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     	uint32_t unal64 = (unsigned long int)(destination + i) % sizeof(uint64_t);
 
     	if (unal64 > 0 && len >= sizeof(uint32_t)) {
-    		asco_write_uint32_t(__sei_thread->asco, (void*) (destination + i),
+    		sei_write_uint32_t(__sei_thread->sei, (void*) (destination + i),
     							   *(uint32_t*) (source + i));
 
     		i += sizeof(uint32_t);
@@ -598,7 +598,7 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 		uint32_t j = 0;
 
 		while (j < num64w) {
-			asco_write_uint64_t(__sei_thread->asco, (void*) (destination + i),
+			sei_write_uint64_t(__sei_thread->sei, (void*) (destination + i),
 					   *(uint64_t*) (source + i));
 			i += sizeof(uint64_t);
 			len -= sizeof(uint64_t);
@@ -606,14 +606,14 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
 		};
 
 		if (len >= sizeof(uint32_t)) {
-			asco_write_uint32_t(__sei_thread->asco, (void*) (destination + i),
+			sei_write_uint32_t(__sei_thread->sei, (void*) (destination + i),
 							   *(uint32_t*) (source + i));
 
 			i += sizeof(uint32_t);
 		}
 
 		while (i < size) {
-			asco_write_uint8_t(__sei_thread->asco, (void*) (destination + i),
+			sei_write_uint8_t(__sei_thread->sei, (void*) (destination + i),
 				   *(uint8_t*) (source + i));
 			i++;
 		}
@@ -628,11 +628,11 @@ _ITM_memcpyRtWt(void* dst, const void* src, size_t size)
     do {
         //destination[i] = source[i];
 #ifdef COW_WT
-        asco_write_uint8_t(__sei_thread->asco, (void*) (destination + i),
+        sei_write_uint8_t(__sei_thread->sei, (void*) (destination + i),
                            *(uint8_t*) (source + i));
 #else
-        asco_write_uint8_t(__sei_thread->asco, (void*) (destination + i),
-                           asco_read_uint8_t(__sei_thread->asco,
+        sei_write_uint8_t(__sei_thread->sei, (void*) (destination + i),
+                           sei_read_uint8_t(__sei_thread->sei,
                                              (void*) (source + i)));
 #endif
     } while (++i < size);
@@ -692,15 +692,15 @@ _ITM_memsetW(void* s, int c, size_t n)
     if (p64 < p) p64 += 0x08;
 
     while (p < e && p != p64)
-        asco_write_uint8_t(__sei_thread->asco, (void*) (p++), c);
+        sei_write_uint8_t(__sei_thread->sei, (void*) (p++), c);
 
     while (p < e64) {
-        asco_write_uint64_t(__sei_thread->asco, (void*) (p), v);
+        sei_write_uint64_t(__sei_thread->sei, (void*) (p), v);
         p += 8;
     }
 
     while (p < e)
-        asco_write_uint8_t(__sei_thread->asco, (void*) (p++), c);
+        sei_write_uint8_t(__sei_thread->sei, (void*) (p++), c);
 
     return s;
 }
@@ -726,7 +726,7 @@ socket(int domain, int type, int protocol)
     }
     int r;
 
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
     case 0:
         r = __socket(domain, type, protocol);
         DLOG3("calling socket, result %d (thread = %p)\n",
@@ -765,13 +765,13 @@ close(int fd)
         return __close(fd);
     }
     int r;
-    int p = asco_getp(__sei_thread->asco);
+    int p = sei_getp(__sei_thread->sei);
 
     switch (p) {
     case 0:
     case 1: {
     	DLOG3("got args for close: %d\n", fd);
-    	wts_add(asco_get_wts(__sei_thread->asco), p, wts_close, 2, (uint64_t) fd,
+    	wts_add(sei_get_wts(__sei_thread->sei), p, wts_close, 2, (uint64_t) fd,
     			(uint64_t) 0);
 		DLOG3("deferring close (thread = %p)\n", (void*) pthread_self());
 		r = 0;
@@ -794,7 +794,7 @@ connect(int socket, const struct sockaddr *addr, socklen_t length)
     }
     int r;
 
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
     case 0:
         r = __connect(socket, addr, length);
         abuf_push_uint32_t(__sei_thread->abuf_sc, (uint32_t*)(intptr_t) socket, r);
@@ -824,7 +824,7 @@ bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     }
     int r;
 
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
     case 0:
         r = __bind(sockfd, addr, addrlen);
         abuf_push_uint32_t(__sei_thread->abuf_sc, (uint32_t*) addr, r);
@@ -870,12 +870,12 @@ send(int socket, const void *buffer, size_t size, int flags)
         return __send(socket, buffer, size, flags);
     }
     int r;
-    int p = asco_getp(__sei_thread->asco);
+    int p = sei_getp(__sei_thread->sei);
 
     switch (p) {
     case 0:
     case 1: {
-    	wts_add(asco_get_wts(__sei_thread->asco), p, wts_send, 5, (uint64_t) socket,
+    	wts_add(sei_get_wts(__sei_thread->sei), p, wts_send, 5, (uint64_t) socket,
     			(uint64_t) buffer, (uint64_t) size, (uint64_t) flags,
     			(uint64_t) size); //last arg - expected ret value
 
@@ -926,7 +926,7 @@ ssize_t sendto(int socket, const void *buffer, size_t size, int flags,
 		return __sendto(socket, buffer, size, flags, dest_addr, addrlen);
 	}
 	int r;
-	int p = asco_getp(__sei_thread->asco);
+	int p = sei_getp(__sei_thread->sei);
 
 	switch (p) {
 	case 0:
@@ -940,14 +940,14 @@ ssize_t sendto(int socket, const void *buffer, size_t size, int flags,
 			memcpy(&a1, d, 8);
 			memcpy(&a2, d + 8, 8);
 
-			wts_add(asco_get_wts(__sei_thread->asco), p, wts_sendto, 10,
+			wts_add(sei_get_wts(__sei_thread->sei), p, wts_sendto, 10,
 								(uint64_t) socket, (uint64_t) buffer,
 								(uint64_t) size, (uint64_t) flags,
 								(uint64_t) dest_addr, (uint64_t) addrlen,
 								(uint64_t) size, 1/*dest_addr on stack*/, a1, a2);
 		}
 		else
-			wts_add(asco_get_wts(__sei_thread->asco), p, wts_sendto, 8,
+			wts_add(sei_get_wts(__sei_thread->sei), p, wts_sendto, 8,
 					(uint64_t) socket, (uint64_t) buffer, (uint64_t) size,
 					(uint64_t) flags, (uint64_t) dest_addr, (uint64_t) addrlen,
 					(uint64_t) size, 0/*dest_addr not on stack*/);
@@ -996,7 +996,7 @@ __sei_mtl(uint64_t bp)
     //      __sei_thread->size, (void*) pthread_self());
 
     // reset message
-    asco_prepare_nm(__sei_thread->asco);
+    sei_prepare_nm(__sei_thread->sei);
 
     _ITM_beginTransaction(0);
 }
@@ -1012,7 +1012,7 @@ pthread_mutex_lock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
     int r;
 
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
 #ifdef SEI_MTL2
     case 0:
     case 1:
@@ -1055,7 +1055,7 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
 
 #ifdef SEI_MTL2
     case 0:
@@ -1098,7 +1098,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
     case 0:
     case 1:
         __sei_commit(1);
@@ -1126,7 +1126,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (asco_getp(__sei_thread->asco)) {
+    switch (sei_getp(__sei_thread->sei)) {
 #ifndef SEI_2PL
     case 0:
         r = __pthread_mutex_unlock(lock);
@@ -1161,31 +1161,31 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
 void*
 __sei_malloc(size_t size)
 {
-    assert (asco_getp(__sei_thread->asco) == -1
+    assert (sei_getp(__sei_thread->sei) == -1
             && "called from transactional code");
-    return asco_malloc2(__sei_thread->asco, size);
+    return sei_malloc2(__sei_thread->sei, size);
 }
 
 void*
 tanger_txnal_sei_thread_malloc(size_t size)
 {
-    assert (asco_getp(__sei_thread->asco) != -1
+    assert (sei_getp(__sei_thread->sei) != -1
             && "called from non-transactional code");
-    return asco_malloc(__sei_thread->asco, size);
+    return sei_malloc(__sei_thread->sei, size);
 }
 
 void*
 __sei_other(void* ptr)
 {
-    int p = asco_getp(__sei_thread->asco);
-    asco_setp(__sei_thread->asco, 0);
-    void* r = asco_other(__sei_thread->asco, ptr);
-    asco_setp(__sei_thread->asco, p);
+    int p = sei_getp(__sei_thread->sei);
+    sei_setp(__sei_thread->sei, 0);
+    void* r = sei_other(__sei_thread->sei, ptr);
+    sei_setp(__sei_thread->sei, p);
     return r;
 }
 
 uint32_t
-__sei_begin(sei_thread_ctx_t* ctx)
+__sei_begin(sei_ctx_t* ctx)
 {
 #ifdef SEI_MT
     assert (__sei_thread && "sei_thread_prepare should be called before begin");
@@ -1193,9 +1193,9 @@ __sei_begin(sei_thread_ctx_t* ctx)
     tbar_enter(__sei_thread->tbar);
 #endif /* SEI_TBAR */
 #endif /* SEI_MT */
-    memcpy(&__sei_thread->ctx, ctx, sizeof(sei_thread_ctx_t));
+    memcpy(&__sei_thread->ctx, ctx, sizeof(sei_ctx_t));
     __sei_thread->high = __sei_thread->ctx.rbp;
-    asco_begin(__sei_thread->asco);
+    sei_begin(__sei_thread->sei);
     return 0x01;
 }
 
@@ -1203,8 +1203,8 @@ __sei_begin(sei_thread_ctx_t* ctx)
 void
 __sei_commit(int force)
 {
-    if (!asco_getp(__sei_thread->asco)) {
-        asco_switch(__sei_thread->asco);
+    if (!sei_getp(__sei_thread->sei)) {
+        sei_switch(__sei_thread->sei);
         //fprintf(stderr, "Acquired locks: %d\n", abuf_size(__sei_thread->abuf));
 
         if (__sei_thread->mtl) {
@@ -1215,7 +1215,7 @@ __sei_commit(int force)
             __sei_switch(&__sei_thread->ctx, 0x01);
         }
     }
-    asco_commit(__sei_thread->asco);
+    sei_commit(__sei_thread->sei);
 
     assert (abuf_size(__sei_thread->abuf) == 0);
     abuf_clean(__sei_thread->abuf);
@@ -1230,23 +1230,23 @@ void
 __sei_commit()
 {
 #if 1
-    //	memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
-    // 	memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
-    DLOG1("__asco_ignore_num = %d\n", __asco_ignore_num);
-	__asco_ignore_num = 0;
-    __asco_write_disable = 0;
+    //	memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
+    // 	memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
+    DLOG1("__sei_ignore_num = %d\n", __sei_ignore_num);
+	__sei_ignore_num = 0;
+    __sei_write_disable = 0;
 #endif
 
-    if (!asco_getp(__sei_thread->asco)) {
-        asco_switch(__sei_thread->asco);
+    if (!sei_getp(__sei_thread->sei)) {
+        sei_switch(__sei_thread->sei);
         __sei_switch(&__sei_thread->ctx, 0x01);
     }
-    asco_commit(__sei_thread->asco);
+    sei_commit(__sei_thread->sei);
 
 #ifdef SEI_2PL
     int r = 0;
     pthread_mutex_t* l = NULL;
-    assert (asco_getp(__sei_thread->asco) == -1);
+    assert (sei_getp(__sei_thread->sei) == -1);
     abuf_rewind(__sei_thread->abuf);
     while (abuf_size(__sei_thread->abuf)) {
         l = abuf_pop(__sei_thread->abuf, (void*) &r);
@@ -1281,7 +1281,7 @@ __sei_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef SEI_MT
     if (unlikely(!__sei_thread)) __sei_thread_init();
 #endif
-    return asco_prepare(__sei_thread->asco, ptr, size, crc, ro);
+    return sei_prepare(__sei_thread->sei, ptr, size, crc, ro);
 }
 
 void
@@ -1290,35 +1290,35 @@ __sei_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef SEI_MT
     if (unlikely(!__sei_thread)) __sei_thread_init();
 #endif
-    memset(__asco_ignore_addr_s, 0, sizeof(__asco_ignore_addr_s));
-    memset(__asco_ignore_addr_e, 0, sizeof(__asco_ignore_addr_e));
-    __asco_ignore_num = 0;
-    asco_prepare_nm(__sei_thread->asco);
+    memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
+    memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
+    __sei_ignore_num = 0;
+    sei_prepare_nm(__sei_thread->sei);
 }
 
 void
 __sei_output_append(const void* ptr, size_t size)
 {
-    asco_output_append(__sei_thread->asco, ptr, size);
+    sei_output_append(__sei_thread->sei, ptr, size);
 }
 
 void
 __sei_output_done()
 {
-    asco_output_done(__sei_thread->asco);
+    sei_output_done(__sei_thread->sei);
 }
 
 uint32_t
 __sei_output_next()
 {
-    return asco_output_next(__sei_thread->asco);
+    return sei_output_next(__sei_thread->sei);
 }
 
 void
 __sei_unprotect(void* addr, size_t size)
 {
 #ifdef HEAP_PROTECT
-    asco_unprotect(__sei_thread->asco, addr, size);
+    sei_unprotect(__sei_thread->sei, addr, size);
 #endif
     // else ignore
 }
@@ -1356,7 +1356,7 @@ __sei_shift(int handle)
 #ifndef NDEBUG
         //TODO: int h =
 #endif
-            asco_shift(__sei_thread->asco, handle);
+            sei_shift(__sei_thread->sei, handle);
         handle = stash_add(__sei_thread->stash, __sei_thread->tbar);
         //TODO: assert (handle == h);
     } else {
@@ -1364,13 +1364,13 @@ __sei_shift(int handle)
 #ifndef NDEBUG
         //TODO: int h =
 #endif
-            asco_shift(__sei_thread->asco, handle);
+            sei_shift(__sei_thread->sei, handle);
         //TODO: assert (handle == h);
         __sei_thread->tbar = stash_get(__sei_thread->stash, handle);
         assert (__sei_thread->tbar);
     }
     return handle;
 #else /* SEI_TBAR */
-    return asco_shift(__sei_thread->asco, handle);
+    return sei_shift(__sei_thread->sei, handle);
 #endif /* SEI_TBAR */
 }

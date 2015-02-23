@@ -14,7 +14,7 @@
 /*
 ** There are two things we do in assembly:
 ** 1. we save the caller stack boundaries to be able to filter out calls to
-**    local variables inside tmasco.
+**    local variables inside libsei.
 ** 2. we save the callee-save registers, so that we can restore them correctly
 **    when switching to the second execution of the traversal.
 **
@@ -45,7 +45,7 @@ _ITM_beginTransaction:
 	stack.
 
 	We cannot however the push the rbp before we save the caller's
-	rsp.  This is necessary, because when tmasco_commit will be
+	rsp.  This is necessary, because when __sei_commit will be
 	called, we will jump back to here for the second run of the
 	handler without knowing how large the stack will be a that
 	point, so we can simply pop everything up to the caller's rsp.
@@ -84,12 +84,12 @@ _ITM_beginTransaction:
 	// Save rsp of caller as explained above
 	movq	%rax, 48(%rsp)
 
-	// We are now ready to call tmasco_begin: The current %rsp
+	// We are now ready to call __sei_begin: The current %rsp
 	// marks the begin of the context to be saved.  We have no use
 	// for the first argument passed to beginTransaction, so we
 	// overwrite it.
 	movq	%rsp, %rdi
-	call	FUNC(tmasco_begin)
+	call	FUNC(__sei_begin)
 
 	/* function epilogue typically looks like this:
 
@@ -98,7 +98,7 @@ _ITM_beginTransaction:
 	*	popq	%rbp
 	*	ret
 
-	The return value is already set by the tmasco_begin, so we
+	The return value is already set by the __sei_begin, so we
 	don't overwrite rax. We also don't restore rbp since we
 	haven't modified it. We just pop all values added to the
 	stack.
@@ -116,15 +116,15 @@ _ITM_beginTransaction.end:
 	.size	_ITM_beginTransaction, .- _ITM_beginTransaction
 #endif
 
-/* --- tmasco_switch ------------------------------------------------------- */
+/* --- __sei_switch ------------------------------------------------------- */
 	.text
 	.align	4
-	.globl	FUNC(tmasco_switch)
+	.globl	FUNC(__sei_switch)
 #ifndef __APPLE__	
-	.type	FUNC(tmasco_switch), @function
+	.type	FUNC(__sei_switch), @function
 #endif
 
-FUNC(tmasco_switch):
+FUNC(__sei_switch):
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -146,21 +146,21 @@ FUNC(tmasco_switch):
 	// now return
 	jmpq *%rdx
 
-FUNC(tmasco_switch.end):
+FUNC(__sei_switch.end):
 #ifndef __APPLE__	
-	.size	FUNC(tmasco_switch), .- FUNC(tmasco_switch)
+	.size	FUNC(__sei_switch), .- FUNC(__sei_switch)
 #endif
 
 
-/* --- tmasco_switch2 ------------------------------------------------------ */
+/* --- __sei_switch2 ------------------------------------------------------ */
 	.text
 	.align	4
-	.globl	FUNC(tmasco_switch2)
+	.globl	FUNC(__sei_switch2)
 #ifndef __APPLE__
-	.type   FUNC(tmasco_switch2), @function
+	.type   FUNC(__sei_switch2), @function
 #endif
 
-FUNC(tmasco_switch2):
+FUNC(__sei_switch2):
 
 	/* Our first argument rdi points to a copy of the above
 	context. Our task is simply to restore all registers return to
@@ -189,7 +189,7 @@ FUNC(tmasco_switch2):
 	// now return
 	jmpq *%rdx
 
-FUNC(tmasco_switch2.end):
+FUNC(__sei_switch2.end):
 #ifndef __APPLE__	
-	.size	FUNC(tmasco_switch2), .- FUNC(tmasco_switch2)
+	.size	FUNC(__sei_switch2), .- FUNC(__sei_switch2)
 #endif
