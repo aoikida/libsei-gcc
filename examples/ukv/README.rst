@@ -12,20 +12,21 @@ To compile ukv type::
 
   make
 
-In the ``build`` subdirectory three binaries will be created:
-``ukv-server``,  ``ukv-server.sei`` and ``ukv-client.sei``.
+In the ``build_sei`` subdirectory two binaries will be created:
+``ukv-server.sei`` and ``ukv-client.sei``.
 
 To run the service type::
 
-  ./ukv-server.sei 10000
+  build_sei/ukv-server.sei 10000
 
 And then start a client::
 
-  ./ukv-client.sei localhost 10000
+  build_sei/ukv-client.sei localhost 10000
 
 Try passing some commands such as ``+k,v`` and then ``?k``.
 
-Telnet client can be used with not hardened variant ``ukv-server``::
+Telnet client can be used with not hardened variant ``ukv-server`` (located in
+the ``build`` directory)::
 
   telnet localhost 10000
 

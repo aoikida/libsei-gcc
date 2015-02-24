@@ -12,8 +12,8 @@ SEI_2PL=1
 SEI_ASMREAD=1 
 SEI_APPEND_ONLY=1 
 SEI_ROPURE=1 
-ALGO=sbuf
-MODE=cow
+ALGO = sbuf
+MODE = cow
 # -----------------------------------------------------------------------------
 
 ifdef DEBUG
@@ -58,25 +58,25 @@ MODE=cow
 endif
 
 ifeq ($(MODE), cow)
-AFLAGS += -DMODE=2
-ifeq ($(ALGO),sbuf)
- AFLAGS += -DCOW_WT
+ AFLAGS += -DMODE=2
+ ifeq ($(ALGO),sbuf)
+  AFLAGS += -DCOW_WT
+  ifdef SEI_APPEND_ONLY
+   AFLAGS += -DCOW_APPEND_ONLY
+  endif
+  ifdef SEI_ASMREAD
+   AFLAGS += -DCOW_ASMREAD
+  endif
+  ifdef SEI_ROPURE
+   AFLAGS += -DCOW_ROPURE
+  else
+   AFLAGS += -DSEI_ROSAFE
+  endif
 endif
 ifeq ($(ALGO),clog)
- AFLAGS += -DCOW_WB
+ AFLAGS += -DCOW_WB -DSEI_CLOG
+ AFLAGS += -DSEI_ROSAFE
 endif
-endif
-
-ifdef SEI_ASMREAD
-AFLAGS += -DCOW_ASMREAD
-endif
-
-ifdef SEI_APPEND_ONLY
-AFLAGS += -DCOW_APPEND_ONLY
-endif
-
-ifdef SEI_ROPURE
-AFLAGS += -DCOW_ROPURE
 endif
 
 ifdef SEI_MTL
@@ -120,13 +120,19 @@ $(info ----------------------)
 # --- targets -----------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
-	cpu_stats.c obuf.c crc.c ibuf.c cfc.c stash.c tbar.c wts.c
+	cpu_stats.c obuf.c ibuf.c crc.c cfc.c stash.c tbar.c wts.c
 SUPPORT = support.c
 LIBSEI  = libsei.a
+LIBCRC  = libcrc.a
 OBJS    =
 
 ifeq ($(MODE),cow)
-SRCS   += mode_cow.c tmi.c
+ SRCS   += mode_cow.c tmi.c
+ ifeq ($(ALGO),sbuf)
+  ifdef SEI_ASMREAD
+    OBJS   += $(BUILD)/tmi_read.o
+  endif
+ endif
 endif
 ifeq ($(MODE),heap)
 SRCS   += mode_heap.c tmi.c
@@ -135,13 +141,8 @@ ifeq ($(MODE),instr)
 SRCS    = tmi_mock.c
 endif
 
-
 ifndef SEI_NOASM
 OBJS   += $(BUILD)/tmi_asm.o
-endif
-
-ifdef SEI_ASMREAD
-OBJS   += $(BUILD)/tmi_read.o
 endif
 
 ifdef DEBUG
@@ -150,11 +151,12 @@ else
 OBJS   += $(BUILD)/inlined.o $(BUILD)/support.o
 endif
 
+
 # TESTS
 TSRCS = cow_test.c abuf_test.c obuf_test.c cfc_test.c
 TESTS = $(addprefix $(BUILD)/, $(TSRCS:.c=.test))
 
-_TARGETS = $(LIBSEI)
+_TARGETS = $(LIBSEI) $(LIBCRC)
 override TARGETS = $(addprefix $(BUILD)/, $(_TARGETS))
 
 # --- rules -------------------------------------------------------------------
@@ -167,10 +169,10 @@ test: $(TESTS)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/tmi_read.o: src/tmi_read.S
+$(BUILD)/tmi_asm.o: src/tmi_asm.S | $(BUILD)
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
-$(BUILD)/tmi_asm.o: src/tmi_asm.S | $(BUILD)
+$(BUILD)/tmi_read.o: src/tmi_read.S | $(BUILD)
 	$(CC) $(CFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/support.o: src/support.c
@@ -181,7 +183,7 @@ $(BUILD)/inlined.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 	@echo $(foreach f, $^, "#include \"../$(f)\"\n")>> $(BUILD)/inlined.c
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $(BUILD)/inlined.c
 
-$(BUILD)/%.o: src/%.c | $(BUILD)
+$(BUILD)/%.o: src/%.c 
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<
 
 $(BUILD)/$(LIBSEI): $(OBJS)
@@ -189,6 +191,12 @@ $(BUILD)/$(LIBSEI): $(OBJS)
 
 $(BUILD)/%.test: src/%.c $(OBJS)
 	$(CC) $(CFLAGS) -I include -I src -o $@ $^
+
+$(BUILD)/crc_pure.o: src/crc.c 
+	$(CC) $(CFLAGS) -I include -c -o $@ $<
+
+$(BUILD)/$(LIBCRC): src/crc.c | $(BUILD)/crc_pure.o
+	ar rvs $@ $(BUILD)/crc_pure.o
 
 clean:
 	rm -rf $(BUILD)

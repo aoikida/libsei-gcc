@@ -23,9 +23,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "ukv.h"
+#include "ukv_net.h"
 
-const char* __attribute__((transaction_safe))
+const char*
 ukv_recv(ukv_t* ukv, const char* msg)
 {
     int cmd = msg[0];

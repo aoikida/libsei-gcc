@@ -25,7 +25,7 @@ static const unsigned int prime_table_length = sizeof(primes)/sizeof(primes[0]);
 static const float max_load_factor = 0.65;
 
 /*****************************************************************************/
-struct hashtable * __attribute__((transaction_safe))
+struct hashtable *
 create_hashtable(unsigned int minsize,
                  unsigned int (*hashf) (void*),
                  int (*eqf) (void*,void*))
@@ -54,6 +54,12 @@ create_hashtable(unsigned int minsize,
 
 /*****************************************************************************/
 unsigned int
+hash(struct hashtable *h, void *k) SEI_RONLY;
+
+extern unsigned int
+hashfn(void* _k) SEI_RONLY;
+
+unsigned int
 hash(struct hashtable *h, void *k)
 {
     /* Aim to protect against poor hash functions by adding logic here
@@ -68,7 +74,7 @@ hash(struct hashtable *h, void *k)
 }
 
 /*****************************************************************************/
-static int __attribute__((transaction_safe))
+static int
 hashtable_expand(struct hashtable *h)
 {
     /* Double the size of the table to accomodate more entries */
@@ -134,7 +140,7 @@ hashtable_count(struct hashtable *h)
 }
 
 /*****************************************************************************/
-int __attribute__((transaction_safe))
+int
 hashtable_insert(struct hashtable *h, void *k, void *v)
 {
     /* This method allows duplicate keys - but they shouldn't be used */
@@ -179,6 +185,9 @@ hashtable_search(struct hashtable *h, void *k)
 }
 
 /*****************************************************************************/
+int
+eqfn(void* k1, void* k2) SEI_RONLY;
+
 void * /* returns value associated with key */
 hashtable_remove(struct hashtable *h, void *k)
 {

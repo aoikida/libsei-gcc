@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#include <sei.h>
+
 struct hashtable;
 
 /* Example of use:
@@ -78,7 +80,7 @@ struct hashtable;
 struct hashtable *
 create_hashtable(unsigned int minsize,
                  unsigned int (*hashfunction) (void*),
-                 int (*key_eq_fn) (void*,void*));
+                 int (*key_eq_fn) (void*,void*)) SEI_SAFE;
 
 /*****************************************************************************
  * hashtable_insert
@@ -100,7 +102,7 @@ create_hashtable(unsigned int minsize,
  */
 
 int 
-hashtable_insert(struct hashtable *h, void *k, void *v);
+hashtable_insert(struct hashtable *h, void *k, void *v) SEI_SAFE;
 
 #define DEFINE_HASHTABLE_INSERT(fnname, keytype, valuetype) \
 int fnname (struct hashtable *h, keytype *k, valuetype *v) \
@@ -118,7 +120,7 @@ int fnname (struct hashtable *h, keytype *k, valuetype *v) \
  */
 
 void *
-hashtable_search(struct hashtable *h, void *k);
+hashtable_search(struct hashtable *h, void *k) SEI_RONLY;
 
 #define DEFINE_HASHTABLE_SEARCH(fnname, keytype, valuetype) \
 valuetype * fnname (struct hashtable *h, keytype *k) \
@@ -136,7 +138,7 @@ valuetype * fnname (struct hashtable *h, keytype *k) \
  */
 
 void * /* returns value */
-hashtable_remove(struct hashtable *h, void *k);
+hashtable_remove(struct hashtable *h, void *k) SEI_SAFE;
 
 #define DEFINE_HASHTABLE_REMOVE(fnname, keytype, valuetype) \
 valuetype * fnname (struct hashtable *h, keytype *k) \
@@ -165,7 +167,7 @@ hashtable_count(struct hashtable *h);
  */
 
 void
-hashtable_destroy(struct hashtable *h, int free_values);
+hashtable_destroy(struct hashtable *h, int free_values) SEI_SAFE;
 
 #ifdef __cplusplus
 }

@@ -23,6 +23,9 @@ struct ukv {
  * hash and equality functions
  * -------------------------------------------------------------------------- */
 unsigned int
+hashfn(void* _k) SEI_RONLY;
+
+unsigned int
 hashfn(void* _k)
 {
     char* k = (char*)_k;
@@ -35,6 +38,10 @@ hashfn(void* _k)
     return hash;
 }
 
+
+int
+eqfn(void* k1, void* k2) SEI_RONLY;
+
 int
 eqfn(void* k1, void* k2)
 {
@@ -45,7 +52,9 @@ eqfn(void* k1, void* k2)
  * constructor/destructor
  * -------------------------------------------------------------------------- */
 
-ukv_t* __attribute__((transaction_safe))
+ukv_t* ukv_init() SEI_SAFE;
+
+ukv_t*
 ukv_init()
 {
     ukv_t* ukv = (ukv_t*) malloc(sizeof(ukv_t));
@@ -78,7 +87,9 @@ ukv_get(ukv_t* ukv, const char* key)
     return value;
 }
 
-const char* __attribute__((transaction_safe))
+const char* ukv_set(ukv_t* ukv, char* key, char* value) SEI_SAFE;
+
+const char*
 ukv_set(ukv_t* ukv, char* key, char* value)
 {
     assert (ukv != NULL);

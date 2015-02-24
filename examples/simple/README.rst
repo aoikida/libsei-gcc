@@ -14,9 +14,9 @@ compiled against libsei. The following compiler flags are required:
 
 ``-lsei -dl``                 the library itself and the dynamic linker library
 
-To compile type:
+To compile type::
  
-`` % make ``
+    % make
 
 Two binaries will be created: ``simple`` and ``generate_input``.
 ``generate_input`` should be executed first to create input file for the example

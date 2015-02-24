@@ -64,5 +64,12 @@ SEI_DECL(void* , __builtin___memset_chk, (void *s, int c, size_t n, size_t x))
 SEI_DECL(double, ceil, (double x))
 #endif
 
+#ifdef SEI_CLOGXXXX
+SEI_DECL(uint32_t, crc_compute, const char* block, size_t len) 
+SEI_DECLP(uint32_t, crc_init)
+SEI_DECL(uint32_t, crc_append, uint32_t crc, const char* block, size_t len)
+SEI_DECL(uint32_t, crc_append_len, uint32_t crc, size_t tsize)
+SEI_DECLP(uint32_t, crc_close, uint32_t crc)
+#endif
 
 #endif /* _SUPPORT_H_ */

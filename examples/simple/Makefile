@@ -4,13 +4,15 @@ CFLAGS    = -g -O0 -Wall
 AFLAGS    = -fgnu-tm
 # Uncomment next line to disable libsei
 #AFLAGS   += -DSEI_DISABLED
-LIBS      = -ldl
+# Helper library with CRC calculation routines
+LIBS      = -lcrc
 SRCS      = main.c
 # Path to sei.h
 INCP_SEI  = -I../../include
 # Path to the library
 LIBP_SEI  = -L../../build
-LIBS_SEI  = -lsei $(LIBS)
+# Add libsei
+LIBS_SEI  = -lsei -ldl 
 
 .PHONY: all clean
 
@@ -21,7 +23,7 @@ simple: $(SRCS)
 		-o $@ $(SRCS) $(LIBS_SEI) 
 
 generate_input: generate_input.c
-	$(CC) $(INCP_SEI) $(LIBP_SEI) -o $@ $^ $(LIBS_SEI)
+	$(CC) $(INCP_SEI) $(LIBP_SEI) -o $@ $^ $(LIBS)
 
 clean:
 	rm -f simple generate_input

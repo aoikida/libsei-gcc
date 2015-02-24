@@ -7,6 +7,9 @@
 
 #ifndef SEI_DISABLED
 #define SEI_ENABLED
+#ifndef SEI_CLOG
+# define COW_ROPURE
+#endif
 #endif
 
 #define TMI_HANDLE_INIT -1
@@ -37,12 +40,20 @@
 #endif
 
 #ifdef SEI_ENABLED
+#ifdef SEI_CLOG
+#define SEI_RONLY __attribute__((transaction_safe));
+#else
+#define SEI_RONLY __attribute__((transaction_pure));
+#endif
 #define SEI_PURE __attribute__((transaction_pure));
 #define SEI_SAFE __attribute__((transaction_safe));
+
 #else
 #define SEI_PURE
 #define SEI_SAFE
+#define SEI_RONLY
 #endif
+
 
 void  __sei_begin(uintptr_t bp);
 int   __sei_switched();
