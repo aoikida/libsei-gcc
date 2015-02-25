@@ -34,6 +34,8 @@
 # include "libc/string/strchr.c"
 #endif
 
+# include "crc.c"
+
 char*
 strndup(const char *s, size_t n)
 {

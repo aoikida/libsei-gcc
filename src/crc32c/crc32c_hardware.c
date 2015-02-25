@@ -35,7 +35,7 @@
 #include <stdint.h>
 
 // Hardware-accelerated CRC-32C (using CRC32 instruction)
-uint32_t
+uint32_t 
 crc32cHardware32(uint32_t crc, const void* data, size_t length)
 {
     const char* p_buf = (const char*) data;

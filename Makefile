@@ -120,8 +120,8 @@ $(info ----------------------)
 # --- targets -----------------------------------------------------------------
 BUILD  ?= build
 SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
-	cpu_stats.c obuf.c ibuf.c crc.c cfc.c stash.c tbar.c wts.c
-SUPPORT = support.c
+	cpu_stats.c obuf.c ibuf.c cfc.c stash.c tbar.c wts.c
+SUPPORT = support.c crc.c
 LIBSEI  = libsei.a
 LIBCRC  = libcrc.a
 OBJS    =

@@ -32,7 +32,6 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include "crc32c.h"
 
 /* -----------------------------------------------------------------------------
@@ -83,19 +82,36 @@ cpuid(uint32_t input) {
 }
 #endif
 
-crc32c_f*
+#ifdef COW_WB
+extern uint32_t _ZGTt16crc32cSlicingBy8(uint32_t crc, const void* data, size_t length);
+extern uint32_t _ZGTt16crc32cHardware32(uint32_t crc, const void* data, size_t length);
+extern uint32_t _ZGTt16crc32cHardware64(uint32_t crc, const void* data, size_t length);
+#endif
+
+crc32c_f* 
 crc32c_impl() {
     static const int SSE42_BIT = 20;
     uint32_t ecx = cpuid(1);
     int hasSSE42 = ecx & (1 << SSE42_BIT);
     if (hasSSE42) {
 #ifdef __LP64__
+		#ifdef COW_WB
+        return _ZGTt16crc32cHardware64;
+        #else 
         return crc32cHardware64;
+        #endif
 #else
+		#ifdef COW_WB
+        return _ZGTt16crc32cHardware64;
+        #else
         return crc32cHardware32;
+		#endif
 #endif
     } else {
-        //return crc32cSlicingBy8;
-        return crc32cSarwate;
+		#ifdef COW_WB
+		return _ZGTt16crc32cSlicingBy8;
+        #else
+        return crc32cSlicingBy8;
+        #endif
     }
 }

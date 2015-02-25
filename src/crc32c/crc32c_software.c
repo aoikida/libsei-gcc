@@ -517,20 +517,12 @@ const uint32_t crc_tableil8_o88[256] =
  * end of the CRC lookup table crc_tableil8_o88
  */
 
-extern uint8_t _ITM_RU1(const uint8_t*);
-
 uint32_t crc32cSarwate(uint32_t crc, const void* data, size_t length) {
     const char* p_buf = (const char*) data;
     const char* p_end = p_buf + length;
 
     while (p_buf < p_end) {
-#ifdef COW_WB
-    char tmp =_ITM_RU1((uint8_t*)p_buf);
-    crc = crc_tableil8_o32[(crc ^ tmp) & 0x000000FF] ^ (crc >> 8);
-    p_buf++;
-#else
-    crc = crc_tableil8_o32[(crc ^ *p_buf++) & 0x000000FF] ^ (crc >> 8);
-#endif
+        crc = crc_tableil8_o32[(crc ^ *p_buf++) & 0x000000FF] ^ (crc >> 8);
     }
 
     return crc;
