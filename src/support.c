@@ -7,6 +7,11 @@
 #define TMI_IMPL
 #include <sei/support.h>
 
+#ifdef __APPLE__
+#include <math.h>
+#include <errno.h>
+#endif
+
 
 /* ----------------------------------------------------------------------------
  * libc functions that should be transactified
@@ -82,27 +87,27 @@ _ZGTt6strcmp(const char *s1, const char *s2)
 
 int _ZGTt10__maskrune(__darwin_ct_rune_t _c, unsigned long _f)
 {
-    return 0;
+    return __maskrune(_c, _f);
 }
 
 int* _ZGTt7__error()
 {
-    return (int*) malloc(sizeof(int));
+    return __error();
 }
 
 double _ZGTt4ceil(double x)
 {
-    return (double) (((long) x) + 1);
+    return ceil(x);
 }
 
 void* _ZGTt12__memset_chk(void* dst, int c, size_t size, size_t len)
 {
-    return NULL;
+    return __memset_chk(dst, c, size, len);
 }
 
 void* _ZGTt12__strcpy_chk(void* dst, const void* src, size_t len)
 {
-    return NULL;
+    return __strcpy_chk(dst, src, len);
 }
 #endif /* __APPLE__ */
 
