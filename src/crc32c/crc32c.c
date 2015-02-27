@@ -82,11 +82,6 @@ cpuid(uint32_t input) {
 }
 #endif
 
-#ifdef COW_WB
-extern uint32_t _ZGTt16crc32cSlicingBy8(uint32_t crc, const void* data, size_t length);
-extern uint32_t _ZGTt16crc32cHardware32(uint32_t crc, const void* data, size_t length);
-extern uint32_t _ZGTt16crc32cHardware64(uint32_t crc, const void* data, size_t length);
-#endif
 
 crc32c_f* 
 crc32c_impl() {
@@ -95,23 +90,33 @@ crc32c_impl() {
     int hasSSE42 = ecx & (1 << SSE42_BIT);
     if (hasSSE42) {
 #ifdef __LP64__
-		#ifdef COW_WB
-        return _ZGTt16crc32cHardware64;
-        #else 
         return crc32cHardware64;
-        #endif
 #else
-		#ifdef COW_WB
-        return _ZGTt16crc32cHardware64;
-        #else
         return crc32cHardware32;
-		#endif
 #endif
     } else {
-		#ifdef COW_WB
-		return _ZGTt16crc32cSlicingBy8;
-        #else
         return crc32cSlicingBy8;
-        #endif
     }
 }
+
+#ifdef COW_WB
+extern uint32_t _ZGTt16crc32cSlicingBy8(uint32_t crc, const void* data, size_t length);
+extern uint32_t _ZGTt16crc32cHardware32(uint32_t crc, const void* data, size_t length);
+extern uint32_t _ZGTt16crc32cHardware64(uint32_t crc, const void* data, size_t length);
+
+crc32c_f* 
+crc32c_tximpl() {
+    static const int SSE42_BIT = 20;
+    uint32_t ecx = cpuid(1);
+    int hasSSE42 = ecx & (1 << SSE42_BIT);
+    if (hasSSE42) {
+#ifdef __LP64__
+        return _ZGTt16crc32cHardware64;
+#else
+        return _ZGTt16crc32cHardware64;
+#endif
+    } else {
+        return _ZGTt16crc32cSlicingBy8;
+    }
+}
+#endif

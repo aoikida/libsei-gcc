@@ -88,7 +88,11 @@ obuf_push(obuf_t* obuf, const void* ptr, size_t size)
     assert (!e->done);
 
     // append value and increment size
+#ifdef COW_WB
+    e->crc   = txcrc_append(e->crc, (const char*) ptr, size);
+#else
     e->crc   = crc_append(e->crc, (const char*) ptr, size);
+#endif
     e->size += size;
 }
 
