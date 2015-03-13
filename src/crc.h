@@ -16,6 +16,9 @@ uint32_t crc_init();
 
 /* append data to CRC */
 uint32_t crc_append(uint32_t crc, const char* block, size_t len);
+#ifdef COW_WB
+uint32_t txcrc_append(uint32_t crc, const char* block, size_t len);
+#endif
 
 /* append block size to CRC (optional) */
 uint32_t crc_append_len(uint32_t crc, size_t tsize);

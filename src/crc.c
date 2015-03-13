@@ -12,11 +12,17 @@
 #include "crc32c/crc32c_software.c"
 
 crc32c_f* crc32c;
+#ifdef COW_WB
+crc32c_f* txcrc32c; // transactionalized CRC
+#endif
 
 static void __attribute__((constructor))
 crc_module_init()
 {
     crc32c = crc32c_impl();
+#ifdef COW_WB
+    txcrc32c = crc32c_tximpl();
+#endif
 }
 
 /* ----------------------------------------------------------------------------
@@ -56,6 +62,22 @@ crc_append(uint32_t crc, const char* block, size_t len)
 #endif
 
 }
+
+#ifdef COW_WB
+uint32_t
+txcrc_append(uint32_t crc, const char* block, size_t len)
+{
+#if defined(CRC_CHECKSUM)
+    int i = 0;
+    for (i = 0; i < len; ++i) crc ^= block[i];
+    return crc;
+#elif defined(CRC_NONE)
+    return 0;
+#else // CRC default
+    return txcrc32c(crc, block, len);
+#endif
+}
+#endif
 
 uint32_t
 crc_append_len(uint32_t crc, size_t len)
