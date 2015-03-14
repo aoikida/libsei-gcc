@@ -10,8 +10,8 @@ CFLAGS_REL  = -msse4.2 -g -O3 -Wall -DNDEBUG
 # --- default parameters - DO NOT EDIT ----------------------------------------
 SEI_2PL=1
 SEI_ASMREAD=1 
-SEI_APPEND_ONLY=1 
 SEI_ROPURE=1 
+USE_ABUF = yes
 ALGO = sbuf
 MODE = cow
 # -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ ifeq ($(MODE), cow)
  AFLAGS += -DMODE=2
  ifeq ($(ALGO),sbuf)
   AFLAGS += -DCOW_WT
-  ifdef SEI_APPEND_ONLY
+  ifeq ($(USE_ABUF), yes)
    AFLAGS += -DCOW_APPEND_ONLY
   endif
   ifdef SEI_ASMREAD
