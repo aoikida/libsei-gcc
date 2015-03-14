@@ -110,32 +110,32 @@ struct sei {
         sei->stats.nwuint64_t = 0;               \
         sei->stats.nprotect   = 0;               \
     } while (0)
-#define SEI_STATS_INIT() do {                          \
-        sei->ilog = ilog_init("sei-stats.log");       \
-        SEI_STATS_RESET();                             \
-        sei->cpu_stats = cpu_stats_init();             \
+#define SEI_STATS_INIT() do {                           \
+        sei->ilog = ilog_init("sei-stats.log");         \
+        SEI_STATS_RESET();                              \
+        sei->cpu_stats = cpu_stats_init();              \
     } while (0)
 #define SEI_STATS_FINI() do {           \
         ilog_fini(sei->ilog);           \
         cpu_stats_fini(sei->cpu_stats); \
     } while (0)
 #define SEI_STATS_INC(X) (++sei->stats.X)
-#define SEI_STATS_REPORT() do {                                        \
+#define SEI_STATS_REPORT() do {                                         \
         static uint64_t _now = 0;                                       \
         if (now() - _now > NOW_1S) {                                    \
             char buffer[1024];                                          \
             sprintf(buffer, "%u %u %u %u %u %u %u %u",                  \
-                    sei->stats.ntrav,                                  \
-                    sei->stats.nmalloc,                                \
-                    sei->stats.nfree,                                  \
-                    sei->stats.nwuint8_t,                              \
-                    sei->stats.nwuint16_t,                             \
-                    sei->stats.nwuint32_t,                             \
-                    sei->stats.nwuint64_t,                             \
-                    sei->stats.nprotect                                \
+                    sei->stats.ntrav,                                   \
+                    sei->stats.nmalloc,                                 \
+                    sei->stats.nfree,                                   \
+                    sei->stats.nwuint8_t,                               \
+                    sei->stats.nwuint16_t,                              \
+                    sei->stats.nwuint32_t,                              \
+                    sei->stats.nwuint64_t,                              \
+                    sei->stats.nprotect                                 \
                 );                                                      \
-            ilog_push(sei->ilog, __FILE__, buffer);                    \
-            cpu_stats_report(sei->cpu_stats, sei->ilog);              \
+            ilog_push(sei->ilog, __FILE__, buffer);                     \
+            cpu_stats_report(sei->cpu_stats, sei->ilog);                \
             _now = now();                                               \
         }                                                               \
     } while (0)
@@ -468,11 +468,11 @@ sei_unprotect(sei_t* sei, void* addr, size_t size)
  * ------------------------------------------------------------------------- */
 
 #ifndef COW_APPEND_ONLY
-#define SEI_READ(type) inline                                          \
-    type sei_read_##type(sei_t* sei, const type* addr)               \
+#define SEI_READ(type) inline                                           \
+    type sei_read_##type(sei_t* sei, const type* addr)                  \
     {                                                                   \
-        DLOG3("sei_read_%s(%d) addr = %p", #type, sei->p, addr);      \
-        cow_t* cow = sei->cow[sei->p];                                \
+        DLOG3("sei_read_%s(%d) addr = %p", #type, sei->p, addr);        \
+        cow_t* cow = sei->cow[sei->p];                                  \
         type value = cow_read_##type(cow, addr);                        \
         DLOG3("= %lx, %lx\n", (uint64_t) *addr, value);                 \
         return value;                                                   \
@@ -482,14 +482,14 @@ SEI_READ(uint16_t)
 SEI_READ(uint32_t)
 SEI_READ(uint64_t)
 
-#define SEI_WRITE(type) inline                                         \
-    void sei_write_##type(sei_t* sei, type* addr, type value)        \
+#define SEI_WRITE(type) inline                                          \
+    void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
-        SEI_STATS_INC(nw##type);                                       \
-        assert (sei->p == 0 || sei->p == 1);                          \
-        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,        \
+        SEI_STATS_INC(nw##type);                                        \
+        assert (sei->p == 0 || sei->p == 1);                            \
+        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,          \
               addr, (uint64_t) value);                                  \
-        cow_t* cow = sei->cow[sei->p];                                \
+        cow_t* cow = sei->cow[sei->p];                                  \
         cow_write_##type(cow, addr, value);                             \
     }
 SEI_WRITE(uint8_t)
@@ -498,10 +498,10 @@ SEI_WRITE(uint32_t)
 SEI_WRITE(uint64_t)
 #else
 
-#define SEI_READ(type) inline                                          \
-    type sei_read_##type(sei_t* sei, const type* addr)               \
+#define SEI_READ(type) inline                                           \
+    type sei_read_##type(sei_t* sei, const type* addr)                  \
     {                                                                   \
-        DLOG3("sei_read_%s(%d) %p = %lx", #type, sei->p, addr,        \
+        DLOG3("sei_read_%s(%d) %p = %lx", #type, sei->p, addr,          \
               (uint64_t) *addr);                                        \
         return *addr;                                                   \
     }
@@ -510,14 +510,14 @@ SEI_READ(uint16_t)
 SEI_READ(uint32_t)
 SEI_READ(uint64_t)
 
-#define SEI_WRITE(type) inline                                         \
-    void sei_write_##type(sei_t* sei, type* addr, type value)        \
+#define SEI_WRITE(type) inline                                          \
+    void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
-   	    SEI_STATS_INC(nw##type);                                       \
-   	    assert (sei->p == 0 || sei->p == 1);                          \
-        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,        \
+   	    SEI_STATS_INC(nw##type);                                        \
+   	    assert (sei->p == 0 || sei->p == 1);                            \
+        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,          \
               addr, (uint64_t) value);                                  \
-        abuf_push_##type(sei->cow[sei->p], addr, *addr);              \
+        abuf_push_##type(sei->cow[sei->p], addr, *addr);                \
         *addr = value;                                                  \
     }
 SEI_WRITE(uint8_t)
