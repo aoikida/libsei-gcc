@@ -45,19 +45,28 @@ recv_msg_and_crc(char** imsg, uint32_t* crc) {
         }
     }
 
-    size_t n;
-    ssize_t read = getline(&buffer, &n, ifile);
+    uint8_t size;
+    size_t read = fread(&size, 1, 1, ifile);
+    if (read < 1) 
+        goto catch;
+    
+    buffer = malloc(size);
 
-    if (read < 0) {
-        fclose(ifile);
-        if (ofile)
-            fclose(ofile);
-        exit(0);
-    }
+    read = fread(buffer, 1, size, ifile);
+    if (read < size) 
+        goto catch;
 
     *crc  = *(uint32_t*)buffer;
     *imsg = buffer + sizeof(*crc);
     return read - sizeof(*crc);
+
+catch:
+    fclose(ifile);
+    if (ofile)
+        fclose(ofile);
+    if (buffer)
+        free(buffer);
+    exit(0);
 }
 
 /* process the input message: simply add message size to the counter */
@@ -128,7 +137,7 @@ main(int argc, char** args) {
              * for other parts of the message */
             __output_append(omsg, olen); 
 
-            /* Finalize CRC once a complete output message was created */
+            /* finalize CRC once a complete output message was created */
             __output_done(); 
 
             /* end of the hardened event handler */

@@ -11,12 +11,11 @@
 int
 main(const int argc, const char* argv[])
 {
-
-    FILE* fd;
-    size_t l = 0;
+    FILE*   fd;
+    size_t  l = 0;
     ssize_t read;
-    char* req = NULL;
-    int corrupt = 0;
+    char*   req = NULL;
+    int     corrupt = 0;
     crc_init();
 
     fd = fopen("input", "w");
@@ -40,9 +39,12 @@ main(const int argc, const char* argv[])
                 corrupt = 1;
 
             uint32_t crc = crc_compute(req + corrupt, read - corrupt);
+
             if (corrupt) 
                 crc++;
 
+            uint8_t size = read + sizeof(crc);
+            fwrite(&size, 1, 1, fd);
             fwrite(&crc, sizeof(crc), 1, fd); 
             fwrite(req + corrupt, read - corrupt, 1, fd);
         }
