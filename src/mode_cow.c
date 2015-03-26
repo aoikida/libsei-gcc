@@ -554,6 +554,7 @@ sei_output_next(sei_t* sei)
 {
     assert (sei->p == -1);
     assert (obuf_size(sei->obuf) > 0 && "no CRC to pop");
+
     uint32_t crc = obuf_pop(sei->obuf);
 
     return crc;
