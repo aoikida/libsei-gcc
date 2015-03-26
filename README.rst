@@ -15,8 +15,9 @@ existing code to be hardened with minimal effort.
 in our `paper at NSDI'15
 <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_.
 
-For examples using *libsei* check
-- `examples <https://bitbucket.org/db7/libsei/src/tip/examples/>`_ directory;
+For examples using *libsei* check:
+
+- the `examples <https://bitbucket.org/db7/libsei/src/tip/examples/>`_ directory;
 - Hardened `Memcached <https://bitbucket.org/db7/libsei-memcached>`_; and
 - Hardened `Deadwood DNS resolver <https://????>`_.
 
