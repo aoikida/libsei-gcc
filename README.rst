@@ -19,7 +19,7 @@ For examples using *libsei* check:
 
 - the `examples <https://bitbucket.org/db7/libsei/src/tip/examples/>`_ directory;
 - Hardened `Memcached <https://bitbucket.org/db7/libsei-memcached>`_; and
-- Hardened `Deadwood DNS resolver <https://????>`_.
+- Hardened `Deadwood DNS resolver <https://bitbucket.org/db7/libsei-deadwood>`_.
 
 Software fault injections can be peformed with our Pintool
 `BFI <https://bitbucket.org/db7/bfi>`_.
