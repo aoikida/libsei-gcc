@@ -17,5 +17,6 @@
 #define __output_append(ptr, size)   __tmi_output_append(ptr, size) 
 #define __output_done()              __tmi_output_done()
 #define __crc_pop()                  __tmi_output_next() 
+#define __ignore(v)                  __tmi_ignore(v)
 
 #endif /* _SEI_H_ */
