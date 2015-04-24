@@ -20,10 +20,8 @@
 //#define COW_DISABLE_REALLOC
 
 
-#ifndef SEI_MT
 /* provide wrappers for system calls */
 #define SEI_WRAP_SC
-#endif
 
 #ifdef SEI_WRAP_SC
 #define SC_MAX_CALLS 100 // at most 10 system calls inside a traversal
