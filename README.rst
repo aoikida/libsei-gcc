@@ -245,7 +245,7 @@ References
 * `Scalable error isolation for distributed systems
   <https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/behrens>`_ -  Diogo Behrens, Marco Serafini, Sergei Arnautov, Flavio P. Junqueira, Christof Fetzer. *12th USENIX Symposium on Networked Systems Design and Implementation (NSDI'15)*
 * `Scalable error isolation for distributed systems: modeling, correctness proofs, and additional experiments
-<https://se.inf.tu-dresden.de/pubs/papers/behrens15b.pdf>`_ - Diogo Behrens, Marco Serafini, Sergei Arnautov, Flavio P. Junqueira, Christof Fetzer. *Technical report, Technische Universität Dresden, Fakultät Informatik, 2015. TUD-FI15-01-Februar 2015, ISSN 1430-211X*
+  <https://se.inf.tu-dresden.de/pubs/papers/behrens15b.pdf>`_ - Diogo Behrens, Marco Serafini, Sergei Arnautov, Flavio P. Junqueira, Christof Fetzer. *Technical report, Technische Universität Dresden, Fakultät Informatik, 2015. TUD-FI15-01-Februar 2015, ISSN 1430-211X*
 * `Towards Transparent Hardening of Distributed Systems
   <http://dl.acm.org/citation.cfm?id=2524230>`_ - Diogo Behrens, Christof Fetzer, Flavio P. Junqueira, Marco Serafini, *9th ACM Workshop on Hot Topics in Dependable Systems (HotDep'13)*
 
