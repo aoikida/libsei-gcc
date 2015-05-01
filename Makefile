@@ -16,11 +16,14 @@ ALGO = sbuf
 MODE = cow
 # -----------------------------------------------------------------------------
 
+
 ifdef DEBUG
 override CFLAGS += $(CFLAGS_DBG) -Iinclude
 else
 override CFLAGS += $(CFLAGS_REL) -Iinclude -U_FORTIFY_SOURCE
 #-D_FORTIFY_SOURCE=0
+# if GCC version > 4.7, disable stack protector
+override CFLAGS += -fno-stack-protector
 endif
 
 # debugging level 0-3
