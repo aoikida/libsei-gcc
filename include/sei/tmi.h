@@ -12,7 +12,7 @@
 #endif
 #endif
 
-#define TMI_HANDLE_INIT -1
+#define SEI_HANDLE_INIT -1
 
 #ifdef  TMI_INSTR
 #define SEI_ENABLED

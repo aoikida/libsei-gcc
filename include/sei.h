@@ -7,9 +7,9 @@
 
 #include <sei/tmi.h> 
 
-#define __begin(ptr, size, crc)      __tmi_prepare(ptr, size, crc, 0) ) \
+#define __begin(ptr, size, crc)      __tmi_prepare((ptr), (size), (crc), 1) ) \
                                      {__tmi_begin(x) if (1
-#define __begin_rw(ptr, size, crc)   __tmi_prepare(ptr, size, crc, 1) ) \
+#define __begin_rw(ptr, size, crc)   __tmi_prepare((ptr), (size), (crc), 0) ) \
                                      {__tmi_begin(x) if (1
 #define __end()                      } __tmi_end(x)
 #define __begin_nm()                 __tmi_prepare_nm(); if (1) { \

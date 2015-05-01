@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- * Copyright (c) 2013,2014 Diogo Behrens
+ * Copyright (c) 2013,2014,2015 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 #include <stdio.h>
@@ -198,17 +198,31 @@ ABUF_POP(uint64_t)
 #define SAVE_NEXT
 #endif
 
-#define ABUF_PUSH(type) inline                                          \
-    void abuf_push_##type(abuf_t* abuf, type* addr, type value)         \
-    {                                                                   \
-        assert (abuf->pushed < abuf->max_size-1 && "no space left");    \
-        abuf_entry_t* e = &abuf->buf[abuf->pushed++];                   \
-        e->addr = addr;                                                 \
-        e->size = sizeof(type);                                         \
-        SAVE_NEXT;                                                      \
-        if (sizeof(type) != sizeof(uint64_t)) ABUF_WVAL(e) = 0;         \
-        ABUF_WVAX(e, type, addr) = value;                               \
-        ABUF_SINFO_PUSH(e, addr);                                       \
+
+#ifdef ABUF_DISABLE_REALLOC
+#define ABUF_CHECK_SIZE                                               \
+        fail_ifn (abuf->pushed < abuf->max_size-1, "no space left");
+#else
+#define ABUF_CHECK_SIZE                                               \
+        if (abuf->pushed == abuf->max_size) {                         \
+            abuf->max_size *= 2;                                      \
+            abuf->buf = realloc(abuf->buf,                            \
+                                abuf->max_size*sizeof(abuf_entry_t)); \
+            fail_ifn (abuf->buf != NULL, "no space left");            \
+        }
+#endif /* ABUF_DISABLE_REALLOC */
+
+#define ABUF_PUSH(type) inline                                  \
+    void abuf_push_##type(abuf_t* abuf, type* addr, type value) \
+    {                                                           \
+        ABUF_CHECK_SIZE;                                        \
+        abuf_entry_t* e = &abuf->buf[abuf->pushed++];           \
+        e->addr = addr;                                         \
+        e->size = sizeof(type);                                 \
+        SAVE_NEXT;                                              \
+        if (sizeof(type) != sizeof(uint64_t)) ABUF_WVAL(e) = 0; \
+        ABUF_WVAX(e, type, addr) = value;                       \
+        ABUF_SINFO_PUSH(e, addr);                               \
     }
 ABUF_PUSH(uint8_t)
 ABUF_PUSH(uint16_t)
@@ -252,12 +266,12 @@ abuf_cmp(abuf_t* a1, abuf_t* a2)
     }
 }
 
-#define ABUF_CONFLICT(e, type) do {                     \
-        type* addr = e->addr;                           \
-        if (*addr != ABUF_WVAX(e, type, addr)) {        \
-            assert (nentry <= ABUF_MAX_CONFLICTS);      \
-            entry[nentry++] = e;                        \
-        }                                               \
+#define ABUF_CONFLICT(e, type) do {                                        \
+        type* addr = e->addr;                                              \
+        if (*addr != ABUF_WVAX(e, type, addr)) {                           \
+            fail_ifn (nentry <= ABUF_MAX_CONFLICTS, "too many conflicts"); \
+            entry[nentry++] = e;                                           \
+        }                                                                  \
     } while (0)
 
 inline void

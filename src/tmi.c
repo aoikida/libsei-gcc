@@ -1229,13 +1229,15 @@ __sei_commit(int force)
 void
 __sei_commit()
 {
-#if 1
     //	memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
     // 	memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
-    DLOG1("__sei_ignore_num = %d\n", __sei_ignore_num);
+#ifdef DEBUG
+    if (sei_getp(__sei_thread->sei)) {
+        DLOG2("__sei_ignore_num = %d\n", __sei_ignore_num);
+    }
+#endif
 	__sei_ignore_num = 0;
     __sei_write_disable = 0;
-#endif
 
     if (!sei_getp(__sei_thread->sei)) {
         sei_switch(__sei_thread->sei);

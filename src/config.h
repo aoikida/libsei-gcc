@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- * Copyright (c) 2014 Sergey Arnautov, Diogo Behrens
+ * Copyright (c) 2014,2015 Sergey Arnautov, Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
@@ -9,14 +9,19 @@
 #define ABUF_MAX_CONFLICTS 8000
 
 #define OBUF_SIZE 10     // at most 10 output messages per traversal
-#define COW_SIZE  40000    // at most 100 writes per traversal
+#define COW_SIZE  128    // at most 128 writes per traversal
 #define TBIN_SIZE 10000     // at most 10 frees per traversal
 #define TALLOC_MAX_ALLOCS 20000
 
-#ifndef SEI_MT
+/* abuf and cow data structures are automatically reallocated if their
+ * capacity is reached. Uncomment the next lines to disable automatic
+ * reallocation. */
+//#define ABUF_DISABLE_REALLOC
+//#define COW_DISABLE_REALLOC
+
+
 /* provide wrappers for system calls */
 #define SEI_WRAP_SC
-#endif
 
 #ifdef SEI_WRAP_SC
 #define SC_MAX_CALLS 100 // at most 10 system calls inside a traversal

@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- * Copyright (c) 2013 Diogo Behrens
+ * Copyright (c) 2013,2015 Diogo Behrens
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
@@ -49,7 +49,7 @@ typedef struct cow_entry {
 struct cow_buffer {
     cow_entry_t* table[COW_MAX];
     int          sizes[COW_MAX];
-    int max_size;
+    int       max_size[COW_MAX];
     heap_t *heap;
 
 #ifdef COW_STATS
@@ -86,11 +86,11 @@ cow_init(heap_t *heap, int max_size)
     cow_t* cow = (cow_t*) malloc(sizeof(cow_t));
     assert(cow);
 
-    cow->max_size = max_size;
     cow->heap = heap;
 
     int i;
     for (i = 0; i < COW_MAX; ++i) {
+        cow->max_size[i] = max_size;
         cow->table[i] = (cow_entry_t*) malloc(max_size*sizeof(cow_entry_t));
         assert (cow->table[i]);
         bzero(cow->table[i], sizeof(cow_entry_t));
@@ -385,6 +385,21 @@ COW_READ(uint64_t)
 #define SINFO_UPDATE(e, addr)
 #endif
 
+#ifdef COW_DISABLE_REALLOC
+#define COW_CHECK_SIZE(i)                                                  \
+        fail_ifn (cow->sizes[i] + 1 > cow->max_size[i], "no space left"); 
+#else
+#define COW_CHECK_SIZE(i)                                                  \
+        if (cow->sizes[i] + 1 == cow->max_size[i]) {                       \
+            cow->max_size[i] *= 2;                                         \
+            DLOG3("realloc cow: key %d, size %lu\n", i, cow->max_size[i]); \
+            cow->table[i] = (cow_entry_t*)                                 \
+                            realloc(cow->table[i],                         \
+                                    cow->max_size[i]*sizeof(cow_entry_t)); \
+            fail_ifn (cow->table[i] != NULL, "no space left");             \
+        }
+#endif /* COW_DISABLE_REALLOC */
+
 #define COW_WRITE(type) inline                                          \
     void cow_write_##type(cow_t* cow, type* addr, type value)           \
     {                                                                   \
@@ -397,6 +412,7 @@ COW_READ(uint64_t)
             DLOG3("kaddr=%d\n",GETWKEY(cow->heap, addr));               \
             int key = HASH(GETWKEY(cow->heap, addr));                   \
             DLOG3("key=%d\n",key);                                      \
+            COW_CHECK_SIZE(key);                                        \
             e = &cow->table[key][cow->sizes[key]++];                    \
             assert (e);                                                 \
             e->wkey = GETWKEY(cow->heap, addr);                         \

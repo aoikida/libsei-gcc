@@ -3,7 +3,7 @@ CFLAGS    = -g -O0 -Wall
 # Flag to enable transactional memory
 AFLAGS    = -fgnu-tm
 # Uncomment next line to disable libsei
-AFLAGS   += -DSEI_DISABLED
+#AFLAGS   += -DSEI_DISABLED
 # Helper library with CRC calculation routines
 LIBS      = -lcrc
 SRCS      = main.c
