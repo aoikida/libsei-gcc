@@ -14,6 +14,13 @@
 #endif
 #endif
 
+/* glibc restrict keyword compatibility */
+#ifdef __GLIBC__
+#define SEI_RESTRICT __restrict
+#else
+#define SEI_RESTRICT
+#endif
+
 #ifdef TMI_IMPL
 #define SEI_PREF
 #else
@@ -38,15 +45,15 @@ SEI_DECLP(char*,  strchr,  (const char *s, int c))
 SEI_DECLP(void*,  memchr,  (const void *s, int c, size_t n))
 SEI_DECLP(int,    memcmp,  (const void*, const void*, size_t size))
 
-SEI_DECL(long,  strtol,  (const char *nptr, char **endptr, int base))
-SEI_DECL(long long, strtoll, (const char *nptr, char **endptr, int base))
-SEI_DECL(unsigned long, strtoul, (const char *nptr, char **endptr, int base))
+SEI_DECL(long,  strtol,  (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
+SEI_DECL(long long, strtoll, (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
+SEI_DECL(unsigned long, strtoul, (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
 SEI_DECL(unsigned long long, strtoull,
-           (const char *nptr, char **endptr, int base))
+           (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
 SEI_DECL(char*, strdup, (const char *s))
 SEI_DECL(char*, strndup, (const char *s, size_t n))
-SEI_DECL(char*, strcpy, (char *dest, const char *src))
-SEI_DECL(char*, strncpy, (char *dest, const char *src, size_t n))
+SEI_DECL(char*, strcpy, (char *SEI_RESTRICT dest, const char *SEI_RESTRICT src))
+SEI_DECL(char*, strncpy, (char *SEI_RESTRICT dest, const char *SEI_RESTRICT src, size_t n))
 SEI_DECL(void*, memcpy, (void* dst, const void* src, size_t size))
 SEI_DECL(void*, memset, (void *s, int c, size_t n))
 SEI_DECL(void*, memmove, (void *dest, const void *src, size_t n))

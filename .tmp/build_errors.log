@@ -1,0 +1,491 @@
+======================
+UNAME : Linux
+MODE  : cow
+ALGO  : sbuf
+DEBUG : 
+CFLAGS: -msse4.2 -g -O3 -Wall -DNDEBUG -Iinclude -U_FORTIFY_SOURCE -fno-stack-protector -frecord-gcc-switches
+AFLAGS: -DSEI_ENABLED  -DMODE=2 -DCOW_WT -DCOW_APPEND_ONLY -DCOW_ASMREAD -DCOW_ROPURE -DSEI_2PL
+CC    : cc
+----------------------
+mkdir -p build
+cc -msse4.2 -g -O3 -Wall -DNDEBUG -Iinclude -U_FORTIFY_SOURCE -fno-stack-protector -frecord-gcc-switches -I include -c -o build/tmi_read.o src/tmi_read.S
+cc -msse4.2 -g -O3 -Wall -DNDEBUG -Iinclude -U_FORTIFY_SOURCE -fno-stack-protector -frecord-gcc-switches -I include -c -o build/tmi_asm.o src/tmi_asm.S
+cc -msse4.2 -g -O3 -Wall -DNDEBUG -Iinclude -U_FORTIFY_SOURCE -fno-stack-protector -frecord-gcc-switches -DSEI_ENABLED  -DMODE=2 -DCOW_WT -DCOW_APPEND_ONLY -DCOW_ASMREAD -DCOW_ROPURE -DSEI_2PL -I include -c -o build/inlined.o build/inlined.c
+In file included from build/inlined.c:17:
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaWU8’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaWU8’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaRU8’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaRU8’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WU8’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WU8’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:505:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  505 | ITM_WRITE_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaWU4’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaWU4’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaRU4’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaRU4’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WU4’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WU4’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:504:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  504 | ITM_WRITE_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaWU2’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaWU2’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaRU2’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaRU2’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WU2’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WU2’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:503:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  503 | ITM_WRITE_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaWU1’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaWU1’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:500:5: note: in expansion of macro ‘ITM_WRITE’
+  500 |     ITM_WRITE(type, aW, suffix)
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WaRU1’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WaRU1’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:499:5: note: in expansion of macro ‘ITM_WRITE’
+  499 |     ITM_WRITE(type, aR, suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:493:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_WU1’ which is not static
+  493 |             sei_write_##type(__sei_thread->sei, addr, value);     \
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:484:13: warning: ‘ignore_addr’ is static but used in inline function ‘_ITM_WU1’ which is not static
+  484 |         if (ignore_addr(addr)) *addr = value;                   \
+      |             ^~~~~~~~~~~
+build/../src/tmi.c:498:5: note: in expansion of macro ‘ITM_WRITE’
+  498 |     ITM_WRITE(type,   , suffix)                 \
+      |     ^~~~~~~~~
+build/../src/tmi.c:502:1: note: in expansion of macro ‘ITM_WRITE_ALL’
+  502 | ITM_WRITE_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~~
+build/../src/tmi.c:448:23: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_calloc’ which is not static
+  448 |     return sei_malloc(__sei_thread->sei, nmemb*size);
+      |                       ^~~~~~~~~~~~
+build/../src/tmi.c:442:14: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_free’ which is not static
+  442 |     sei_free(__sei_thread->sei, ptr);
+      |              ^~~~~~~~~~~~
+build/../src/tmi.c:430:30: warning: ‘__sei_thread’ is static but used in inline function ‘_ITM_malloc’ which is not static
+  430 |     } else return sei_malloc(__sei_thread->sei, size);
+      |                              ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RfWU8’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:474:5: note: in expansion of macro ‘ITM_READ’
+  474 |     ITM_READ(type, fW, suffix)
+      |     ^~~~~~~~
+build/../src/tmi.c:479:1: note: in expansion of macro ‘ITM_READ_ALL’
+  479 | ITM_READ_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaWU8’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:473:5: note: in expansion of macro ‘ITM_READ’
+  473 |     ITM_READ(type, aW, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:479:1: note: in expansion of macro ‘ITM_READ_ALL’
+  479 | ITM_READ_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaRU8’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:472:5: note: in expansion of macro ‘ITM_READ’
+  472 |     ITM_READ(type, aR, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:479:1: note: in expansion of macro ‘ITM_READ_ALL’
+  479 | ITM_READ_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RU8’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:471:5: note: in expansion of macro ‘ITM_READ’
+  471 |     ITM_READ(type,   , suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:479:1: note: in expansion of macro ‘ITM_READ_ALL’
+  479 | ITM_READ_ALL(uint64_t, U8)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RfWU4’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:474:5: note: in expansion of macro ‘ITM_READ’
+  474 |     ITM_READ(type, fW, suffix)
+      |     ^~~~~~~~
+build/../src/tmi.c:478:1: note: in expansion of macro ‘ITM_READ_ALL’
+  478 | ITM_READ_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaWU4’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:473:5: note: in expansion of macro ‘ITM_READ’
+  473 |     ITM_READ(type, aW, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:478:1: note: in expansion of macro ‘ITM_READ_ALL’
+  478 | ITM_READ_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaRU4’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:472:5: note: in expansion of macro ‘ITM_READ’
+  472 |     ITM_READ(type, aR, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:478:1: note: in expansion of macro ‘ITM_READ_ALL’
+  478 | ITM_READ_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RU4’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:471:5: note: in expansion of macro ‘ITM_READ’
+  471 |     ITM_READ(type,   , suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:478:1: note: in expansion of macro ‘ITM_READ_ALL’
+  478 | ITM_READ_ALL(uint32_t, U4)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RfWU2’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:474:5: note: in expansion of macro ‘ITM_READ’
+  474 |     ITM_READ(type, fW, suffix)
+      |     ^~~~~~~~
+build/../src/tmi.c:477:1: note: in expansion of macro ‘ITM_READ_ALL’
+  477 | ITM_READ_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaWU2’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:473:5: note: in expansion of macro ‘ITM_READ’
+  473 |     ITM_READ(type, aW, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:477:1: note: in expansion of macro ‘ITM_READ_ALL’
+  477 | ITM_READ_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaRU2’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:472:5: note: in expansion of macro ‘ITM_READ’
+  472 |     ITM_READ(type, aR, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:477:1: note: in expansion of macro ‘ITM_READ_ALL’
+  477 | ITM_READ_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RU2’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:471:5: note: in expansion of macro ‘ITM_READ’
+  471 |     ITM_READ(type,   , suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:477:1: note: in expansion of macro ‘ITM_READ_ALL’
+  477 | ITM_READ_ALL(uint16_t, U2)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RfWU1’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:474:5: note: in expansion of macro ‘ITM_READ’
+  474 |     ITM_READ(type, fW, suffix)
+      |     ^~~~~~~~
+build/../src/tmi.c:476:1: note: in expansion of macro ‘ITM_READ_ALL’
+  476 | ITM_READ_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaWU1’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:473:5: note: in expansion of macro ‘ITM_READ’
+  473 |     ITM_READ(type, aW, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:476:1: note: in expansion of macro ‘ITM_READ_ALL’
+  476 | ITM_READ_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RaRU1’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:472:5: note: in expansion of macro ‘ITM_READ’
+  472 |     ITM_READ(type, aR, suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:476:1: note: in expansion of macro ‘ITM_READ_ALL’
+  476 | ITM_READ_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~
+build/../src/tmi.c:460:10: warning: inline function ‘_ITM_RU1’ declared but never defined
+  460 |     type _ITM_R##prefix##suffix(const type* addr);
+      |          ^~~~~~
+build/../src/tmi.c:471:5: note: in expansion of macro ‘ITM_READ’
+  471 |     ITM_READ(type,   , suffix)                  \
+      |     ^~~~~~~~
+build/../src/tmi.c:476:1: note: in expansion of macro ‘ITM_READ_ALL’
+  476 | ITM_READ_ALL(uint8_t,  U1)
+      | ^~~~~~~~~~~~
+cc -msse4.2 -g -O3 -Wall -DNDEBUG -Iinclude -U_FORTIFY_SOURCE -fno-stack-protector -frecord-gcc-switches -DSEI_ENABLED  -DMODE=2 -DCOW_WT -DCOW_APPEND_ONLY -DCOW_ASMREAD -DCOW_ROPURE -DSEI_2PL -fgnu-tm -I include -c -o build/support.o src/support.c
+In file included from src/support.c:8:
+include/sei/support.h:41:17: error: conflicting types for ‘strtol’; have ‘long int(const char *, char **, int)’
+   41 | SEI_DECL(long,  strtol,  (const char *nptr, char **endptr, int base))
+      |                 ^~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:6:
+/usr/include/stdlib.h:177:17: note: previous declaration of ‘strtol’ with type ‘long int(const char * restrict,  char ** restrict,  int)’
+  177 | extern long int strtol (const char *__restrict __nptr,
+      |                 ^~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:42:21: error: conflicting types for ‘strtoll’; have ‘long long int(const char *, char **, int)’
+   42 | SEI_DECL(long long, strtoll, (const char *nptr, char **endptr, int base))
+      |                     ^~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:6:
+/usr/include/stdlib.h:201:22: note: previous declaration of ‘strtoll’ with type ‘long long int(const char * restrict,  char ** restrict,  int)’
+  201 | extern long long int strtoll (const char *__restrict __nptr,
+      |                      ^~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:43:25: error: conflicting types for ‘strtoul’; have ‘long unsigned int(const char *, char **, int)’
+   43 | SEI_DECL(unsigned long, strtoul, (const char *nptr, char **endptr, int base))
+      |                         ^~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:6:
+/usr/include/stdlib.h:181:26: note: previous declaration of ‘strtoul’ with type ‘long unsigned int(const char * restrict,  char ** restrict,  int)’
+  181 | extern unsigned long int strtoul (const char *__restrict __nptr,
+      |                          ^~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:44:30: error: conflicting types for ‘strtoull’; have ‘long long unsigned int(const char *, char **, int)’
+   44 | SEI_DECL(unsigned long long, strtoull,
+      |                              ^~~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:6:
+/usr/include/stdlib.h:206:31: note: previous declaration of ‘strtoull’ with type ‘long long unsigned int(const char * restrict,  char ** restrict,  int)’
+  206 | extern unsigned long long int strtoull (const char *__restrict __nptr,
+      |                               ^~~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:54:17: error: conflicting types for ‘realloc’; have ‘void *(void *, size_t)’ {aka ‘void *(void *, long unsigned int)’}
+   54 | SEI_DECL(void*, realloc, (void* ptr, size_t size))
+      |                 ^~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:6:
+/usr/include/stdlib.h:551:14: note: previous declaration of ‘realloc’ with type ‘void *(void *, size_t)’ {aka ‘void *(void *, long unsigned int)’}
+  551 | extern void *realloc (void *__ptr, size_t __size)
+      |              ^~~~~~~
+In file included from src/libc/string/memmove.c:2,
+                 from src/support.c:25:
+src/libc/string/bcopy.c:56:1: error: conflicting types for ‘memmove_bsd’; have ‘void *(void *, const void *, size_t)’ {aka ‘void *(void *, const void *, long unsigned int)’}
+   56 | memmove_bsd(void *dst0, const void *src0, size_t length)
+      | ^~~~~~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:53:17: note: previous declaration of ‘memmove_bsd’ with type ‘void *(void *, const void *, size_t)’ {aka ‘void *(void *, const void *, long unsigned int)’}
+   53 | SEI_DECL(void*, memmove_bsd, (void *dest, const void *src, size_t n))
+      |                 ^~~~~~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:26:
+src/libc/string/strdup.c:40:1: error: conflicting types for ‘strdup’; have ‘char *(const char *)’
+   40 | strdup(const char *str)
+      | ^~~~~~
+src/libc/string/strdup.c:38:8: note: previous declaration of ‘strdup’ with type ‘char *(const char *)’
+   38 | char * strdup(const char *str) __attribute((transaction_safe));
+      |        ^~~~~~
+In file included from src/support.c:27:
+src/libc/string/strncpy.c:46:1: error: conflicting types for ‘strncpy’; have ‘char *(char *, const char *, size_t)’ {aka ‘char *(char *, const char *, long unsigned int)’}
+   46 | strncpy(char *dst, const char *src, size_t n)
+      | ^~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:49:17: note: previous declaration of ‘strncpy’ with type ‘char *(char *, const char *, size_t)’ {aka ‘char *(char *, const char *, long unsigned int)’}
+   49 | SEI_DECL(char*, strncpy, (char *dest, const char *src, size_t n))
+      |                 ^~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+In file included from src/support.c:28:
+src/libc/string/strcpy.c:44:1: error: conflicting types for ‘strcpy’; have ‘char *(char *, const char *)’
+   44 | strcpy(char *to, const char *from)
+      | ^~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:48:17: note: previous declaration of ‘strcpy’ with type ‘char *(char *, const char *)’
+   48 | SEI_DECL(char*, strcpy, (char *dest, const char *src))
+      |                 ^~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+src/support.c:45:1: error: conflicting types for ‘strndup’; have ‘char *(const char *, size_t)’ {aka ‘char *(const char *, long unsigned int)’}
+   45 | strndup(const char *s, size_t n)
+      | ^~~~~~~
+In file included from src/support.c:8:
+include/sei/support.h:47:17: note: previous declaration of ‘strndup’ with type ‘char *(const char *, size_t)’ {aka ‘char *(const char *, long unsigned int)’}
+   47 | SEI_DECL(char*, strndup, (const char *s, size_t n))
+      |                 ^~~~~~~
+include/sei/support.h:23:54: note: in definition of macro ‘SEI_DECL’
+   23 | #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
+      |                                                      ^~~~
+make: *** [Makefile:182: build/support.o] Error 1
