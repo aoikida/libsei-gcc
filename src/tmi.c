@@ -420,7 +420,7 @@ _ITM_commitTransaction()
 #endif /* SEI_MTL */
 }
 
-inline void*
+static inline void*
 _ITM_malloc(size_t size)
 {
     if (__sei_ignore_allf) {
@@ -430,7 +430,7 @@ _ITM_malloc(size_t size)
     } else return sei_malloc(__sei_thread->sei, size);
 }
 
-inline void
+static inline void
 _ITM_free(void* ptr)
 {
     int i;
@@ -442,13 +442,13 @@ _ITM_free(void* ptr)
     sei_free(__sei_thread->sei, ptr);
 }
 
-inline void*
+static inline void*
 _ITM_calloc(size_t nmemb, size_t size)
 {
     return sei_malloc(__sei_thread->sei, nmemb*size);
 }
 #ifndef COW_WT
-#define ITM_READ(type, prefix, suffix) inline                   \
+#define ITM_READ(type, prefix, suffix) static inline            \
     type _ITM_R##prefix##suffix(const type* addr)               \
     {                                                           \
         if (ignore_addr(addr)) return *addr;                    \
@@ -456,10 +456,10 @@ _ITM_calloc(size_t nmemb, size_t size)
     }
 #else
 #ifdef COW_ASMREAD
-#  define ITM_READ(type, prefix, suffix) inline         \
+#  define ITM_READ(type, prefix, suffix) static inline  \
     type _ITM_R##prefix##suffix(const type* addr);
 #else
-#  define ITM_READ(type, prefix, suffix) inline         \
+#  define ITM_READ(type, prefix, suffix) static inline  \
     type _ITM_R##prefix##suffix(const type* addr)       \
     {                                                   \
         return *addr;                                   \
@@ -478,7 +478,7 @@ ITM_READ_ALL(uint16_t, U2)
 ITM_READ_ALL(uint32_t, U4)
 ITM_READ_ALL(uint64_t, U8)
 
-#define ITM_WRITE(type, prefix, suffix) inline                  \
+#define ITM_WRITE(type, prefix, suffix) static inline           \
     void _ITM_W##prefix##suffix(type* addr, type value)         \
     {                                                           \
         if (ignore_addr(addr)) *addr = value;                   \
