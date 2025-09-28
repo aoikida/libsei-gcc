@@ -25,6 +25,10 @@
 #define SEI_PREF
 #else
 #define SEI_PREF extern
+/* For user applications: avoid conflicts with system headers */
+#ifndef SEI_NO_SYSTEM_OVERRIDE
+#warning "libsei will override system functions. Define SEI_NO_SYSTEM_OVERRIDE to disable."
+#endif
 #endif
 
 #define SEI_DECL(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
