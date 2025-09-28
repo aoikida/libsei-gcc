@@ -1,11 +1,52 @@
 /* Copyright (C) 2004 Christopher Clark <firstname.lastname@cl.cam.ac.uk> */
 
-#include "hashtable.h"
-#include "hashtable_private.h"
+/* Temporarily mask system functions to avoid conflicts with libsei */
+#define strtol __system_strtol
+#define strtoll __system_strtoll
+#define strtoul __system_strtoul
+#define strtoull __system_strtoull
+#define strdup __system_strdup
+#define strcpy __system_strcpy
+#define strncpy __system_strncpy
+#define memmove __system_memmove
+#define memcpy __system_memcpy
+#define memset __system_memset
+#define memcmp __system_memcmp
+#define memchr __system_memchr
+#define strchr __system_strchr
+#define strcmp __system_strcmp
+#define strncmp __system_strncmp
+#define strlen __system_strlen
+#define realloc __system_realloc
+#define strndup __system_strndup
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+/* Restore original function names */
+#undef strtol
+#undef strtoll
+#undef strtoul
+#undef strtoull
+#undef strdup
+#undef strcpy
+#undef strncpy
+#undef memmove
+#undef memcpy
+#undef memset
+#undef memcmp
+#undef memchr
+#undef strchr
+#undef strcmp
+#undef strncmp
+#undef strlen
+#undef realloc
+#undef strndup
+
+#include "hashtable.h"
+#include "hashtable_private.h"
 
 /*
 Credit for primes table: Aaron Krowne
@@ -25,7 +66,7 @@ static const unsigned int prime_table_length = sizeof(primes)/sizeof(primes[0]);
 static const float max_load_factor = 0.65;
 
 /*****************************************************************************/
-struct hashtable *
+struct hashtable * SEI_SAFE
 create_hashtable(unsigned int minsize,
                  unsigned int (*hashf) (void*),
                  int (*eqf) (void*,void*))
@@ -140,7 +181,7 @@ hashtable_count(struct hashtable *h)
 }
 
 /*****************************************************************************/
-int
+int SEI_SAFE
 hashtable_insert(struct hashtable *h, void *k, void *v)
 {
     /* This method allows duplicate keys - but they shouldn't be used */
@@ -166,7 +207,7 @@ hashtable_insert(struct hashtable *h, void *k, void *v)
 }
 
 /*****************************************************************************/
-void * /* returns value associated with key */
+void * SEI_RONLY/* returns value associated with key */
 hashtable_search(struct hashtable *h, void *k)
 {
     struct entry *e;
@@ -188,7 +229,7 @@ hashtable_search(struct hashtable *h, void *k)
 int
 eqfn(void* k1, void* k2) SEI_RONLY;
 
-void * /* returns value associated with key */
+void * SEI_SAFE/* returns value associated with key */
 hashtable_remove(struct hashtable *h, void *k)
 {
     /* TODO: consider compacting the table when the load factor drops enough,
@@ -224,7 +265,7 @@ hashtable_remove(struct hashtable *h, void *k)
 
 /*****************************************************************************/
 /* destroy */
-void
+void SEI_SAFE
 hashtable_destroy(struct hashtable *h, int free_values)
 {
     unsigned int i;

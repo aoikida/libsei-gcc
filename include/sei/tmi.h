@@ -41,12 +41,12 @@
 
 #ifdef SEI_ENABLED
 #ifdef SEI_CLOG
-#define SEI_RONLY __attribute__((transaction_safe));
+#define SEI_RONLY __attribute__((transaction_safe))
 #else
-#define SEI_RONLY __attribute__((transaction_pure));
+#define SEI_RONLY __attribute__((transaction_pure))
 #endif
-#define SEI_PURE __attribute__((transaction_pure));
-#define SEI_SAFE __attribute__((transaction_safe));
+#define SEI_PURE __attribute__((transaction_pure))
+#define SEI_SAFE __attribute__((transaction_safe))
 
 #else
 #define SEI_PURE

@@ -3,10 +3,39 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
-#include <sei.h>
+/* Temporarily mask system functions to avoid conflicts with libsei */
+#define strtol __system_strtol
+#define strtoll __system_strtoll
+#define strtoul __system_strtoul
+#define strtoull __system_strtoull
+#define strdup __system_strdup
+#define strcpy __system_strcpy
+#define strncpy __system_strncpy
+#define memmove __system_memmove
+#define memcpy __system_memcpy
+#define memset __system_memset
+#define realloc __system_realloc
+#define strndup __system_strndup
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Restore original function names */
+#undef strtol
+#undef strtoll
+#undef strtoul
+#undef strtoull
+#undef strdup
+#undef strcpy
+#undef strncpy
+#undef memmove
+#undef memcpy
+#undef memset
+#undef realloc
+#undef strndup
+
+#include <sei.h>
 
 #define BUFSIZE 1024
 

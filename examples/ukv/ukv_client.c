@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sei/crc.h>
 
 #define BUFSIZE 1024
 

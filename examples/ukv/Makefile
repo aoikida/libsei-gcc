@@ -3,7 +3,7 @@
 # Distributed under the MIT license. See accompanying file LICENSE.
 # ------------------------------------------------------------------------------
 
-CFLAGS    = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer 
+CFLAGS    = -g -O0 -Wall -fno-builtin -fno-omit-frame-pointer
 SFLAGS   := $(CFLAGS)
 CFLAGS   += -DSEI_DISABLED 
 BUILD     = build

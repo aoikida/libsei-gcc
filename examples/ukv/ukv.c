@@ -3,10 +3,51 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * -------------------------------------------------------------------------- */
 
+/* Temporarily mask system functions to avoid conflicts with libsei */
+#define strtol __system_strtol
+#define strtoll __system_strtoll
+#define strtoul __system_strtoul
+#define strtoull __system_strtoull
+#define strdup __system_strdup
+#define strcpy __system_strcpy
+#define strncpy __system_strncpy
+#define memmove __system_memmove
+#define memcpy __system_memcpy
+#define memset __system_memset
+#define memcmp __system_memcmp
+#define memchr __system_memchr
+#define strchr __system_strchr
+#define strcmp __system_strcmp
+#define strncmp __system_strncmp
+#define strlen __system_strlen
+#define realloc __system_realloc
+#define strndup __system_strndup
+
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+/* Restore original function names */
+#undef strtol
+#undef strtoll
+#undef strtoul
+#undef strtoull
+#undef strdup
+#undef strcpy
+#undef strncpy
+#undef memmove
+#undef memcpy
+#undef memset
+#undef memcmp
+#undef memchr
+#undef strchr
+#undef strcmp
+#undef strncmp
+#undef strlen
+#undef realloc
+#undef strndup
+
 #include "hashtable/hashtable.h"
 #include "ukv.h"
 
@@ -52,9 +93,7 @@ eqfn(void* k1, void* k2)
  * constructor/destructor
  * -------------------------------------------------------------------------- */
 
-ukv_t* ukv_init() SEI_SAFE;
-
-ukv_t*
+ukv_t* SEI_SAFE
 ukv_init()
 {
     ukv_t* ukv = (ukv_t*) malloc(sizeof(ukv_t));
@@ -65,7 +104,7 @@ ukv_init()
     return ukv;
 }
 
-void
+void SEI_SAFE
 ukv_fini(ukv_t* ukv)
 {
     hashtable_destroy(ukv->h, 1);
@@ -77,7 +116,7 @@ ukv_fini(ukv_t* ukv)
  * access methods
  * -------------------------------------------------------------------------- */
 
-const char*
+const char* SEI_SAFE
 ukv_get(ukv_t* ukv, const char* key)
 {
     assert (ukv != NULL);
@@ -87,9 +126,7 @@ ukv_get(ukv_t* ukv, const char* key)
     return value;
 }
 
-const char* ukv_set(ukv_t* ukv, char* key, char* value) SEI_SAFE;
-
-const char*
+const char* SEI_SAFE
 ukv_set(ukv_t* ukv, char* key, char* value)
 {
     assert (ukv != NULL);
@@ -114,7 +151,7 @@ ukv_set(ukv_t* ukv, char* key, char* value)
     return NULL;
 }
 
-void
+void SEI_SAFE
 ukv_del(ukv_t* ukv, const char* key)
 {
     assert (ukv != NULL);
