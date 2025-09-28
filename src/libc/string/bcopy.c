@@ -49,17 +49,22 @@ typedef	long word;		/* "word" used for optimal copy speed */
  */
 #ifdef MEMCOPY
 void *
-memcpy(void *dst0, const void *src0, size_t length)
+memcpy(void *dst0, const void *src0, size_t n)
 #else
 #ifdef MEMMOVE
-void *
-memmove_bsd(void *dst0, const void *src0, size_t length)
+__attribute__((transaction_safe)) void *
+memmove_bsd(void *dest, const void *src_param, size_t n)
 #else
 void
 bcopy(const void *src0, void *dst0, size_t length)
 #endif
 #endif
 {
+	/* Map SEI parameters to OpenBSD variable names for compatibility */
+	void *dst0 = dest;
+	const void *src0 = src_param;
+	size_t length = n;
+	
 	char *dst = dst0;
 	const char *src = src0;
 	size_t t;
@@ -84,10 +89,10 @@ bcopy(const void *src0, void *dst0, size_t length)
 			 * unless the low bits match.
 			 */
 			if ((t ^ (long)dst) & wmask || length < wsize)
-				t = length;
+				t = n;
 			else
 				t = wsize - (t & wmask);
-			length -= t;
+			n -= t;
 			TLOOP1(*dst++ = *src++);
 		}
 		/*
@@ -103,15 +108,15 @@ bcopy(const void *src0, void *dst0, size_t length)
 		 * Alignment works as before, except that it takes
 		 * (t&wmask) bytes to align, not wsize-(t&wmask).
 		 */
-		src += length;
-		dst += length;
+		src += n;
+		dst += n;
 		t = (long)src;
 		if ((t | (long)dst) & wmask) {
 			if ((t ^ (long)dst) & wmask || length <= wsize)
-				t = length;
+				t = n;
 			else
 				t &= wmask;
-			length -= t;
+			n -= t;
 			TLOOP1(*--dst = *--src);
 		}
 		t = length / wsize;

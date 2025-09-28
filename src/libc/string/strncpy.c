@@ -42,11 +42,11 @@
  * Copy src to dst, truncating or null-padding to always copy n bytes.
  * Return dst.
  */
-char *
-strncpy(char *dst, const char *src, size_t n)
+__attribute__((transaction_safe)) char *
+strncpy(char *SEI_RESTRICT dest, const char *SEI_RESTRICT src, size_t n)
 {
 	if (n != 0) {
-		char *d = dst;
+		char *d = dest;
 		const char *s = src;
 
 		do {
@@ -58,5 +58,5 @@ strncpy(char *dst, const char *src, size_t n)
 			}
 		} while (--n != 0);
 	}
-	return (dst);
+	return (dest);
 }

@@ -3,7 +3,40 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 #include <assert.h>
+
+/* Temporarily disable system function declarations */
+#define strtol __system_strtol
+#define strtoll __system_strtoll
+#define strtoul __system_strtoul
+#define strtoull __system_strtoull
+#define strdup __system_strdup
+#define strcpy __system_strcpy
+#define strncpy __system_strncpy
+#define memmove __system_memmove
+#define memcpy __system_memcpy
+#define memset __system_memset
+#define realloc __system_realloc
+#define strndup __system_strndup
+
+/* Include system headers with renamed functions */
 #include <stdlib.h>
+#include <string.h>
+
+/* Restore original function names */
+#undef strtol
+#undef strtoll
+#undef strtoul
+#undef strtoull
+#undef strdup
+#undef strcpy
+#undef strncpy
+#undef memmove
+#undef memcpy
+#undef memset
+#undef realloc
+#undef strndup
+
+/* Now include libsei declarations */
 #define TMI_IMPL
 #include <sei/support.h>
 
@@ -14,7 +47,8 @@
 
 
 /* ----------------------------------------------------------------------------
- * libc functions that should be transactified
+ * Transaction-safe libsei implementations
+ * GCC TM will automatically choose these when in transaction context
  * ------------------------------------------------------------------------- */
 
 // functions that modify arguments
@@ -26,6 +60,7 @@
 #include "libc/string/strdup.c"
 #include "libc/string/strncpy.c"
 #include "libc/string/strcpy.c"
+// memcpy and memset handled by ITM interface
 //#include "libc/string/memcpy.c"
 //#include "libc/string/memset.c"
 
@@ -41,7 +76,7 @@
 
 # include "crc.c"
 
-char*
+__attribute__((transaction_safe)) char*
 strndup(const char *s, size_t n)
 {
     char* ptr = malloc(n+1);

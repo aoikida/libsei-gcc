@@ -40,8 +40,8 @@
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-long
-strtol(const char *nptr, char **endptr, int base)
+__attribute__((transaction_safe)) long
+strtol(const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base)
 {
 	const char *s;
 	long acc, cutoff;

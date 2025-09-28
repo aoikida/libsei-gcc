@@ -40,11 +40,11 @@ __warn_references(strcpy,
     "warning: strcpy() is almost always misused, please use strlcpy()");
 #endif
 
-char *
-strcpy(char *to, const char *from)
+__attribute__((transaction_safe)) char *
+strcpy(char *SEI_RESTRICT dest, const char *SEI_RESTRICT src)
 {
-	char *save = to;
+	char *save = dest;
 
-	for (; (*to = *from) != '\0'; ++from, ++to);
+	for (; (*dest = *src) != '\0'; ++src, ++dest);
 	return(save);
 }
