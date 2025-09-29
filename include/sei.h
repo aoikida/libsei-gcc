@@ -6,7 +6,6 @@
 #define _SEI_H_
 
 #include <sei/tmi.h> 
-#include <sei/compat.h>
 
 #define __begin(ptr, size, crc)      __tmi_prepare((ptr), (size), (crc), 1) ) \
                                      {__tmi_begin(x) if (1

@@ -9,6 +9,8 @@
 #define strtoll __system_strtoll
 #define strtoul __system_strtoul
 #define strtoull __system_strtoull
+#define atoi __system_atoi
+#define atol __system_atol
 #define strdup __system_strdup
 #define strcpy __system_strcpy
 #define strncpy __system_strncpy
@@ -27,6 +29,8 @@
 #undef strtoll
 #undef strtoul
 #undef strtoull
+#undef atoi
+#undef atol
 #undef strdup
 #undef strcpy
 #undef strncpy

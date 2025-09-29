@@ -6,6 +6,7 @@
 /* Temporarily mask system functions to avoid conflicts with libsei */
 
 #include <sei.h>
+#include <sei/compat.h>
 
 
 #define BUFSIZE 1024

@@ -54,6 +54,8 @@ SEI_DECL(long long, strtoll, (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT
 SEI_DECL(unsigned long, strtoul, (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
 SEI_DECL(unsigned long long, strtoull,
            (const char *SEI_RESTRICT nptr, char **SEI_RESTRICT endptr, int base))
+SEI_DECL(int, atoi, (const char*))
+SEI_DECL(long, atol, (const char*))
 SEI_DECL(char*, strdup, (const char *s))
 SEI_DECL(char*, strndup, (const char *s, size_t n))
 SEI_DECL(char*, strcpy, (char *SEI_RESTRICT dest, const char *SEI_RESTRICT src))

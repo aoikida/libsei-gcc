@@ -5,6 +5,7 @@
 
 /* Temporarily mask system functions to avoid conflicts with libsei */
 #include <sei.h>
+#include <sei/compat.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>

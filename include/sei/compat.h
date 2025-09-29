@@ -6,6 +6,8 @@
 #define _FORTIFY_SOURCE 0
 
 /* Mask system functions */
+#define atoi __system_atoi
+#define atol __system_atol
 #define strtol __system_strtol
 #define strtoll __system_strtoll
 #define strtoul __system_strtoul
@@ -30,6 +32,8 @@
 #include <string.h>
 
 /* Restore original function names */
+#undef atoi
+#undef atol
 #undef strtol
 #undef strtoll
 #undef strtoul
