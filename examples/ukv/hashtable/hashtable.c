@@ -1,49 +1,6 @@
 /* Copyright (C) 2004 Christopher Clark <firstname.lastname@cl.cam.ac.uk> */
 
-/* Temporarily mask system functions to avoid conflicts with libsei */
-#define strtol __system_strtol
-#define strtoll __system_strtoll
-#define strtoul __system_strtoul
-#define strtoull __system_strtoull
-#define strdup __system_strdup
-#define strcpy __system_strcpy
-#define strncpy __system_strncpy
-#define memmove __system_memmove
-#define memcpy __system_memcpy
-#define memset __system_memset
-#define memcmp __system_memcmp
-#define memchr __system_memchr
-#define strchr __system_strchr
-#define strcmp __system_strcmp
-#define strncmp __system_strncmp
-#define strlen __system_strlen
-#define realloc __system_realloc
-#define strndup __system_strndup
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-
-/* Restore original function names */
-#undef strtol
-#undef strtoll
-#undef strtoul
-#undef strtoull
-#undef strdup
-#undef strcpy
-#undef strncpy
-#undef memmove
-#undef memcpy
-#undef memset
-#undef memcmp
-#undef memchr
-#undef strchr
-#undef strcmp
-#undef strncmp
-#undef strlen
-#undef realloc
-#undef strndup
+#include <sei.h>
 
 #include "hashtable.h"
 #include "hashtable_private.h"
@@ -89,7 +46,7 @@ create_hashtable(unsigned int minsize,
     h->entrycount   = 0;
     h->hashfn       = hashf;
     h->eqfn         = eqf;
-    h->loadlimit    = (unsigned int) ceil(size * max_load_factor);
+    h->loadlimit = (unsigned int)(size * max_load_factor + 0.999999);
     return h;
 }
 
@@ -115,7 +72,7 @@ hash(struct hashtable *h, void *k)
 }
 
 /*****************************************************************************/
-static int
+static int SEI_SAFE
 hashtable_expand(struct hashtable *h)
 {
     /* Double the size of the table to accomodate more entries */
@@ -169,7 +126,7 @@ hashtable_expand(struct hashtable *h)
         }
     }
     h->tablelength = newsize;
-    h->loadlimit   = (unsigned int) ceil(newsize * max_load_factor);
+    h->loadlimit = (unsigned int)(newsize * max_load_factor + 0.999999);
     return -1;
 }
 

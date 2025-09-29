@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sei/crc.h>
 
 int
 main(const int argc, const char* argv[])

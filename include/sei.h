@@ -6,6 +6,7 @@
 #define _SEI_H_
 
 #include <sei/tmi.h> 
+#include <sei/compat.h>
 
 #define __begin(ptr, size, crc)      __tmi_prepare((ptr), (size), (crc), 1) ) \
                                      {__tmi_begin(x) if (1
@@ -17,5 +18,9 @@
 #define __output_append(ptr, size)   __tmi_output_append(ptr, size) 
 #define __output_done()              __tmi_output_done()
 #define __crc_pop()                  __tmi_output_next() 
+
+#undef _FORTIFY_SOURCE
+#define _FORTIFY_SOURCE 0
+
 
 #endif /* _SEI_H_ */
