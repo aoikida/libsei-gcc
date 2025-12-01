@@ -137,6 +137,11 @@ sendto_f*  __sendto  = NULL;
 #endif
 
 /* ----------------------------------------------------------------------------
+ * CRC redundancy configuration
+ * ------------------------------------------------------------------------- */
+static int __sei_crc_redundancy = 1;
+
+/* ----------------------------------------------------------------------------
  * Heap protection
  * ------------------------------------------------------------------------- */
 
@@ -1323,6 +1328,26 @@ __sei_unprotect(void* addr, size_t size)
     sei_unprotect(__sei_thread->sei, addr, size);
 #endif
     // else ignore
+}
+
+/* ----------------------------------------------------------------------------
+ * CRC redundancy API
+ * ------------------------------------------------------------------------- */
+
+void
+sei_set_crc_redundancy(int count)
+{
+    if (count < 1 || count > 4) {
+        fprintf(stderr, "ERROR: Invalid CRC redundancy count %d (must be 1-4)\n", count);
+        abort();
+    }
+    __sei_crc_redundancy = count;
+}
+
+int
+sei_get_crc_redundancy(void)
+{
+    return __sei_crc_redundancy;
 }
 
 /* ----------------------------------------------------------------------------

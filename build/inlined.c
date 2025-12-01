@@ -1,0 +1,18 @@
+
+#include "../src/heap.c"
+ #include "../src/cow.c"
+ #include "../src/tbin.c"
+ #include "../src/sinfo.c"
+ #include "../src/talloc.c"
+ #include "../src/abuf.c"
+ #include "../src/ilog.c"
+ #include "../src/cpu_stats.c"
+ #include "../src/obuf.c"
+ #include "../src/ibuf.c"
+ #include "../src/cfc.c"
+ #include "../src/stash.c"
+ #include "../src/tbar.c"
+ #include "../src/wts.c"
+ #include "../src/mode_cow.c"
+ #include "../src/tmi.c"
+

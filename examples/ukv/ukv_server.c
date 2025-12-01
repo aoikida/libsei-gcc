@@ -42,6 +42,12 @@ main(const int argc, const char* argv[])
     port  = atoi(argv[1]);
     state = INIT;
 
+#ifndef SEI_DISABLED
+    // Set CRC redundancy level (1, 2, 3, or 4)
+    // Uncomment the following line to enable redundant CRC computation:
+    // sei_set_crc_redundancy(3);  // Example: 3x redundancy
+#endif
+
     while(1) {
         switch(state) {
             case INIT: {

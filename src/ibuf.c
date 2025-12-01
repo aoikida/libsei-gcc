@@ -4,9 +4,14 @@
  * ------------------------------------------------------------------------- */
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "ibuf.h"
 #include "abuf.h"
 #include "crc.h"
+
+/* External function to get CRC redundancy setting */
+extern int sei_get_crc_redundancy(void);
 
 /* ----------------------------------------------------------------------------
  * data structures and prototypes
@@ -71,7 +76,16 @@ ibuf_prepare(ibuf_t* ibuf, const void* ptr, size_t size, uint32_t crc,
 static int
 ibuf_correct_on_entry(ibuf_t* ibuf)
 {
-    uint32_t crc_check = crc_compute(ibuf->ptr, ibuf->size);
+    uint32_t crc_check;
+    int redundancy = sei_get_crc_redundancy();
+
+    // Phase 1: Redundant CRC computation (strict check)
+    if (!crc_compute_redundant(ibuf->ptr, ibuf->size, &crc_check, redundancy)) {
+        fprintf(stderr, "ERROR: CRC redundancy check failed\n");
+        abort();
+    }
+
+    // Phase 2: Compare with received CRC (existing behavior)
     return crc_check == ibuf->crc;
 }
 

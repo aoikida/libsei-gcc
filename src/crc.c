@@ -38,6 +38,34 @@ crc_compute(const char* block, size_t len)
             len));
 }
 
+int
+crc_compute_redundant(const char* block, size_t len, uint32_t* result,
+                      int redundancy_count)
+{
+    uint32_t crc_results[4];
+    int i;
+
+    if (redundancy_count < 1 || redundancy_count > 4) {
+        return 0;
+    }
+
+    // Compute CRC redundancy_count times
+    for (i = 0; i < redundancy_count; i++) {
+        crc_results[i] = crc_compute(block, len);
+    }
+
+    // Check if all results are identical
+    for (i = 1; i < redundancy_count; i++) {
+        if (crc_results[i] != crc_results[0]) {
+            return 0;  // Mismatch detected
+        }
+    }
+
+    // All results match
+    *result = crc_results[0];
+    return 1;
+}
+
 /* ----------------------------------------------------------------------------
  * low-level methods
  * ------------------------------------------------------------------------- */

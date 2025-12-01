@@ -11,6 +11,10 @@
 /* calculate the complete crc of a block with fixed inital CRC */
 uint32_t crc_compute(const char* block, size_t len);
 
+/* calculate CRC with redundancy (returns 1 if all results match, 0 otherwise) */
+int crc_compute_redundant(const char* block, size_t len, uint32_t* result,
+                          int redundancy_count);
+
 /* get inital CRC */
 uint32_t crc_init();
 
