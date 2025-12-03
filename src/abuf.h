@@ -31,4 +31,9 @@ uint16_t abuf_pop_uint16_t(abuf_t* abuf, const uint16_t* addr);
 uint32_t abuf_pop_uint32_t(abuf_t* abuf, const uint32_t* addr);
 uint64_t abuf_pop_uint64_t(abuf_t* abuf, const uint64_t* addr);
 
+#ifdef SEI_CPU_ISOLATION
+void    abuf_restore(abuf_t* abuf);
+int     abuf_try_cmp(abuf_t* a1, abuf_t* a2);
+#endif
+
 #endif /* _SEI_ABUF_H_ */

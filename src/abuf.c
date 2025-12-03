@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <sched.h>
 #include "fail.h"
 
 /* ----------------------------------------------------------------------------
@@ -365,3 +366,115 @@ abuf_swap(abuf_t* abuf)
         }
     }
 }
+
+#ifdef SEI_CPU_ISOLATION
+/* ----------------------------------------------------------------------------
+ * Rollback: restore old values from abuf[0]
+ * ------------------------------------------------------------------------- */
+
+#define ABUF_RESTORE(e, type) do {                                      \
+    type* target = (type*) e->addr;                                     \
+    type old_value = ABUF_WVAX(e, type, e->addr);                       \
+    *target = old_value;                                                \
+    DLOG3("[abuf_restore] %p = 0x%lx (size=%lu)\n",                     \
+          e->addr, (uint64_t)old_value, e->size);                       \
+} while(0)
+
+void
+abuf_restore(abuf_t* abuf)
+{
+    DLOG2("[abuf_restore] restoring %d entries\n", abuf->pushed);
+
+    /* Iterate through all pushed entries and restore old values */
+    for (int i = 0; i < abuf->pushed; i++) {
+        abuf_entry_t* e = &abuf->buf[i];
+
+        /* Restore the old value (stored in abuf[0]) to memory */
+        switch (e->size) {
+        case sizeof(uint8_t):
+            ABUF_RESTORE(e, uint8_t);
+            break;
+        case sizeof(uint16_t):
+            ABUF_RESTORE(e, uint16_t);
+            break;
+        case sizeof(uint32_t):
+            ABUF_RESTORE(e, uint32_t);
+            break;
+        case sizeof(uint64_t):
+            ABUF_RESTORE(e, uint64_t);
+            break;
+        default:
+            assert (0 && "unknown size in abuf_restore");
+        }
+    }
+
+    /* Clean the buffer after restoration */
+    abuf_clean(abuf);
+}
+
+/* ----------------------------------------------------------------------------
+ * Non-destructive comparison for SDC detection
+ * Returns: 1 if buffers match, 0 if mismatch detected
+ * ------------------------------------------------------------------------- */
+
+int
+abuf_try_cmp(abuf_t* a1, abuf_t* a2)
+{
+    int core_id = sched_getcpu();
+
+    if (abuf_size(a1) != abuf_size(a2)) {
+        DLOG2("[abuf_try_cmp] buffer sizes differ: %d vs %d\n",
+              abuf_size(a1), abuf_size(a2));
+        fprintf(stderr, "[DEBUG][core=%d][abuf_try_cmp] SIZE MISMATCH: %d vs %d (pushed: %d vs %d, poped: %d vs %d)\n",
+                core_id, abuf_size(a1), abuf_size(a2), a1->pushed, a2->pushed, a1->poped, a2->poped);
+        return 0;  /* Mismatch */
+    }
+
+    /* Save poped counters to make this truly non-destructive */
+    int saved_poped_a1 = a1->poped;
+    int saved_poped_a2 = a2->poped;
+
+    abuf_rewind(a1);
+    abuf_rewind(a2);
+
+    int result = 1;
+
+    while (a1->poped < a1->pushed) {
+        abuf_entry_t* e1 = &a1->buf[a1->poped++];
+        abuf_entry_t* e2 = &a2->buf[a2->poped++];
+
+        if (e1->size != e2->size) {
+            DLOG2("[abuf_try_cmp] entry sizes differ\n");
+            fprintf(stderr, "[DEBUG][core=%d][abuf_try_cmp] ENTRY SIZE MISMATCH at idx %d: %lu vs %lu\n",
+                    core_id, a1->poped - 1, e1->size, e2->size);
+            result = 0;
+            break;
+        }
+
+        if (e1->addr != e2->addr) {
+            DLOG2("[abuf_try_cmp] addresses differ: %p vs %p\n",
+                  e1->addr, e2->addr);
+            fprintf(stderr, "[DEBUG][core=%d][abuf_try_cmp] ADDRESS MISMATCH at idx %d: %p vs %p\n",
+                    core_id, a1->poped - 1, e1->addr, e2->addr);
+            result = 0;
+            break;
+        }
+
+        if (ABUF_WVAL(e1) != ABUF_WVAL(e2)) {
+            DLOG2("[abuf_try_cmp] values differ at %p: 0x%lx vs 0x%lx\n",
+                  e1->addr, ABUF_WVAL(e1), ABUF_WVAL(e2));
+            fprintf(stderr, "[DEBUG][core=%d][abuf_try_cmp] VALUE MISMATCH at idx %d addr=%p: 0x%lx vs 0x%lx\n",
+                    core_id, a1->poped - 1, e1->addr, ABUF_WVAL(e1), ABUF_WVAL(e2));
+            result = 0;
+            break;
+        }
+    }
+
+    /* Restore poped counters to original values */
+    a1->poped = saved_poped_a1;
+    a2->poped = saved_poped_a2;
+
+    return result;
+}
+
+#endif /* SEI_CPU_ISOLATION */

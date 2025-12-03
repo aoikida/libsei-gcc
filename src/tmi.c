@@ -25,6 +25,12 @@
 #include "wts.h"
 #endif
 
+#ifdef SEI_CPU_ISOLATION
+#define _GNU_SOURCE
+#include <sched.h>
+#include "cpu_isolation.h"
+#endif
+
 #define likely(x) __builtin_expect((x),1)
 #define unlikely(x) __builtin_expect((x),0)
 
@@ -177,6 +183,14 @@ PROTECT_HANDLER
 static void __attribute__((constructor))
 __sei_init()
 {
+#ifdef SEI_CPU_ISOLATION
+    /* Initialize CPU Isolation Manager */
+    if (cpu_isolation_init() != 0) {
+        fprintf(stderr, "[libsei] Failed to initialize CPU isolation\n");
+        exit(EXIT_FAILURE);
+    }
+#endif
+
 #ifndef SEI_MT
     assert (__sei_thread->sei == NULL);
     __sei_thread->sei = sei_init();
@@ -1248,7 +1262,57 @@ __sei_commit()
         sei_switch(__sei_thread->sei);
         __sei_switch(&__sei_thread->ctx, 0x01);
     }
+
+#ifdef SEI_CPU_ISOLATION
+    /* Automatic retry loop for SDC recovery */
+    while (1) {
+        /* Attempt non-destructive commit (DMR verification) */
+        if (sei_try_commit(__sei_thread->sei)) {
+            /* Verification succeeded - proceed with actual commit */
+            sei_commit(__sei_thread->sei);
+            break;  /* Success - exit retry loop */
+        }
+
+        /* SDC detected - automatic recovery */
+        int current_core = sched_getcpu();
+        fprintf(stderr, "[libsei] SDC detected on core %d, recovering...\n", current_core);
+
+        /* Step 0: Set sei->p to -1 to indicate we are outside transaction
+         * This prevents pthread wrappers in cpu_isolation functions from
+         * trying to record operations to abuf, which would cause state
+         * inconsistencies during recovery. */
+        sei_setp(__sei_thread->sei, -1);
+
+        /* Step 1: Blacklist the faulty core */
+        cpu_isolation_blacklist_current();
+
+        /* Step 2: Migrate to another core (exits if all cores blacklisted) */
+        cpu_isolation_migrate_current_thread();
+
+        /* Step 3: Rollback transaction state (sets sei->p back to 0) */
+        sei_rollback(__sei_thread->sei);
+
+        /* Step 3.5: Clean up thread-local buffers not managed by sei_t */
+#ifdef SEI_WRAP_SC
+        abuf_clean(__sei_thread->abuf_sc);
+#endif
+#ifdef SEI_MT
+        abuf_clean(__sei_thread->abuf);
+#endif
+
+        /* Step 4: Retry from p=0 using context switch
+         * Note: sei_rollback() already set sei->p = 0, and we need to
+         * re-execute the entire transaction from the beginning (p=0).
+         * Therefore, we pass 0x00 to __sei_switch() to make _ITM_beginTransaction
+         * return 0 (p=0), triggering the first pass of DMR. */
+        __sei_switch(&__sei_thread->ctx, 0x00);
+
+        /* Loop continues - retry transaction on new core */
+    }
+#else
+    /* Traditional commit without CPU isolation */
     sei_commit(__sei_thread->sei);
+#endif /* SEI_CPU_ISOLATION */
 
 #ifdef SEI_2PL
     int r = 0;

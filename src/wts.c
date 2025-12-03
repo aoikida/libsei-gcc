@@ -126,3 +126,36 @@ wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...)
     	it->sinfo[p] = sinfo_init(fp);
 #endif
 }
+
+#ifdef SEI_CPU_ISOLATION
+/* ----------------------------------------------------------------------------
+ * Rollback: reset waitress queue without executing calls
+ * ------------------------------------------------------------------------- */
+
+void
+wts_reset(wts_t* wts)
+{
+    assert(wts);
+
+    /* Clean up stack info for all queued items */
+#ifdef SEI_STACK_INFO
+    for (int i = 0; i < wts->nitems[0]; i++) {
+        wts_item_t* it = &wts->items[i];
+        if (it->sinfo[0]) {
+            sinfo_fini(it->sinfo[0]);
+            it->sinfo[0] = NULL;
+        }
+        if (it->sinfo[1]) {
+            sinfo_fini(it->sinfo[1]);
+            it->sinfo[1] = NULL;
+        }
+    }
+#endif
+
+    /* Reset the queue to initial state without executing calls */
+    bzero(wts->items, sizeof(wts_item_t) * wts->max_items);
+    wts->nitems[0] = 0;
+    wts->nitems[1] = 0;
+}
+
+#endif /* SEI_CPU_ISOLATION */

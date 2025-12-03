@@ -125,3 +125,44 @@ talloc_clean(talloc_t* talloc)
    talloc->p = 0;
    talloc->size[0] = talloc->size[1] = 0;
 }
+
+#ifdef SEI_CPU_ISOLATION
+/* ----------------------------------------------------------------------------
+ * Rollback: free all allocations and reset state
+ * ------------------------------------------------------------------------- */
+
+void
+talloc_rollback(talloc_t* talloc)
+{
+    assert(talloc);
+
+    /* Free all allocations made during both p=0 and p=1 traversals */
+    for (size_t i = 0; i < talloc->size[0]; i++) {
+        talloc_allocation_t* a = &talloc->allocations[i];
+        if (a->addr) {
+            if (talloc->heap) {
+                heap_free(talloc->heap, a->addr);
+            } else {
+                free(a->addr);
+            }
+            a->addr = NULL;
+        }
+#ifdef SEI_STACK_INFO
+        if (a->sinfo[0]) {
+            sinfo_fini(a->sinfo[0]);
+            a->sinfo[0] = NULL;
+        }
+        if (a->sinfo[1]) {
+            sinfo_fini(a->sinfo[1]);
+            a->sinfo[1] = NULL;
+        }
+#endif
+    }
+
+    /* Reset talloc state to initial values */
+    talloc->p = 0;
+    talloc->size[0] = 0;
+    talloc->size[1] = 0;
+}
+
+#endif /* SEI_CPU_ISOLATION */

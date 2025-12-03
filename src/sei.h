@@ -49,4 +49,10 @@ void sei_write_uint16_t(sei_t* sei, uint16_t* addr, uint16_t value);
 void sei_write_uint32_t(sei_t* sei, uint32_t* addr, uint32_t value);
 void sei_write_uint64_t(sei_t* sei, uint64_t* addr, uint64_t value);
 
+#ifdef SEI_CPU_ISOLATION
+/* Rollback and non-destructive commit for SDC recovery */
+void     sei_rollback(sei_t* sei);
+int      sei_try_commit(sei_t* sei);
+#endif
+
 #endif /* _SEI_H_ */

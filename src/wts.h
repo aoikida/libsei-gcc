@@ -18,5 +18,8 @@ void	wts_fini(wts_t* wts);
 void	wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...);
 void	wts_flush(wts_t* wts);
 
+#ifdef SEI_CPU_ISOLATION
+void	wts_reset(wts_t* wts);
+#endif
 
 #endif /* _SEI_WAITRESS_H_ */

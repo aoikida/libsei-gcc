@@ -16,4 +16,8 @@ void*     talloc_malloc(talloc_t* talloc, size_t size);
 void      talloc_switch(talloc_t* talloc);
 void      talloc_clean(talloc_t* talloc);
 
+#ifdef SEI_CPU_ISOLATION
+void      talloc_rollback(talloc_t* talloc);
+#endif
+
 #endif /* _SEI_TALLOC_H_ */

@@ -3,11 +3,13 @@
  * Distributed under the MIT license. See accompanying file LICENSE.
  * ------------------------------------------------------------------------- */
 
+#define _GNU_SOURCE
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <sched.h>
 #include "sei.h"
 #include "debug.h"
 #include "fail.h"
@@ -289,6 +291,10 @@ sei_switch(sei_t* sei)
 
 #ifdef COW_WT
 #ifdef COW_APPEND_ONLY
+    /* In COW_WT mode, abuf_swap() restores OLD values to memory after p=0
+     * execution, allowing p=1 to record the same OLD values for correct
+     * DMR verification. Without this, p=1 would read NEW values from memory
+     * (written by p=0), causing cow[0] and cow[1] to mismatch. */
     abuf_swap(sei->cow[0]);
 #else
     cow_swap(sei->cow[0]);
@@ -569,3 +575,117 @@ sei_get_wts(sei_t* sei)
 {
 	return sei->wts;
 }
+
+#ifdef SEI_CPU_ISOLATION
+/* ----------------------------------------------------------------------------
+ * Rollback and non-destructive commit for SDC recovery
+ * ------------------------------------------------------------------------- */
+
+void
+sei_rollback(sei_t* sei)
+{
+    assert(sei);
+    DLOG1("[sei_rollback] Rolling back transaction\n");
+
+    /* Step 1: Restore memory from COW buffer (abuf[0] contains old values) */
+#ifdef COW_APPEND_ONLY
+    abuf_restore(sei->cow[0]);
+    /* Clean both buffers to prevent stale buffer state during retry */
+    abuf_clean(sei->cow[0]);
+    abuf_clean(sei->cow[1]);
+#else
+    #error "sei_rollback only supports COW_APPEND_ONLY mode"
+#endif
+
+    /* Step 2: Rollback dynamic allocations (free all talloc allocations) */
+    talloc_rollback(sei->talloc);
+
+    /* Step 3: Reset waitress queue (discard delayed system calls) */
+#ifdef SEI_WRAP_SC
+    wts_reset(sei->wts);
+#endif
+
+    /* Step 4: Reset sei state to beginning of transaction */
+    sei->p = 0;
+
+    /* Step 5: Reset control flags */
+    cfc_reset(&sei->cf[0]);
+    cfc_reset(&sei->cf[1]);
+
+    DLOG1("[sei_rollback] Rollback complete\n");
+}
+
+int
+sei_try_commit(sei_t* sei)
+{
+    int core_id = sched_getcpu();
+
+    assert(sei);
+    assert(sei->p == 1 && "must be in p=1 state before commit");
+
+    /* Non-destructive commit: verify DMR but don't modify state yet */
+
+    int result = 1;
+
+    /* Rewind buffers BEFORE comparison to ensure poped == 0 */
+    abuf_rewind(sei->cow[0]);
+    abuf_rewind(sei->cow[1]);
+
+    /* CRITICAL: Swap cow[1] to extract NEW_1 values for comparison.
+     * At this point:
+     *   cow[0]->wvalue = NEW_0 (p=0 results, saved by abuf_swap in sei_switch)
+     *   cow[1]->wvalue = OLD (recorded by sei_write during p=1)
+     *   Memory[X] = NEW_1 (written by p=1)
+     *
+     * After abuf_swap(cow[1]):
+     *   cow[0]->wvalue = NEW_0
+     *   cow[1]->wvalue = NEW_1 (extracted from memory)
+     *   Memory[X] = OLD (restored for potential rollback)
+     */
+    abuf_swap(sei->cow[1]);
+
+    /* Check COW buffer consistency (DMR verification: NEW_0 vs NEW_1) */
+#ifdef COW_APPEND_ONLY
+    if (!abuf_try_cmp(sei->cow[0], sei->cow[1])) {
+        DLOG1("[sei_try_commit] COW buffer mismatch detected\n");
+        result = 0;  /* SDC detected */
+    }
+
+    /* Restore cow[1] to original state: Memory = NEW_1, cow[1] = OLD
+     * This must be done regardless of comparison result, because:
+     * - If SDC detected: sei_rollback() needs cow[1] in original state
+     * - If SDC not detected: sei_commit() needs cow[1] in original state */
+    abuf_swap(sei->cow[1]);
+
+    if (!result) {
+        return 0;
+    }
+#else
+    #error "sei_try_commit only supports COW_APPEND_ONLY mode"
+#endif
+
+    /* Check control flags consistency */
+    if (cfc_amog(&sei->cf[0]) != 0) {
+        DLOG1("[sei_try_commit] Control flag mismatch detected\n");
+        return 0;  /* SDC detected */
+    }
+
+    /* Check talloc consistency */
+    if (sei->talloc->size[0] != sei->talloc->size[1]) {
+        DLOG1("[sei_try_commit] Talloc allocation count mismatch\n");
+        return 0;  /* SDC detected */
+    }
+
+#ifdef SEI_WRAP_SC
+    /* Check waitress consistency */
+    if (sei->wts->nitems[0] != sei->wts->nitems[1]) {
+        DLOG1("[sei_try_commit] Waitress call count mismatch\n");
+        return 0;  /* SDC detected */
+    }
+#endif
+
+    /* All checks passed - verification successful */
+    return 1;  /* Success */
+}
+
+#endif /* SEI_CPU_ISOLATION */
