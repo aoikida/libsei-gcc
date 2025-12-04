@@ -42,10 +42,10 @@ int
 crc_compute_redundant(const char* block, size_t len, uint32_t* result,
                       int redundancy_count)
 {
-    uint32_t crc_results[4];
+    uint32_t crc_results[10];
     int i;
 
-    if (redundancy_count < 1 || redundancy_count > 4) {
+    if (redundancy_count < 2 || redundancy_count > 10) {
         return 0;
     }
 

@@ -16,8 +16,10 @@
 #include "cpu_isolation.h"
 #endif
 
-/* External function to get CRC redundancy setting */
-extern int sei_get_crc_redundancy(void);
+/* CRC redundancy configuration (compile-time) */
+#ifndef SEI_CRC_REDUNDANCY
+#define SEI_CRC_REDUNDANCY 2
+#endif
 
 /* ----------------------------------------------------------------------------
  * data structures and prototypes
@@ -110,15 +112,15 @@ static int
 ibuf_correct_on_entry(ibuf_t* ibuf)
 {
     uint32_t crc_check;
-    int redundancy = sei_get_crc_redundancy();
 
-    // Phase 1: Redundant CRC computation (strict check)
-    if (!crc_compute_redundant(ibuf->ptr, ibuf->size, &crc_check, redundancy)) {
-        fprintf(stderr, "ERROR: CRC redundancy check failed\n");
+    /* Phase 1: Redundant CRC computation (compile-time redundancy) */
+    if (!crc_compute_redundant(ibuf->ptr, ibuf->size, &crc_check, SEI_CRC_REDUNDANCY)) {
+        fprintf(stderr, "ERROR: CRC redundancy check failed (redundancy=%d)\n",
+                SEI_CRC_REDUNDANCY);
         abort();
     }
 
-    // Phase 2: Compare with received CRC (existing behavior)
+    /* Phase 2: Compare with received CRC */
     return crc_check == ibuf->crc;
 }
 
@@ -128,12 +130,12 @@ static int
 ibuf_correct_on_entry_safe(ibuf_t* ibuf)
 {
     uint32_t crc_check;
-    int redundancy = sei_get_crc_redundancy();
 
-    /* Phase 1: Redundant CRC computation (same core, multiple times) */
-    if (!crc_compute_redundant(ibuf->ptr, ibuf->size, &crc_check, redundancy)) {
+    /* Phase 1: Redundant CRC computation (compile-time redundancy) */
+    if (!crc_compute_redundant(ibuf->ptr, ibuf->size, &crc_check, SEI_CRC_REDUNDANCY)) {
         /* CRC redundancy check failed - core may be faulty */
-        DLOG1("[ibuf] CRC redundancy check failed (core %d)\n", sched_getcpu());
+        DLOG1("[ibuf] CRC redundancy check failed (core %d, redundancy=%d)\n",
+              sched_getcpu(), SEI_CRC_REDUNDANCY);
         return 0;  /* Return error instead of abort */
     }
 

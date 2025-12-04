@@ -7,10 +7,6 @@
 
 #include <sei/tmi.h>
 
-/* CRC redundancy API */
-void sei_set_crc_redundancy(int count);
-int sei_get_crc_redundancy(void); 
-
 #define __begin(ptr, size, crc)      __tmi_prepare((ptr), (size), (crc), 1) ) \
                                      {__tmi_begin(x) if (1
 #define __begin_rw(ptr, size, crc)   __tmi_prepare((ptr), (size), (crc), 0) ) \
