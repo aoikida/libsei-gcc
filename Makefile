@@ -98,6 +98,18 @@ ifdef SEI_TBAR
 AFLAGS += -DSEI_TBAR
 endif
 
+ifdef SEI_CPU_ISOLATION
+AFLAGS += -DSEI_CPU_ISOLATION
+endif
+
+ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+AFLAGS += -DSEI_CPU_ISOLATION_MIGRATE_PHASES
+endif
+
+ifdef SEI_CRC_REDUNDANCY
+AFLAGS += -DSEI_CRC_REDUNDANCY=$(SEI_CRC_REDUNDANCY)
+endif
+
 # compiler
 ifndef CC
 ifeq ($(UNAME),Darwin)
@@ -124,6 +136,11 @@ $(info ----------------------)
 BUILD  ?= build
 SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c ibuf.c cfc.c stash.c tbar.c wts.c
+
+ifdef SEI_CPU_ISOLATION
+SRCS    += cpu_isolation.c
+endif
+
 SUPPORT = support.c crc.c
 LIBSEI  = libsei.a
 LIBCRC  = libcrc.a
@@ -184,7 +201,7 @@ $(BUILD)/support.o: src/support.c
 $(BUILD)/inlined.o: $(addprefix src/, $(SRCS)) | $(BUILD)
 	@echo > $(BUILD)/inlined.c
 	@echo $(foreach f, $^, "#include \"../$(f)\"\n")>> $(BUILD)/inlined.c
-	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $(BUILD)/inlined.c
+	$(CC) $(CFLAGS) $(AFLAGS) -D_GNU_SOURCE -I include -c -o $@ $(BUILD)/inlined.c
 
 $(BUILD)/%.o: src/%.c 
 	$(CC) $(CFLAGS) $(AFLAGS) -I include -c -o $@ $<

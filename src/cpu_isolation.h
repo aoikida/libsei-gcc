@@ -52,6 +52,13 @@ void cpu_isolation_cleanup(void);
 int cpu_isolation_blacklist_current(void);
 
 /**
+ * Blacklist a specific CPU core by core_id
+ * Thread-safe operation
+ * core_id: CPU core ID to blacklist
+ */
+void cpu_isolation_blacklist_core(int core_id);
+
+/**
  * Check if a specific core is blacklisted
  * Returns: 1 if blacklisted, 0 if available
  */
@@ -72,6 +79,14 @@ int cpu_isolation_get_available_count(void);
  * Returns: new core_id, does not return if all cores blacklisted
  */
 int cpu_isolation_migrate_current_thread(void);
+
+/**
+ * Migrate current thread to an available core, excluding a specific core
+ * exclude_core: Core ID to exclude from selection (-1 to disable exclusion)
+ * Thread-safe operation
+ * Returns: new core_id, does not return if no suitable cores available
+ */
+int cpu_isolation_migrate_excluding_core(int exclude_core);
 
 /**
  * Set CPU affinity for a new thread (called from pthread wrapper)

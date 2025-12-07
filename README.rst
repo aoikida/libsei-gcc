@@ -142,11 +142,23 @@ Compile the library simply call::
     make [OPTIONS]
 
 
-Currently, the only supported options is: 
+Currently, the supported options are:
 
 - ``DEBUG=X``: ``X`` might be a value between 0 and 3, where 0 means no
   logging and 3 means very verbose. If ``DEBUG`` is not given, the
   library is compiled with inlining and ``-O3``.
+
+- ``SEI_CPU_ISOLATION=1``: Enable CPU core isolation and SDC (Silent Data
+  Corruption) detection with automatic recovery. When enabled, transactions
+  are executed twice (phase0 and phase1) with DMR (Dual Modular Redundancy)
+  verification. If SDC is detected, the faulty core is blacklisted and the
+  transaction is retried on a different core.
+
+- ``SEI_CPU_ISOLATION_MIGRATE_PHASES=1``: Enable phase migration between
+  different CPU cores (requires ``SEI_CPU_ISOLATION=1``). When enabled,
+  phase0 and phase1 execute on different CPU cores to improve detection
+  of hardware-specific faults. If SDC is detected, both cores are blacklisted
+  and the transaction is retried on a new pair of cores.
 
 .. - ``MODE=heap|sbuf``: ``heap`` uses two heaps and ``sbuf`` uses only
   snapshot buffers.
@@ -157,6 +169,20 @@ compiled with the ``-fgnu-tm`` flag.
 
 See ``examples/simple`` for a template Makefile that demonstrates compilation
 of the target application against *libsei*.
+
+Example build commands::
+
+    # Basic build (no CPU isolation)
+    make
+
+    # With CPU isolation (same core for phase0/phase1)
+    SEI_CPU_ISOLATION=1 make
+
+    # With phase migration (different cores for phase0/phase1)
+    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
+
+    # Debug build with phase migration
+    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
 
 
 |

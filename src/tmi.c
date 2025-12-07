@@ -29,6 +29,11 @@
 #define _GNU_SOURCE
 #include <sched.h>
 #include "cpu_isolation.h"
+
+/* Thread-local storage for phase0 core tracking (SEI_CPU_ISOLATION_MIGRATE_PHASES) */
+#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+static __thread int phase0_core = -1;
+#endif
 #endif
 
 #define likely(x) __builtin_expect((x),1)
@@ -1265,7 +1270,25 @@ __sei_commit()
     __sei_write_disable = 0;
 
     if (!sei_getp(__sei_thread->sei)) {
+#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+        /* Record phase0 core before switching to phase1 */
+        phase0_core = sched_getcpu();
+#endif
         sei_switch(__sei_thread->sei);
+
+#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+        /* Migrate to a different core for phase1 execution
+         * Temporarily set sei->p = -1 to prevent pthread wrappers from
+         * trying to record operations to abuf during migration */
+        sei_setp(__sei_thread->sei, -1);
+        int old_core = phase0_core;
+        int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
+        fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n",
+                old_core, new_core);
+        /* Restore sei->p = 1 for phase1 execution */
+        sei_setp(__sei_thread->sei, 1);
+#endif
+
         __sei_switch(&__sei_thread->ctx, 0x01);
     }
 
@@ -1289,8 +1312,15 @@ __sei_commit()
          * inconsistencies during recovery. */
         sei_setp(__sei_thread->sei, -1);
 
-        /* Step 1: Blacklist the faulty core */
+        /* Step 1: Blacklist the faulty core(s) */
+#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+        /* In phase migration mode: blacklist both phase0 and phase1 cores */
+        cpu_isolation_blacklist_core(phase0_core);  /* phase0 core */
+        cpu_isolation_blacklist_core(current_core);  /* phase1 core */
+#else
+        /* Traditional mode: blacklist only the current core */
         cpu_isolation_blacklist_current();
+#endif
 
         /* Step 2: Migrate to another core (exits if all cores blacklisted) */
         cpu_isolation_migrate_current_thread();
@@ -1304,6 +1334,13 @@ __sei_commit()
 #endif
 #ifdef SEI_MT
         abuf_clean(__sei_thread->abuf);
+#endif
+
+#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+        /* In phase migration mode: reset phase0_core for the retry
+         * The retry will execute phase0 on the current (new) core,
+         * and phase1 will migrate to yet another core */
+        phase0_core = -1;
 #endif
 
         /* Step 4: Retry from p=0 using context switch

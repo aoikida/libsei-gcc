@@ -92,6 +92,32 @@ int cpu_isolation_blacklist_current(void) {
     return core_id;
 }
 
+void cpu_isolation_blacklist_core(int core_id) {
+    if (core_id < 0 || core_id >= cpu_isolation_state.num_cores) {
+        fprintf(stderr, "cpu_isolation_blacklist_core: invalid core_id %d\n", core_id);
+        return;
+    }
+
+    pthread_mutex_lock(&cpu_isolation_state.lock);
+
+    /* Check if already blacklisted */
+    uint64_t core_mask = 1ULL << core_id;
+    if (cpu_isolation_state.blacklist & core_mask) {
+        pthread_mutex_unlock(&cpu_isolation_state.lock);
+        return; /* Already blacklisted */
+    }
+
+    /* Blacklist the core */
+    cpu_isolation_state.blacklist |= core_mask;
+    cpu_isolation_state.num_blacklisted++;
+    cpu_isolation_state.blacklist_events++;
+
+    fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",
+            core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
+
+    pthread_mutex_unlock(&cpu_isolation_state.lock);
+}
+
 int cpu_isolation_is_blacklisted(int core_id) {
     if (core_id < 0 || core_id >= cpu_isolation_state.num_cores) {
         return 1; /* Invalid core_id treated as blacklisted */
@@ -182,6 +208,65 @@ int cpu_isolation_migrate_current_thread(void) {
                 new_core, actual_core);
     }
 #endif
+
+    return new_core;
+}
+
+int cpu_isolation_migrate_excluding_core(int exclude_core) {
+    pthread_mutex_lock(&cpu_isolation_state.lock);
+
+    /* Build mask of available cores, excluding the specified core */
+    uint64_t available_mask = cpu_isolation_state.available_cores & ~cpu_isolation_state.blacklist;
+
+    if (exclude_core >= 0 && exclude_core < cpu_isolation_state.num_cores) {
+        available_mask &= ~(1ULL << exclude_core);
+    }
+
+    if (available_mask == 0) {
+        pthread_mutex_unlock(&cpu_isolation_state.lock);
+        fprintf(stderr, "cpu_isolation: no available cores excluding core %d, exiting process\n",
+                exclude_core);
+        cpu_isolation_print_stats();
+        exit(EXIT_FAILURE);
+    }
+
+    /* Find first available core from the filtered mask */
+    int new_core = -1;
+    for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
+        if (available_mask & (1ULL << i)) {
+            new_core = i;
+            break;
+        }
+    }
+
+    if (new_core < 0) {
+        pthread_mutex_unlock(&cpu_isolation_state.lock);
+        fprintf(stderr, "cpu_isolation: no suitable core found, exiting process\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Set CPU affinity to the new core */
+    cpu_set_t cpuset;
+    memset(&cpuset, 0, sizeof(cpu_set_t));
+    ((unsigned long *)&cpuset)[new_core / (8 * sizeof(unsigned long))] |=
+        (1UL << (new_core % (8 * sizeof(unsigned long))));
+
+    pthread_t current_thread = pthread_self();
+    int ret = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+
+    if (ret != 0) {
+        pthread_mutex_unlock(&cpu_isolation_state.lock);
+        fprintf(stderr, "cpu_isolation: pthread_setaffinity_np failed: %s\n", strerror(ret));
+        fprintf(stderr, "cpu_isolation: migration failed, exiting process\n");
+        exit(EXIT_FAILURE);
+    }
+
+    cpu_isolation_state.migration_count++;
+
+    fprintf(stderr, "cpu_isolation: migrated thread to core %d (excluding core %d)\n",
+            new_core, exclude_core);
+
+    pthread_mutex_unlock(&cpu_isolation_state.lock);
 
     return new_core;
 }
