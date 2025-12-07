@@ -16,6 +16,7 @@ typedef int (*wts_cb_t)(uint64_t* args);
 wts_t* 	wts_init(int max_items);
 void	wts_fini(wts_t* wts);
 void	wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...);
+int	wts_can_flush(wts_t* wts);
 void	wts_flush(wts_t* wts);
 
 #ifdef SEI_CPU_ISOLATION

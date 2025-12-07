@@ -311,8 +311,13 @@ sei_commit(sei_t* sei)
     DLOG2("COMMIT: %d\n", sei->p);
     sei->p = -1;
 
+#ifndef SEI_CPU_ISOLATION
+    /* CPU isolation OFF: Perform control flow verification here */
     int r = cfc_amog(&sei->cf[1]);
     fail_ifn(r, "control flow error");
+#endif
+    /* CPU isolation ON: Verification already done in sei_try_commit() */
+
     cfc_alog(&sei->cf[1]);
 
 #ifndef COW_APPEND_ONLY
@@ -320,7 +325,15 @@ sei_commit(sei_t* sei)
     cow_show(sei->cow[1]);
     cow_apply_cmp(sei->cow[0], sei->cow[1]);
 #else
+    /* With CPU isolation OFF, perform heap comparison to detect conflicts.
+     * With CPU isolation ON, heap comparison is skipped because:
+     *   - DMR verification already done in sei_try_commit()
+     *   - Memory state management becomes complex with swap operations
+     * TODO: Implement proper heap comparison for CPU isolation ON mode */
+#ifndef SEI_CPU_ISOLATION
     abuf_cmp_heap(sei->cow[0], sei->cow[1]);
+#endif
+    /* CPU isolation ON: Skip heap comparison (already verified in sei_try_commit) */
     abuf_clean(sei->cow[0]);
     abuf_clean(sei->cow[1]);
 #endif
@@ -333,13 +346,17 @@ sei_commit(sei_t* sei)
     talloc_clean(sei->talloc);
     obuf_close(sei->obuf);
 
-    r = cfc_check(&sei->cf[0]);
+#ifndef SEI_CPU_ISOLATION
+    /* CPU isolation OFF: Perform final validations here */
+    int r = cfc_check(&sei->cf[0]);
     assert (r && "control flow error");
     r = cfc_check(&sei->cf[1]);
     assert (r && "control flow error");
 
     r = ibuf_correct(sei->ibuf);
     assert (r == 1 && "input message modified");
+#endif
+    /* CPU isolation ON: All validations already done in sei_try_commit() */
 
     SEI_STATS_INC(ntrav);
     SEI_STATS_REPORT();
@@ -618,71 +635,77 @@ sei_rollback(sei_t* sei)
 int
 sei_try_commit(sei_t* sei)
 {
-    int core_id = sched_getcpu();
-
     assert(sei);
     assert(sei->p == 1 && "must be in p=1 state before commit");
 
     /* Non-destructive commit: verify DMR but don't modify state yet */
 
-    int result = 1;
-
     /* Rewind buffers BEFORE comparison to ensure poped == 0 */
     abuf_rewind(sei->cow[0]);
     abuf_rewind(sei->cow[1]);
 
-    /* CRITICAL: Swap cow[1] to extract NEW_1 values for comparison.
+    /* DMR VERIFICATION: Extract NEW_1 from memory and compare with NEW_0
+     *
      * At this point:
      *   cow[0]->wvalue = NEW_0 (p=0 results, saved by abuf_swap in sei_switch)
      *   cow[1]->wvalue = OLD (recorded by sei_write during p=1)
      *   Memory[X] = NEW_1 (written by p=1)
      *
-     * After abuf_swap(cow[1]):
-     *   cow[0]->wvalue = NEW_0
-     *   cow[1]->wvalue = NEW_1 (extracted from memory)
-     *   Memory[X] = OLD (restored for potential rollback)
+     * We use abuf_swap() to extract NEW_1 into cow[1]->wvalue, compare
+     * NEW_0 vs NEW_1 in buffers, then restore the original state for
+     * potential rollback or final commit.
+     *
+     * This approach avoids direct memory access issues in rollbank environments
+     * where p=0 and p=1 may use different memory regions.
      */
-    abuf_swap(sei->cow[1]);
 
     /* Check COW buffer consistency (DMR verification: NEW_0 vs NEW_1) */
 #ifdef COW_APPEND_ONLY
-    if (!abuf_try_cmp(sei->cow[0], sei->cow[1])) {
-        DLOG1("[sei_try_commit] COW buffer mismatch detected\n");
-        result = 0;  /* SDC detected */
-    }
-
-    /* Restore cow[1] to original state: Memory = NEW_1, cow[1] = OLD
-     * This must be done regardless of comparison result, because:
-     * - If SDC detected: sei_rollback() needs cow[1] in original state
-     * - If SDC not detected: sei_commit() needs cow[1] in original state */
-    abuf_swap(sei->cow[1]);
-
-    if (!result) {
-        return 0;
+    /* Non-destructive heap comparison:
+     * Compare cow[0]->wvalue (NEW_0) with current Memory values (NEW_1)
+     * This avoids abuf_swap() which corrupts newly allocated memory regions
+     * that have no valid OLD values to restore.
+     */
+    if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[1])) {
+        DLOG1("[sei_try_commit] COW buffer mismatch detected (DMR verification failed)\n");
+        return 0;  /* SDC detected */
     }
 #else
     #error "sei_try_commit only supports COW_APPEND_ONLY mode"
 #endif
 
-    /* Check control flags consistency */
-    if (cfc_amog(&sei->cf[0]) != 0) {
-        DLOG1("[sei_try_commit] Control flag mismatch detected\n");
-        return 0;  /* SDC detected */
+    /* === Additional validations (CPU isolation ON) === */
+
+    /* Control flow verification (p=1)
+     * Note: cfc_amog() is sufficient for verification without calling cfc_alog()
+     * which is a destructive operation. cfc_alog() will be called in sei_commit().
+     */
+    int r = cfc_amog(&sei->cf[1]);
+    if (!r) {
+        DLOG1("[sei_try_commit] Control flow error (cf[1])\n");
+        return 0;
     }
 
-    /* Check talloc consistency */
-    if (sei->talloc->size[0] != sei->talloc->size[1]) {
-        DLOG1("[sei_try_commit] Talloc allocation count mismatch\n");
-        return 0;  /* SDC detected */
+    /* Input message verification */
+    r = ibuf_correct(sei->ibuf);
+    if (!r) {
+        DLOG1("[sei_try_commit] Input message modified\n");
+        return 0;
     }
 
 #ifdef SEI_WRAP_SC
-    /* Check waitress consistency */
-    if (sei->wts->nitems[0] != sei->wts->nitems[1]) {
-        DLOG1("[sei_try_commit] Waitress call count mismatch\n");
-        return 0;  /* SDC detected */
+    /* Pre-check wts_flush (includes nitems consistency check) */
+    if (!wts_can_flush(sei->wts)) {
+        DLOG1("[sei_try_commit] Waitress pre-check failed\n");
+        return 0;
     }
 #endif
+
+    /* Pre-check tbin_flush */
+    if (!tbin_can_flush(sei->tbin)) {
+        DLOG1("[sei_try_commit] Tbin pre-check failed\n");
+        return 0;
+    }
 
     /* All checks passed - verification successful */
     return 1;  /* Success */

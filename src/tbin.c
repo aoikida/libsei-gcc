@@ -80,6 +80,27 @@ tbin_add(tbin_t* tbin, void* ptr, int p)
 #endif
 }
 
+/* Pre-check for tbin_flush without freeing memory
+ * Returns: 1 if can flush safely, 0 if mismatch detected */
+inline int
+tbin_can_flush(tbin_t* tbin)
+{
+    assert(tbin);
+
+    if (tbin->nitems[0] != tbin->nitems[1])
+        return 0;
+
+    tbin_item_t* it = &tbin->items[0];
+    int i = 0;
+    for (; i < tbin->nitems[0]; ++i, ++it) {
+        if (!it->ptr[0] || !it->ptr[1])
+            return 0;
+        if (it->ptr[0] != it->ptr[1])
+            return 0;
+    }
+    return 1;
+}
+
 inline void
 tbin_flush(tbin_t* tbin)
 {

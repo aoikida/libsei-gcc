@@ -69,6 +69,35 @@ wts_fini(wts_t* wts)
  * interface methods
  * ------------------------------------------------------------------------- */
 
+/* Pre-check for wts_flush without executing system calls
+ * Returns: 1 if can flush safely, 0 if mismatch detected */
+inline int
+wts_can_flush(wts_t* wts)
+{
+    assert(wts);
+
+    if (wts->nitems[0] != wts->nitems[1])
+        return 0;
+
+    wts_item_t* it = &wts->items[0];
+    int i = 0;
+    for (; i < wts->nitems[0]; ++i, ++it) {
+        if (!it->func[0] || !it->func[1])
+            return 0;
+        if (it->func[0] != it->func[1])
+            return 0;
+        if (it->anum[0] != it->anum[1])
+            return 0;
+
+        int j = 0;
+        for (; j < it->anum[0]; ++j) {
+            if (it->args[0][j] != it->args[1][j])
+                return 0;
+        }
+    }
+    return 1;
+}
+
 inline void
 wts_flush(wts_t* wts)
 {

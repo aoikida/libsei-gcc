@@ -154,8 +154,9 @@ int cpu_isolation_migrate_current_thread(void) {
 
     /* Set CPU affinity to the new core */
     cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(new_core, &cpuset);
+    memset(&cpuset, 0, sizeof(cpu_set_t));
+    ((unsigned long *)&cpuset)[new_core / (8 * sizeof(unsigned long))] |=
+        (1UL << (new_core % (8 * sizeof(unsigned long))));
 
     pthread_t current_thread = pthread_self();
     int ret = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
@@ -198,8 +199,9 @@ int cpu_isolation_set_affinity(pthread_t thread) {
 
     /* Set CPU affinity */
     cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core, &cpuset);
+    memset(&cpuset, 0, sizeof(cpu_set_t));
+    ((unsigned long *)&cpuset)[core / (8 * sizeof(unsigned long))] |=
+        (1UL << (core % (8 * sizeof(unsigned long))));
 
     int ret = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
 

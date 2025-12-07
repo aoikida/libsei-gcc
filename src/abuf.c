@@ -332,6 +332,186 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
     // printf ("nentry= %d pushed= %d search= %d\n", nentry, a1->pushed, loop);
 }
 
+/* ----------------------------------------------------------------------------
+ * Check for duplicate entries in buffer (data structure integrity check)
+ * This function verifies that there are no duplicate address entries in the buffer.
+ * Used when CPU isolation is ON and DMR verification is already done by sei_try_commit.
+ * ------------------------------------------------------------------------- */
+inline void
+abuf_check_duplicates(abuf_t* a1)
+{
+    assert (a1->poped == 0 && "buffer must be rewound");
+
+    int i, j;
+    for (i = 0; i < a1->pushed; ++i) {
+        void* addr = a1->buf[i].addr;
+
+        /* Check if this address appears multiple times in the buffer */
+        for (j = i + 1; j < a1->pushed; ++j) {
+            if (addr == a1->buf[j].addr) {
+                fail_ifn(0, "duplicate entry detected in buffer");
+            }
+        }
+    }
+}
+
+/* ----------------------------------------------------------------------------
+ * Non-destructive heap comparison for DMR verification (CPU isolation ON)
+ * Compares a1->wvalue (NEW_0) with current memory values (NEW_1)
+ * Returns: 1 if values match, 0 if mismatch detected (allows rollback)
+ *
+ * This function follows the same logic as abuf_cmp_heap() but returns int
+ * instead of aborting, making it suitable for sei_try_commit() which needs
+ * to allow rollback on failure.
+ * ------------------------------------------------------------------------- */
+inline int
+abuf_try_cmp_heap(abuf_t* a1, abuf_t* a2)
+{
+    /* Save poped counters for non-destructive operation */
+    int saved_poped_a1 = a1->poped;
+    int saved_poped_a2 = a2->poped;
+
+    /* Verify buffer sizes match */
+    if (a1->pushed != a2->pushed) {
+        DLOG1("[abuf_try_cmp_heap] buffer sizes differ: %d vs %d\n",
+              a1->pushed, a2->pushed);
+        a1->poped = saved_poped_a1;
+        a2->poped = saved_poped_a2;
+        return 0;
+    }
+
+    if (a1->poped != a2->poped) {
+        DLOG1("[abuf_try_cmp_heap] poped counts differ: %d vs %d\n",
+              a1->poped, a2->poped);
+        a1->poped = saved_poped_a1;
+        a2->poped = saved_poped_a2;
+        return 0;
+    }
+
+    if (a1->poped != 0) {
+        DLOG1("[abuf_try_cmp_heap] buffer not rewound\n");
+        a1->poped = saved_poped_a1;
+        a2->poped = saved_poped_a2;
+        return 0;
+    }
+
+    /* Collect conflicts (entries where memory != buffer) */
+    abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
+    int nentry = 0;
+
+    while (a1->poped < a1->pushed) {
+        abuf_entry_t* e1 = &a1->buf[a1->poped++];
+        abuf_entry_t* e2 = &a2->buf[a2->poped++];
+
+        /* Check entry sizes match */
+        if (e1->size != e2->size) {
+            DLOG1("[abuf_try_cmp_heap] entry sizes differ\n");
+            a1->poped = saved_poped_a1;
+            a2->poped = saved_poped_a2;
+            return 0;
+        }
+
+        /* Check addresses match */
+        if (e1->addr != e2->addr) {
+            DLOG1("[abuf_try_cmp_heap] addresses differ: %p vs %p\n",
+                  e1->addr, e2->addr);
+            a1->poped = saved_poped_a1;
+            a2->poped = saved_poped_a2;
+            return 0;
+        }
+
+        /* Check if memory value matches buffer value (detect conflicts) */
+        int conflict = 0;
+        switch (e1->size) {
+        case sizeof(uint8_t): {
+            uint8_t* addr = e1->addr;
+            if (*addr != ABUF_WVAX(e1, uint8_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint16_t): {
+            uint16_t* addr = e1->addr;
+            if (*addr != ABUF_WVAX(e1, uint16_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint32_t): {
+            uint32_t* addr = e1->addr;
+            if (*addr != ABUF_WVAX(e1, uint32_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint64_t): {
+            uint64_t* addr = e1->addr;
+            if (*addr != ABUF_WVAX(e1, uint64_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        default:
+            DLOG1("[abuf_try_cmp_heap] unknown size: %lu\n", e1->size);
+            a1->poped = saved_poped_a1;
+            a2->poped = saved_poped_a2;
+            return 0;
+        }
+
+        if (conflict) {
+            if (nentry >= ABUF_MAX_CONFLICTS) {
+                DLOG1("[abuf_try_cmp_heap] too many conflicts\n");
+                a1->poped = saved_poped_a1;
+                a2->poped = saved_poped_a2;
+                return 0;
+            }
+            entry[nentry++] = e1;
+        }
+    }
+
+    DLOG1("[abuf_try_cmp_heap] Number of conflicts: %d\n", nentry);
+
+    if (nentry == 0) {
+        /* No conflicts - success */
+        a1->poped = saved_poped_a1;
+        a2->poped = saved_poped_a2;
+        return 1;
+    }
+
+    /* Check conflicting entries: ensure each conflict is due to duplicate writes
+     * (same address appears multiple times in buffer) */
+    int i, j;
+    for (i = 0; i < nentry; ++i) {
+        abuf_entry_t* ce = entry[i];
+        void* addr = ce->addr;
+
+        /* Search for duplicate address in buffer */
+        int found_duplicate = 0;
+        for (j = a1->pushed - 1; j >= 0; --j) {
+            if (addr == a1->buf[j].addr) {
+                if (ce != &a1->buf[j]) {
+                    /* Found duplicate - this is OK */
+                    found_duplicate = 1;
+                    break;
+                }
+            }
+        }
+
+        if (!found_duplicate) {
+            /* Conflict but no duplicate - this is an error (SDC detected) */
+            DLOG1("[abuf_try_cmp_heap] conflict without duplicate at %p\n", addr);
+            a1->poped = saved_poped_a1;
+            a2->poped = saved_poped_a2;
+            return 0;
+        }
+    }
+
+    /* All conflicts are due to duplicate writes - success */
+    a1->poped = saved_poped_a1;
+    a2->poped = saved_poped_a2;
+    return 1;
+}
+
 
 #define ABUF_SWAP(e, type) do {                         \
         type* taddr = (type*) e->addr;                  \
