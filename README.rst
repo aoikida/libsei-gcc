@@ -168,6 +168,36 @@ Currently, the supported options are:
   independent of ``SEI_CRC_REDUNDANCY`` and can be used together with
   ``SEI_CPU_ISOLATION_MIGRATE_PHASES``.
 
+- ``SEI_DMR_REDUNDANCY=N``: Configure N-way modular redundancy (default: 2,
+  range: 2-10). Transactions are executed N times and all N executions must
+  produce identical results for commit to succeed. Higher N values provide
+  stronger fault detection at the cost of increased execution overhead.
+  Can be combined with ``SEI_CPU_ISOLATION``, ``SEI_CRC_REDUNDANCY``, and
+  migration flags.
+
+- ``SEI_CRC_REDUNDANCY=N``: Configure N-way CRC redundancy (range: 2-10).
+  Input message CRC verification is performed N times and all N computations
+  must match. Can be combined with ``SEI_DMR_REDUNDANCY`` and
+  ``SEI_CPU_ISOLATION``. Note: Cannot be used together with
+  ``SEI_CRC_MIGRATE_CORES`` as they are mutually exclusive approaches.
+
+**Valid Flag Combinations:**
+
+The following combinations are supported and tested:
+
+1. **Migration flags** (can be combined):
+
+   - ``SEI_CRC_MIGRATE_CORES`` + ``SEI_CPU_ISOLATION_MIGRATE_PHASES``
+   - Both require ``SEI_CPU_ISOLATION=1``
+
+2. **Redundancy flags** (can be combined):
+
+   - ``SEI_CRC_REDUNDANCY`` + ``SEI_DMR_REDUNDANCY`` + ``SEI_CPU_ISOLATION``
+
+**Invalid Combinations:**
+
+- ``SEI_CRC_MIGRATE_CORES`` and ``SEI_CRC_REDUNDANCY`` are mutually exclusive
+
 .. - ``MODE=heap|sbuf``: ``heap`` uses two heaps and ``sbuf`` uses only
   snapshot buffers.
 
@@ -180,13 +210,22 @@ of the target application against *libsei*.
 
 Example build commands::
 
-    # Basic build (no CPU isolation)
+    # Basic build (2-way DMR, no CPU isolation)
     make
 
-    # With CPU isolation (same core for phase0/phase1)
+    # N-way DMR without CPU isolation
+    SEI_DMR_REDUNDANCY=3 make
+    SEI_DMR_REDUNDANCY=5 make
+    SEI_DMR_REDUNDANCY=10 make
+
+    # With CPU isolation (2-way DMR by default)
     SEI_CPU_ISOLATION=1 make
 
-    # With phase migration (different cores for phase0/phase1)
+    # N-way DMR with CPU isolation
+    SEI_CPU_ISOLATION=1 SEI_DMR_REDUNDANCY=3 make
+    SEI_CPU_ISOLATION=1 SEI_DMR_REDUNDANCY=5 make
+
+    # With phase migration (different cores for each phase)
     SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
 
     # With CRC core migration (different cores for CRC computation)
@@ -195,8 +234,15 @@ Example build commands::
     # With both phase and CRC migration (maximum fault detection)
     SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 make
 
-    # Debug build with both migrations
-    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 make
+    # N-way DMR with both migrations
+    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 SEI_DMR_REDUNDANCY=5 make
+
+    # CRC redundancy with DMR redundancy
+    SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=3 make
+    SEI_CPU_ISOLATION=1 SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=5 make
+
+    # Debug build with all redundancy features
+    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=5 make
 
 
 |

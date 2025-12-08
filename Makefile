@@ -114,6 +114,14 @@ ifdef SEI_CRC_REDUNDANCY
 AFLAGS += -DSEI_CRC_REDUNDANCY=$(SEI_CRC_REDUNDANCY)
 endif
 
+# N-way DMR redundancy level
+# Default: 2 (Dual Modular Redundancy)
+# Range: 2-10
+# Example: SEI_DMR_REDUNDANCY=5 make
+ifdef SEI_DMR_REDUNDANCY
+AFLAGS += -DSEI_DMR_REDUNDANCY=$(SEI_DMR_REDUNDANCY)
+endif
+
 # compiler
 ifndef CC
 ifeq ($(UNAME),Darwin)
