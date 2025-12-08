@@ -148,55 +148,54 @@ Currently, the supported options are:
   logging and 3 means very verbose. If ``DEBUG`` is not given, the
   library is compiled with inlining and ``-O3``.
 
-- ``SEI_CPU_ISOLATION=1``: Enable CPU core isolation and SDC (Silent Data
-  Corruption) detection with automatic recovery. When enabled, transactions
-  are executed twice (phase0 and phase1) with DMR (Dual Modular Redundancy)
-  verification. If SDC is detected, the faulty core is blacklisted and the
-  transaction is retried on a different core.
+- ``ROLLBACK=1``: Enable automatic rollback on error detection with CPU core
+  isolation and SDC (Silent Data Corruption) detection. When enabled,
+  transactions are executed with redundancy verification. If SDC is detected,
+  the faulty core is blacklisted and the transaction is retried on a different
+  core.
 
-- ``SEI_CPU_ISOLATION_MIGRATE_PHASES=1``: Enable phase migration between
-  different CPU cores (requires ``SEI_CPU_ISOLATION=1``). When enabled,
-  phase0 and phase1 execute on different CPU cores to improve detection
-  of hardware-specific faults. If SDC is detected, both cores are blacklisted
-  and the transaction is retried on a new pair of cores.
+- ``EXECUTION_CORE_REDUNDANCY=1``: Execute different phases on different CPU
+  cores (requires ``ROLLBACK=1``). When enabled, each execution phase runs on
+  a different CPU core to improve detection of hardware-specific faults. If SDC
+  is detected, all involved cores are blacklisted and the transaction is retried
+  on new cores.
 
-- ``SEI_CRC_MIGRATE_CORES=1``: Enable CRC computation on different CPU cores
-  (requires ``SEI_CPU_ISOLATION=1``). When enabled, input message CRC
-  verification is performed on two different cores using DMR (Dual Modular
-  Redundancy). If CRC mismatch is detected between cores, both cores are
-  blacklisted and verification is retried on a new pair of cores. This is
-  independent of ``SEI_CRC_REDUNDANCY`` and can be used together with
-  ``SEI_CPU_ISOLATION_MIGRATE_PHASES``.
+- ``CRC_CORE_REDUNDANCY=1``: Compute CRC on different CPU cores (requires
+  ``ROLLBACK=1``). When enabled, input message CRC verification is performed
+  on different cores using modular redundancy. If CRC mismatch is detected
+  between cores, the involved cores are blacklisted and verification is retried
+  on new cores. This is independent of ``CRC_REDUNDANCY`` and can be used
+  together with ``EXECUTION_CORE_REDUNDANCY``.
 
-- ``SEI_DMR_REDUNDANCY=N``: Configure N-way modular redundancy (default: 2,
+- ``EXECUTION_REDUNDANCY=N``: Configure N-way execution redundancy (default: 2,
   range: 2-10). Transactions are executed N times and all N executions must
   produce identical results for commit to succeed. Higher N values provide
   stronger fault detection at the cost of increased execution overhead.
-  Can be combined with ``SEI_CPU_ISOLATION``, ``SEI_CRC_REDUNDANCY``, and
-  migration flags.
+  Can be combined with ``ROLLBACK``, ``CRC_REDUNDANCY``, and core redundancy
+  flags.
 
-- ``SEI_CRC_REDUNDANCY=N``: Configure N-way CRC redundancy (range: 2-10).
+- ``CRC_REDUNDANCY=N``: Configure N-way CRC redundancy (range: 2-10).
   Input message CRC verification is performed N times and all N computations
-  must match. Can be combined with ``SEI_DMR_REDUNDANCY`` and
-  ``SEI_CPU_ISOLATION``. Note: Cannot be used together with
-  ``SEI_CRC_MIGRATE_CORES`` as they are mutually exclusive approaches.
+  must match. Can be combined with ``EXECUTION_REDUNDANCY`` and ``ROLLBACK``.
+  Note: Cannot be used together with ``CRC_CORE_REDUNDANCY`` as they are
+  mutually exclusive approaches.
 
 **Valid Flag Combinations:**
 
 The following combinations are supported and tested:
 
-1. **Migration flags** (can be combined):
+1. **Core redundancy flags** (can be combined):
 
-   - ``SEI_CRC_MIGRATE_CORES`` + ``SEI_CPU_ISOLATION_MIGRATE_PHASES``
-   - Both require ``SEI_CPU_ISOLATION=1``
+   - ``CRC_CORE_REDUNDANCY`` + ``EXECUTION_CORE_REDUNDANCY``
+   - Both require ``ROLLBACK=1``
 
-2. **Redundancy flags** (can be combined):
+2. **Value redundancy flags** (can be combined):
 
-   - ``SEI_CRC_REDUNDANCY`` + ``SEI_DMR_REDUNDANCY`` + ``SEI_CPU_ISOLATION``
+   - ``CRC_REDUNDANCY`` + ``EXECUTION_REDUNDANCY`` + ``ROLLBACK``
 
 **Invalid Combinations:**
 
-- ``SEI_CRC_MIGRATE_CORES`` and ``SEI_CRC_REDUNDANCY`` are mutually exclusive
+- ``CRC_CORE_REDUNDANCY`` and ``CRC_REDUNDANCY`` are mutually exclusive
 
 .. - ``MODE=heap|sbuf``: ``heap`` uses two heaps and ``sbuf`` uses only
   snapshot buffers.
@@ -210,39 +209,39 @@ of the target application against *libsei*.
 
 Example build commands::
 
-    # Basic build (2-way DMR, no CPU isolation)
+    # Basic build (2-way execution redundancy, no rollback)
     make
 
-    # N-way DMR without CPU isolation
-    SEI_DMR_REDUNDANCY=3 make
-    SEI_DMR_REDUNDANCY=5 make
-    SEI_DMR_REDUNDANCY=10 make
+    # N-way execution redundancy without rollback
+    EXECUTION_REDUNDANCY=3 make
+    EXECUTION_REDUNDANCY=5 make
+    EXECUTION_REDUNDANCY=10 make
 
-    # With CPU isolation (2-way DMR by default)
-    SEI_CPU_ISOLATION=1 make
+    # With rollback (2-way execution redundancy by default)
+    ROLLBACK=1 make
 
-    # N-way DMR with CPU isolation
-    SEI_CPU_ISOLATION=1 SEI_DMR_REDUNDANCY=3 make
-    SEI_CPU_ISOLATION=1 SEI_DMR_REDUNDANCY=5 make
+    # N-way execution redundancy with rollback
+    ROLLBACK=1 EXECUTION_REDUNDANCY=3 make
+    ROLLBACK=1 EXECUTION_REDUNDANCY=5 make
 
-    # With phase migration (different cores for each phase)
-    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
+    # With execution core redundancy (different cores for each phase)
+    ROLLBACK=1 EXECUTION_CORE_REDUNDANCY=1 make
 
-    # With CRC core migration (different cores for CRC computation)
-    SEI_CPU_ISOLATION=1 SEI_CRC_MIGRATE_CORES=1 make
+    # With CRC core redundancy (different cores for CRC computation)
+    ROLLBACK=1 CRC_CORE_REDUNDANCY=1 make
 
-    # With both phase and CRC migration (maximum fault detection)
-    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 make
+    # With both core redundancy flags (maximum fault detection)
+    ROLLBACK=1 EXECUTION_CORE_REDUNDANCY=1 CRC_CORE_REDUNDANCY=1 make
 
-    # N-way DMR with both migrations
-    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 SEI_DMR_REDUNDANCY=5 make
+    # N-way execution with both core redundancies
+    ROLLBACK=1 EXECUTION_CORE_REDUNDANCY=1 CRC_CORE_REDUNDANCY=1 EXECUTION_REDUNDANCY=5 make
 
-    # CRC redundancy with DMR redundancy
-    SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=3 make
-    SEI_CPU_ISOLATION=1 SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=5 make
+    # CRC redundancy with execution redundancy
+    CRC_REDUNDANCY=3 EXECUTION_REDUNDANCY=3 make
+    ROLLBACK=1 CRC_REDUNDANCY=3 EXECUTION_REDUNDANCY=5 make
 
     # Debug build with all redundancy features
-    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CRC_REDUNDANCY=3 SEI_DMR_REDUNDANCY=5 make
+    DEBUG=3 ROLLBACK=1 CRC_REDUNDANCY=3 EXECUTION_REDUNDANCY=5 make
 
 
 |

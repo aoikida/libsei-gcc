@@ -98,28 +98,36 @@ ifdef SEI_TBAR
 AFLAGS += -DSEI_TBAR
 endif
 
-ifdef SEI_CPU_ISOLATION
+# Rollback on error detection
+ifdef ROLLBACK
 AFLAGS += -DSEI_CPU_ISOLATION
 endif
 
-ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+# Execute different phases on different CPU cores
+# Requires: ROLLBACK=1
+ifdef EXECUTION_CORE_REDUNDANCY
 AFLAGS += -DSEI_CPU_ISOLATION_MIGRATE_PHASES
 endif
 
-ifdef SEI_CRC_MIGRATE_CORES
+# Compute CRC on different CPU cores
+# Requires: ROLLBACK=1
+ifdef CRC_CORE_REDUNDANCY
 AFLAGS += -DSEI_CRC_MIGRATE_CORES
 endif
 
-ifdef SEI_CRC_REDUNDANCY
-AFLAGS += -DSEI_CRC_REDUNDANCY=$(SEI_CRC_REDUNDANCY)
+# N-way CRC redundancy level
+# Range: 2-10
+# Example: CRC_REDUNDANCY=3 make
+ifdef CRC_REDUNDANCY
+AFLAGS += -DSEI_CRC_REDUNDANCY=$(CRC_REDUNDANCY)
 endif
 
-# N-way DMR redundancy level
+# N-way execution redundancy level
 # Default: 2 (Dual Modular Redundancy)
 # Range: 2-10
-# Example: SEI_DMR_REDUNDANCY=5 make
-ifdef SEI_DMR_REDUNDANCY
-AFLAGS += -DSEI_DMR_REDUNDANCY=$(SEI_DMR_REDUNDANCY)
+# Example: EXECUTION_REDUNDANCY=5 make
+ifdef EXECUTION_REDUNDANCY
+AFLAGS += -DSEI_DMR_REDUNDANCY=$(EXECUTION_REDUNDANCY)
 endif
 
 # compiler
@@ -149,7 +157,8 @@ BUILD  ?= build
 SRCS    = heap.c cow.c tbin.c sinfo.c talloc.c abuf.c ilog.c \
 	cpu_stats.c obuf.c ibuf.c cfc.c stash.c tbar.c wts.c
 
-ifdef SEI_CPU_ISOLATION
+# Add CPU isolation source when ROLLBACK is enabled (sets SEI_CPU_ISOLATION internally)
+ifdef ROLLBACK
 SRCS    += cpu_isolation.c
 endif
 
