@@ -22,19 +22,24 @@
 #include "sinfo.h"
 #endif
 
+/* N-way DMR redundancy configuration */
+#ifndef SEI_DMR_REDUNDANCY
+#define SEI_DMR_REDUNDANCY 2
+#endif
+
 typedef struct  {
-    wts_cb_t func[2];			// function
-    uint32_t anum[2];			// number of arguments
-    uint64_t args[2][WTS_MAX_ARG];	// arguments for the call, also stack args
+    wts_cb_t func[SEI_DMR_REDUNDANCY];			// function pointers for each phase
+    uint32_t anum[SEI_DMR_REDUNDANCY];			// number of arguments for each phase
+    uint64_t args[SEI_DMR_REDUNDANCY][WTS_MAX_ARG];	// arguments for each phase
 
 #ifdef SEI_STACK_INFO
-    sinfo_t* sinfo[2];
+    sinfo_t* sinfo[SEI_DMR_REDUNDANCY];
 #endif
 } wts_item_t;
 
 struct wts {
     int max_items;      	// maximum number of items
-    int nitems[2];      	// actual number of items
+    int nitems[SEI_DMR_REDUNDANCY];      	// actual number of items for each phase
     wts_item_t* items; 		// array of items
 };
 
@@ -52,7 +57,11 @@ wts_init(int max_items)
     wts->items    = (wts_item_t*) malloc(sizeof(wts_item_t)*max_items);
     assert (wts->items && "out of memory");
     bzero(wts->items, sizeof(wts_item_t)*max_items);
-    wts->nitems[0] = wts->nitems[1] = 0;
+
+    /* Initialize all phase counters to 0 */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        wts->nitems[i] = 0;
+    }
 
     return wts;
 }
@@ -76,23 +85,36 @@ wts_can_flush(wts_t* wts)
 {
     assert(wts);
 
-    if (wts->nitems[0] != wts->nitems[1])
-        return 0;
+    /* N-way verification: all phases must have same number of system calls */
+    int expected_nitems = wts->nitems[0];
+    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+        if (wts->nitems[p] != expected_nitems)
+            return 0;
+    }
 
     wts_item_t* it = &wts->items[0];
-    int i = 0;
-    for (; i < wts->nitems[0]; ++i, ++it) {
-        if (!it->func[0] || !it->func[1])
-            return 0;
-        if (it->func[0] != it->func[1])
-            return 0;
-        if (it->anum[0] != it->anum[1])
-            return 0;
-
-        int j = 0;
-        for (; j < it->anum[0]; ++j) {
-            if (it->args[0][j] != it->args[1][j])
+    for (int i = 0; i < expected_nitems; ++i, ++it) {
+        /* Verify function pointers across all phases */
+        wts_cb_t expected_func = it->func[0];
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            if (!it->func[p] || it->func[p] != expected_func)
                 return 0;
+        }
+
+        /* Verify argument counts across all phases */
+        uint32_t expected_anum = it->anum[0];
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            if (it->anum[p] != expected_anum)
+                return 0;
+        }
+
+        /* Verify argument values across all phases */
+        for (int j = 0; j < expected_anum; ++j) {
+            uint64_t expected_arg = it->args[0][j];
+            for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+                if (it->args[p][j] != expected_arg)
+                    return 0;
+            }
         }
     }
     return 1;
@@ -102,28 +124,29 @@ inline void
 wts_flush(wts_t* wts)
 {
     assert (wts);
-    fail_ifn(wts->nitems[0] == wts->nitems[1], "number of items differ");
+
+    /* N-way verification before executing system calls */
+    fail_ifn(wts_can_flush(wts), "N-way system call mismatch");
 
     wts_item_t* it = &wts->items[0];
-    int i = 0;
-    for (; i < wts->nitems[0]; ++i, ++it) {
-        fail_ifn(it->func[0] && it->func[1], "only one pointer passed");
-        fail_ifn(it->func[0] == it->func[1], "pointers differ");
-        fail_ifn(it->anum[0] == it->anum[1], "number of args differ");
-
-        int j = 0;
-        for (; j < it->anum[0]; ++j)
-       	    fail_ifn(it->args[0][j] == it->args[1][j], "args differ");
-
+    for (int i = 0; i < wts->nitems[0]; ++i, ++it) {
+        /* Execute system call using phase 0 data (all phases verified to be identical) */
         it->func[0]((uint64_t*)&it->args[0]);
 
 #ifdef SEI_STACK_INFO
-        sinfo_fini(it->sinfo[0]);
-        sinfo_fini(it->sinfo[1]);
-        it->sinfo[0] = it->sinfo[1] = NULL;
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            if (it->sinfo[p]) {
+                sinfo_fini(it->sinfo[p]);
+                it->sinfo[p] = NULL;
+            }
+        }
 #endif
     }
-    wts->nitems[0] = wts->nitems[1] = 0;
+
+    /* Reset all phase counters */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        wts->nitems[i] = 0;
+    }
 }
 
 void
@@ -131,7 +154,7 @@ wts_add(void* w, int p, wts_cb_t fp, int arg_num, ...)
 {
 	assert(w);
 	assert(fp);
-	assert ((p == 0 || p == 1) && "invalid p");
+	assert ((p >= 0 && p < SEI_DMR_REDUNDANCY) && "invalid p");
 
 	wts_t* wts = (wts_t*) w;
 	wts_item_t* it = &wts->items[wts->nitems[p]++];

@@ -57,19 +57,39 @@
 # include "now.h"
 #endif
 
+/* ----------------------------------------------------------------------------
+ * N-way DMR (Dual/Multiple Modular Redundancy) Configuration
+ * ------------------------------------------------------------------------- */
+
+/* Default redundancy level: 2-way (traditional DMR)
+ * Can be overridden at compile time with -DSEI_DMR_REDUNDANCY=N
+ * Valid range: 2-10 */
+#ifndef SEI_DMR_REDUNDANCY
+#define SEI_DMR_REDUNDANCY 2
+#endif
+
+/* Validate redundancy level at compile time */
+#if SEI_DMR_REDUNDANCY < 2 || SEI_DMR_REDUNDANCY > 10
+#error "SEI_DMR_REDUNDANCY must be between 2 and 10"
+#endif
+
+/* ----------------------------------------------------------------------------
+ * Core data structures
+ * ------------------------------------------------------------------------- */
+
 struct sei {
-    int       p;       /* the actual process (0 or 1) */
+    int       p;       /* current phase: 0 to SEI_DMR_REDUNDANCY-1, or -1 (outside transaction) */
     heap_t*   heap;    /* optional heap               */
 #ifndef COW_APPEND_ONLY
-    cow_t*    cow[2];  /* a copy-on-write buffer      */
+    cow_t*    cow[SEI_DMR_REDUNDANCY];  /* N copy-on-write buffers (one per phase) */
 #else
-    abuf_t*   cow[2];  /* a copy-on-write buffer      */
+    abuf_t*   cow[SEI_DMR_REDUNDANCY];  /* N copy-on-write buffers (one per phase) */
 #endif
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocator         */
     obuf_t*   obuf;    /* output buffer (messages)    */
     ibuf_t*   ibuf;    /* input message buffer        */
-    cfc_t     cf[2];   /* control flags               */
+    cfc_t     cf[SEI_DMR_REDUNDANCY];   /* N control flow verification structures */
     stash_t*  stash;   /* obuf contexts               */
 #ifdef SEI_WRAP_SC
     wts_t*	  wts;	   /* waitress for delayed calls  */
@@ -267,75 +287,96 @@ void
 sei_begin(sei_t* sei)
 {
     if (sei->p == -1) {
-        DLOG2("First execution\n");
+        DLOG2("N-way DMR: Starting phase 0 (N=%d)\n", SEI_DMR_REDUNDANCY);
         sei->p = 0;
         //assert (obuf_size(sei->obuf) == 0);
-        cfc_reset(&sei->cf[0]);
-        cfc_reset(&sei->cf[1]);
-    }
 
-    if (sei->p == 1) {
-        DLOG2("Second execution\n");
+        /* Reset all control flow structures */
+        for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+            cfc_reset(&sei->cf[i]);
+        }
+    } else if (sei->p > 0 && sei->p < SEI_DMR_REDUNDANCY) {
+        DLOG2("N-way DMR: Executing phase %d\n", sei->p);
     }
 }
 
 void
 sei_switch(sei_t* sei)
 {
-    DLOG2("Switch: %d\n", sei->p);
-    sei->p = 1;
-    DLOG2("Switched: %d\n", sei->p);
+    /* Validate phase range before switching */
+    assert(sei->p >= 0 && sei->p < SEI_DMR_REDUNDANCY - 1 &&
+           "sei_switch() called with invalid phase");
+
+    DLOG2("Switch: phase %d -> phase %d\n", sei->p, sei->p + 1);
+
+    /* Increment to next phase (0→1, 1→2, ..., N-2→N-1) */
+    sei->p++;
+
+    DLOG2("Switched: now in phase %d\n", sei->p);
+
     talloc_switch(sei->talloc);
     obuf_close(sei->obuf);
     ibuf_switch(sei->ibuf);
 
 #ifdef COW_WT
 #ifdef COW_APPEND_ONLY
-    /* In COW_WT mode, abuf_swap() restores OLD values to memory after p=0
-     * execution, allowing p=1 to record the same OLD values for correct
-     * DMR verification. Without this, p=1 would read NEW values from memory
-     * (written by p=0), causing cow[0] and cow[1] to mismatch. */
+    /* In COW_WT mode, abuf_swap() restores OLD values to memory after phase 0
+     * execution, allowing subsequent phases to record the same OLD values for
+     * correct N-way DMR verification. Without this, phase 1~N-1 would read NEW
+     * values from memory (written by phase 0), causing verification mismatch. */
     abuf_swap(sei->cow[0]);
 #else
     cow_swap(sei->cow[0]);
 #endif
 #endif
-    cfc_alog(&sei->cf[0]);
-    int r = cfc_amog(&sei->cf[0]);
-    fail_ifn(r, "control flow error");
+
+    /* Control flow verification is performed in sei_commit() for all phases together */
 }
 
 void
 sei_commit(sei_t* sei)
 {
-    DLOG2("COMMIT: %d\n", sei->p);
+    DLOG2("N-way COMMIT: verifying %d phases\n", SEI_DMR_REDUNDANCY);
     sei->p = -1;
 
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform control flow verification here */
-    int r = cfc_amog(&sei->cf[1]);
-    fail_ifn(r, "control flow error");
+    int r;
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        cfc_alog(&sei->cf[i]);  /* Log control flow before verification */
+        r = cfc_amog(&sei->cf[i]);
+        if (!r) {
+            fprintf(stderr, "[libsei] Control flow error in phase %d\n", i);
+            fail_ifn(0, "control flow error");
+        }
+    }
 #endif
     /* CPU isolation ON: Verification already done in sei_try_commit() */
-
-    cfc_alog(&sei->cf[1]);
+    /* cfc_alog() already called in sei_try_commit(), so no need to call again */
 
 #ifndef COW_APPEND_ONLY
-    cow_show(sei->cow[0]);
-    cow_show(sei->cow[1]);
-    cow_apply_cmp(sei->cow[0], sei->cow[1]);
+    /* Non-APPEND_ONLY mode: show and compare all COW buffers */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        cow_show(sei->cow[i]);
+    }
+    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+        cow_apply_cmp(sei->cow[0], sei->cow[i]);
+    }
 #else
-    /* With CPU isolation OFF, perform heap comparison to detect conflicts.
-     * With CPU isolation ON, heap comparison is skipped because:
-     *   - DMR verification already done in sei_try_commit()
-     *   - Memory state management becomes complex with swap operations
-     * TODO: Implement proper heap comparison for CPU isolation ON mode */
+    /* APPEND_ONLY mode: N-way COW buffer comparison */
 #ifndef SEI_CPU_ISOLATION
-    abuf_cmp_heap(sei->cow[0], sei->cow[1]);
+    /* CPU isolation OFF: Perform N-way heap comparison */
+    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+        DLOG2("Verifying phase0 vs phase%d\n", i);
+        abuf_cmp_heap(sei->cow[0], sei->cow[i]);
+    }
 #endif
     /* CPU isolation ON: Skip heap comparison (already verified in sei_try_commit) */
-    abuf_clean(sei->cow[0]);
-    abuf_clean(sei->cow[1]);
+
+    /* Clean all COW buffers */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        abuf_clean(sei->cow[i]);
+    }
 #endif
 
 #ifdef SEI_WRAP_SC
@@ -347,11 +388,14 @@ sei_commit(sei_t* sei)
     obuf_close(sei->obuf);
 
 #ifndef SEI_CPU_ISOLATION
-    /* CPU isolation OFF: Perform final validations here */
-    int r = cfc_check(&sei->cf[0]);
-    assert (r && "control flow error");
-    r = cfc_check(&sei->cf[1]);
-    assert (r && "control flow error");
+    /* CPU isolation OFF: Perform final validations for all phases */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        r = cfc_check(&sei->cf[i]);
+        if (!r) {
+            fprintf(stderr, "[libsei] Final control flow check failed in phase %d\n", i);
+            assert(0 && "control flow error");
+        }
+    }
 
     r = ibuf_correct(sei->ibuf);
     assert (r == 1 && "input message modified");
@@ -636,54 +680,58 @@ int
 sei_try_commit(sei_t* sei)
 {
     assert(sei);
-    assert(sei->p == 1 && "must be in p=1 state before commit");
+    assert(sei->p == SEI_DMR_REDUNDANCY - 1 && "must be in final phase before commit");
 
-    /* Non-destructive commit: verify DMR but don't modify state yet */
+    /* Non-destructive commit: verify N-way DMR but don't modify state yet */
 
-    /* Rewind buffers BEFORE comparison to ensure poped == 0 */
-    abuf_rewind(sei->cow[0]);
-    abuf_rewind(sei->cow[1]);
+    DLOG2("N-way try_commit: verifying %d phases\n", SEI_DMR_REDUNDANCY);
 
-    /* DMR VERIFICATION: Extract NEW_1 from memory and compare with NEW_0
+    /* Rewind all buffers BEFORE comparison to ensure poped == 0 */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        abuf_rewind(sei->cow[i]);
+    }
+
+    /* N-WAY DMR VERIFICATION: Compare phase 0 with all other phases
      *
      * At this point:
-     *   cow[0]->wvalue = NEW_0 (p=0 results, saved by abuf_swap in sei_switch)
-     *   cow[1]->wvalue = OLD (recorded by sei_write during p=1)
-     *   Memory[X] = NEW_1 (written by p=1)
+     *   cow[0]->wvalue = NEW_0 (phase 0 results, saved by abuf_swap in sei_switch)
+     *   cow[1]->wvalue = OLD (recorded during phase 1)
+     *   cow[2]->wvalue = OLD (recorded during phase 2)
+     *   ...
+     *   cow[N-1]->wvalue = OLD (recorded during phase N-1)
+     *   Memory[X] = NEW_(N-1) (written by phase N-1)
      *
-     * We use abuf_swap() to extract NEW_1 into cow[1]->wvalue, compare
-     * NEW_0 vs NEW_1 in buffers, then restore the original state for
-     * potential rollback or final commit.
-     *
-     * This approach avoids direct memory access issues in rollbank environments
-     * where p=0 and p=1 may use different memory regions.
+     * We perform non-destructive heap comparison for N-way verification.
      */
 
-    /* Check COW buffer consistency (DMR verification: NEW_0 vs NEW_1) */
+    /* N-way COW buffer consistency check */
 #ifdef COW_APPEND_ONLY
-    /* Non-destructive heap comparison:
-     * Compare cow[0]->wvalue (NEW_0) with current Memory values (NEW_1)
-     * This avoids abuf_swap() which corrupts newly allocated memory regions
-     * that have no valid OLD values to restore.
+    /* Non-destructive N-way heap comparison:
+     * Compare cow[0] (phase 0) with cow[1] ~ cow[N-1] (all other phases)
      */
-    if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[1])) {
-        DLOG1("[sei_try_commit] COW buffer mismatch detected (DMR verification failed)\n");
-        return 0;  /* SDC detected */
+    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+        if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[i])) {
+            DLOG1("[sei_try_commit] COW buffer mismatch: phase0 vs phase%d\n", i);
+            return 0;  /* SDC detected */
+        }
     }
 #else
     #error "sei_try_commit only supports COW_APPEND_ONLY mode"
 #endif
 
-    /* === Additional validations (CPU isolation ON) === */
+    /* === Additional N-way validations (CPU isolation ON) === */
 
-    /* Control flow verification (p=1)
-     * Note: cfc_amog() is sufficient for verification without calling cfc_alog()
-     * which is a destructive operation. cfc_alog() will be called in sei_commit().
+    /* N-way control flow verification
+     * First log control flows, then verify them
      */
-    int r = cfc_amog(&sei->cf[1]);
-    if (!r) {
-        DLOG1("[sei_try_commit] Control flow error (cf[1])\n");
-        return 0;
+    int r;
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        cfc_alog(&sei->cf[i]);
+        r = cfc_amog(&sei->cf[i]);
+        if (!r) {
+            DLOG1("[sei_try_commit] Control flow error in phase %d\n", i);
+            return 0;
+        }
     }
 
     /* Input message verification */
@@ -694,7 +742,7 @@ sei_try_commit(sei_t* sei)
     }
 
 #ifdef SEI_WRAP_SC
-    /* Pre-check wts_flush (includes nitems consistency check) */
+    /* Pre-check wts_flush (includes N-way nitems consistency check) */
     if (!wts_can_flush(sei->wts)) {
         DLOG1("[sei_try_commit] Waitress pre-check failed\n");
         return 0;
@@ -707,7 +755,8 @@ sei_try_commit(sei_t* sei)
         return 0;
     }
 
-    /* All checks passed - verification successful */
+    /* All N-way checks passed - verification successful */
+    DLOG2("N-way verification successful\n");
     return 1;  /* Success */
 }
 

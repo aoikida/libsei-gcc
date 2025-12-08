@@ -40,6 +40,14 @@ static __thread int phase0_core = -1;
 #define unlikely(x) __builtin_expect((x),0)
 
 /* ----------------------------------------------------------------------------
+ * N-way DMR Configuration
+ * ------------------------------------------------------------------------- */
+
+#ifndef SEI_DMR_REDUNDANCY
+#define SEI_DMR_REDUNDANCY 2
+#endif
+
+/* ----------------------------------------------------------------------------
  * sei data structures
  * ------------------------------------------------------------------------- */
 
@@ -1269,28 +1277,48 @@ __sei_commit()
 	__sei_ignore_num = 0;
     __sei_write_disable = 0;
 
-    if (!sei_getp(__sei_thread->sei)) {
+    int current_phase = sei_getp(__sei_thread->sei);
+
+    /* Phase 0 ~ N-2: Switch to next phase and re-execute transaction */
+    if (current_phase < SEI_DMR_REDUNDANCY - 1) {
+        DLOG2("Phase %d completed, switching to phase %d\n",
+              current_phase, current_phase + 1);
+
 #ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
-        /* Record phase0 core before switching to phase1 */
-        phase0_core = sched_getcpu();
+        /* Record phase0 core before switching (only for phase 0→1) */
+        if (current_phase == 0) {
+            phase0_core = sched_getcpu();
+        }
 #endif
+
+        /* Switch to next phase */
         sei_switch(__sei_thread->sei);
 
 #ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
-        /* Migrate to a different core for phase1 execution
+        /* Migrate to a different core for phase1 execution (only for phase 0→1)
          * Temporarily set sei->p = -1 to prevent pthread wrappers from
          * trying to record operations to abuf during migration */
-        sei_setp(__sei_thread->sei, -1);
-        int old_core = phase0_core;
-        int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
-        fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n",
-                old_core, new_core);
-        /* Restore sei->p = 1 for phase1 execution */
-        sei_setp(__sei_thread->sei, 1);
+        if (current_phase == 0) {
+            sei_setp(__sei_thread->sei, -1);
+            int old_core = phase0_core;
+            int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
+            fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n",
+                    old_core, new_core);
+            /* Restore sei->p = current_phase + 1 for next phase execution */
+            sei_setp(__sei_thread->sei, current_phase + 1);
+        }
 #endif
 
+        /* Context switch to re-execute transaction in next phase */
         __sei_switch(&__sei_thread->ctx, 0x01);
+        return;  /* Execution continues in next phase */
     }
+
+    /* Phase N-1 (final phase): Perform N-way verification and commit */
+    assert(current_phase == SEI_DMR_REDUNDANCY - 1 &&
+           "Invalid phase in __sei_commit()");
+    DLOG2("All %d phases completed, performing N-way verification\n",
+          SEI_DMR_REDUNDANCY);
 
 #ifdef SEI_CPU_ISOLATION
     /* Automatic retry loop for SDC recovery */
