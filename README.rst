@@ -160,6 +160,14 @@ Currently, the supported options are:
   of hardware-specific faults. If SDC is detected, both cores are blacklisted
   and the transaction is retried on a new pair of cores.
 
+- ``SEI_CRC_MIGRATE_CORES=1``: Enable CRC computation on different CPU cores
+  (requires ``SEI_CPU_ISOLATION=1``). When enabled, input message CRC
+  verification is performed on two different cores using DMR (Dual Modular
+  Redundancy). If CRC mismatch is detected between cores, both cores are
+  blacklisted and verification is retried on a new pair of cores. This is
+  independent of ``SEI_CRC_REDUNDANCY`` and can be used together with
+  ``SEI_CPU_ISOLATION_MIGRATE_PHASES``.
+
 .. - ``MODE=heap|sbuf``: ``heap`` uses two heaps and ``sbuf`` uses only
   snapshot buffers.
 
@@ -181,8 +189,14 @@ Example build commands::
     # With phase migration (different cores for phase0/phase1)
     SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
 
-    # Debug build with phase migration
-    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 make
+    # With CRC core migration (different cores for CRC computation)
+    SEI_CPU_ISOLATION=1 SEI_CRC_MIGRATE_CORES=1 make
+
+    # With both phase and CRC migration (maximum fault detection)
+    SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 make
+
+    # Debug build with both migrations
+    DEBUG=3 SEI_CPU_ISOLATION=1 SEI_CPU_ISOLATION_MIGRATE_PHASES=1 SEI_CRC_MIGRATE_CORES=1 make
 
 
 |
