@@ -19,18 +19,23 @@
 #include "sinfo.h"
 #endif
 
+/* N-way DMR redundancy configuration */
+#ifndef SEI_DMR_REDUNDANCY
+#define SEI_DMR_REDUNDANCY 2
+#endif
+
 typedef struct {
-    void* ptr[2];
+    void* ptr[SEI_DMR_REDUNDANCY];
 #ifdef SEI_STACK_INFO
-    sinfo_t* sinfo[2];
+    sinfo_t* sinfo[SEI_DMR_REDUNDANCY];
 #endif
 } tbin_item_t;
 
 struct tbin {
-    int max_items;      // maximum number of items
-    int nitems[2];      // actual number of items
-    tbin_item_t* items; // array of items
-    heap_t* heap;       // heap
+    int max_items;                     // maximum number of items
+    int nitems[SEI_DMR_REDUNDANCY];    // actual number of items per phase
+    tbin_item_t* items;                // array of items
+    heap_t* heap;                      // heap
 };
 
 /* ----------------------------------------------------------------------------
@@ -47,7 +52,11 @@ tbin_init(int max_items, heap_t* heap)
     tbin->items     = (tbin_item_t*) malloc(sizeof(tbin_item_t)*max_items);
     assert (tbin->items && "out of memory");
     bzero(tbin->items, sizeof(tbin_item_t)*max_items);
-    tbin->nitems[0] = tbin->nitems[1] = 0;
+
+    /* Initialize all phase counters */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        tbin->nitems[i] = 0;
+    }
 
     tbin->heap = heap;
 
@@ -69,7 +78,7 @@ inline void
 tbin_add(tbin_t* tbin, void* ptr, int p)
 {
     assert (tbin);
-    assert ((p == 0 || p == 1) && "invalid p");
+    assert (p >= 0 && p < SEI_DMR_REDUNDANCY && "invalid p");
     assert (tbin->nitems[p] + 1 <= tbin->max_items && "cannot add item");
     tbin_item_t* it = &tbin->items[tbin->nitems[p]++];
     it->ptr[p] = ptr;
@@ -87,16 +96,26 @@ tbin_can_flush(tbin_t* tbin)
 {
     assert(tbin);
 
-    if (tbin->nitems[0] != tbin->nitems[1])
-        return 0;
+    /* N-way verification: all phases must have same item count */
+    int expected_count = tbin->nitems[0];
+    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+        if (tbin->nitems[p] != expected_count)
+            return 0;
+    }
 
+    /* N-way verification: all pointers must match for each item */
     tbin_item_t* it = &tbin->items[0];
-    int i = 0;
-    for (; i < tbin->nitems[0]; ++i, ++it) {
-        if (!it->ptr[0] || !it->ptr[1])
-            return 0;
-        if (it->ptr[0] != it->ptr[1])
-            return 0;
+    for (int i = 0; i < expected_count; ++i, ++it) {
+        /* Check all phases have valid pointers */
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            if (!it->ptr[p])
+                return 0;
+        }
+        /* Compare all phases against Phase 0 (reference) */
+        for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+            if (it->ptr[0] != it->ptr[p])
+                return 0;
+        }
     }
     return 1;
 }
@@ -105,24 +124,49 @@ inline void
 tbin_flush(tbin_t* tbin)
 {
     assert (tbin);
-    fail_ifn(tbin->nitems[0] == tbin->nitems[1],
-             "number of items differ");
 
+    /* N-way verification: all phases must have same item count */
+    int expected_count = tbin->nitems[0];
+    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+        fail_ifn(tbin->nitems[p] == expected_count,
+                 "number of items differ across phases");
+    }
+
+    /* Process and verify all items */
     tbin_item_t* it = &tbin->items[0];
-    int i = 0;
-    for (; i < tbin->nitems[0]; ++i, ++it) {
-        fail_ifn(it->ptr[0] && it->ptr[1], "only one pointers passed");
-        fail_ifn(it->ptr[0] == it->ptr[1], "pointers differ");
+    for (int i = 0; i < expected_count; ++i, ++it) {
+        /* N-way verification: all pointers must be valid */
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            fail_ifn(it->ptr[p], "null pointer in phase");
+        }
+
+        /* N-way verification: all pointers must match Phase 0 */
+        for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+            fail_ifn(it->ptr[0] == it->ptr[p], "pointers differ across phases");
+        }
+
+        /* Free memory once (using Phase 0 pointer as reference) */
         if (tbin->heap && heap_in(tbin->heap, it->ptr[0]))
             heap_free(tbin->heap, it->ptr[0]);
         else
             free(it->ptr[0]);
-        it->ptr[0] = it->ptr[1] = NULL;
+
+        /* Clear all phase pointers */
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            it->ptr[p] = NULL;
+        }
+
 #ifdef SEI_STACK_INFO
-        sinfo_fini(it->sinfo[0]);
-        sinfo_fini(it->sinfo[1]);
-        it->sinfo[0] = it->sinfo[1] = NULL;
+        /* Finalize and clear all sinfo entries */
+        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+            sinfo_fini(it->sinfo[p]);
+            it->sinfo[p] = NULL;
+        }
 #endif
     }
-    tbin->nitems[0] = tbin->nitems[1] = 0;
+
+    /* Reset all phase counters */
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        tbin->nitems[i] = 0;
+    }
 }

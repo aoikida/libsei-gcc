@@ -180,12 +180,16 @@ sei_init()
 {
     sei_t* sei = (sei_t*) malloc(sizeof(sei_t));
     assert(sei);
+
+    /* Initialize N COW buffers (one per phase) */
 #ifndef COW_APPEND_ONLY
-    sei->cow[0] = cow_init(0, COW_SIZE);
-    sei->cow[1] = cow_init(0, COW_SIZE);
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        sei->cow[i] = cow_init(0, COW_SIZE);
+    }
 #else
-    sei->cow[0] = abuf_init(COW_SIZE);
-    sei->cow[1] = abuf_init(COW_SIZE);
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        sei->cow[i] = abuf_init(COW_SIZE);
+    }
 #endif
 
 #ifdef HEAP_PROTECT
@@ -226,12 +230,16 @@ void
 sei_fini(sei_t* sei)
 {
     assert(sei);
+
+    /* Finalize N COW buffers */
 #ifndef COW_APPEND_ONLY
-    cow_fini(sei->cow[0]);
-    cow_fini(sei->cow[1]);
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        cow_fini(sei->cow[i]);
+    }
 #else
-    abuf_fini(sei->cow[0]);
-    abuf_fini(sei->cow[1]);
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        abuf_fini(sei->cow[i]);
+    }
 #endif
 
     tbin_fini(sei->tbin);
@@ -320,13 +328,17 @@ sei_switch(sei_t* sei)
 
 #ifdef COW_WT
 #ifdef COW_APPEND_ONLY
-    /* In COW_WT mode, abuf_swap() restores OLD values to memory after phase 0
+    /* In COW_WT mode, abuf_swap() restores OLD values to memory after each phase
      * execution, allowing subsequent phases to record the same OLD values for
-     * correct N-way DMR verification. Without this, phase 1~N-1 would read NEW
-     * values from memory (written by phase 0), causing verification mismatch. */
-    abuf_swap(sei->cow[0]);
+     * correct N-way DMR verification. Without this, phase 2~N-1 would read NEW
+     * values from memory (written by previous phase), causing verification mismatch.
+     *
+     * For N-way (N>=3), we need to swap the previous phase's buffer to restore
+     * memory state before executing the next phase. */
+    int prev_phase = sei->p - 1;
+    abuf_swap(sei->cow[prev_phase]);
 #else
-    cow_swap(sei->cow[0]);
+    cow_swap(sei->cow[sei->p - 1]);
 #endif
 #endif
 
@@ -366,10 +378,15 @@ sei_commit(sei_t* sei)
     /* APPEND_ONLY mode: N-way COW buffer comparison */
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform N-way heap comparison */
-    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
-        DLOG2("Verifying phase0 vs phase%d\n", i);
-        abuf_cmp_heap(sei->cow[0], sei->cow[i]);
-    }
+#if SEI_DMR_REDUNDANCY == 2
+    /* 2-way専用: 既存のロジック */
+    DLOG2("Verifying phase0 vs phase1 (2-way)\n");
+    abuf_cmp_heap(sei->cow[0], sei->cow[1]);
+#else
+    /* N-way専用: 新しいN-way検証 */
+    DLOG2("Verifying N-way COW buffers (N=%d)\n", SEI_DMR_REDUNDANCY);
+    abuf_cmp_heap_nway(sei->cow, SEI_DMR_REDUNDANCY);
+#endif
 #endif
     /* CPU isolation ON: Skip heap comparison (already verified in sei_try_commit) */
 
@@ -553,7 +570,7 @@ SEI_READ(uint64_t)
     void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
         SEI_STATS_INC(nw##type);                                        \
-        assert (sei->p == 0 || sei->p == 1);                            \
+        assert (sei->p >= 0 && sei->p < SEI_DMR_REDUNDANCY);            \
         DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,          \
               addr, (uint64_t) value);                                  \
         cow_t* cow = sei->cow[sei->p];                                  \
@@ -581,7 +598,7 @@ SEI_READ(uint64_t)
     void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
    	    SEI_STATS_INC(nw##type);                                        \
-   	    assert (sei->p == 0 || sei->p == 1);                            \
+   	    assert (sei->p >= 0 && sei->p < SEI_DMR_REDUNDANCY);            \
         DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,          \
               addr, (uint64_t) value);                                  \
         abuf_push_##type(sei->cow[sei->p], addr, *addr);                \
@@ -709,12 +726,21 @@ sei_try_commit(sei_t* sei)
     /* Non-destructive N-way heap comparison:
      * Compare cow[0] (phase 0) with cow[1] ~ cow[N-1] (all other phases)
      */
-    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
-        if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[i])) {
-            DLOG1("[sei_try_commit] COW buffer mismatch: phase0 vs phase%d\n", i);
-            return 0;  /* SDC detected */
-        }
+#if SEI_DMR_REDUNDANCY == 2
+    /* 2-way専用: 既存のロジック */
+    DLOG2("Verifying phase0 vs phase1 (2-way)\n");
+    if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[1])) {
+        DLOG1("[sei_try_commit] COW buffer mismatch\n");
+        return 0;
     }
+#else
+    /* N-way専用: 新しいN-way検証 */
+    DLOG2("Verifying N-way COW buffers (N=%d)\n", SEI_DMR_REDUNDANCY);
+    if (!abuf_try_cmp_heap_nway(sei->cow, SEI_DMR_REDUNDANCY)) {
+        DLOG1("[sei_try_commit] COW buffer mismatch (N-way)\n");
+        return 0;
+    }
+#endif
 #else
     #error "sei_try_commit only supports COW_APPEND_ONLY mode"
 #endif

@@ -275,9 +275,15 @@ abuf_cmp(abuf_t* a1, abuf_t* a2)
         }                                                                  \
     } while (0)
 
+/**
+ * 2-way COW buffer comparison (NORMAL mode)
+ * This function is ONLY for N=2 (DMR).
+ */
 inline void
 abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
 {
+    assert(SEI_DMR_REDUNDANCY == 2);
+
     abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
     int nentry = 0; // number of potential conflicts
 
@@ -363,10 +369,16 @@ abuf_check_duplicates(abuf_t* a1)
  * This function follows the same logic as abuf_cmp_heap() but returns int
  * instead of aborting, making it suitable for sei_try_commit() which needs
  * to allow rollback on failure.
+ *
+ * 2-way COW buffer comparison (ROLLBACK mode)
+ * This function is ONLY for N=2 (DMR).
+ * Non-destructive: saves and restores poped counters.
  * ------------------------------------------------------------------------- */
 inline int
 abuf_try_cmp_heap(abuf_t* a1, abuf_t* a2)
 {
+    assert(SEI_DMR_REDUNDANCY == 2);
+
     /* Save poped counters for non-destructive operation */
     int saved_poped_a1 = a1->poped;
     int saved_poped_a2 = a2->poped;
@@ -658,3 +670,303 @@ abuf_try_cmp(abuf_t* a1, abuf_t* a2)
 }
 
 #endif /* SEI_CPU_ISOLATION */
+
+/* ----------------------------------------------------------------------------
+ * N-way COW buffer comparison functions (N >= 3)
+ * ------------------------------------------------------------------------- */
+#if SEI_DMR_REDUNDANCY >= 3
+
+/**
+ * N-way COW buffer comparison for normal mode (N >= 3)
+ *
+ * Compares Phase 0 buffer (buffers[0]) with all other phase buffers
+ * (buffers[1] ~ buffers[n-1]). Aborts on any mismatch.
+ *
+ * @param buffers  Array of abuf_t pointers (length n)
+ * @param n        Number of phases (SEI_DMR_REDUNDANCY)
+ */
+inline void
+abuf_cmp_heap_nway(abuf_t** buffers, int n)
+{
+    assert(n >= 3 && n == SEI_DMR_REDUNDANCY);
+    assert(buffers != NULL);
+
+    abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
+    int nentry = 0;
+
+    /* All buffers must have same pushed/poped counts */
+    DLOG1("[abuf_cmp_heap_nway] Buffer state: phase0 pushed=%d poped=%d\n",
+          buffers[0]->pushed, buffers[0]->poped);
+    for (int i = 1; i < n; i++) {
+        DLOG1("[abuf_cmp_heap_nway] Buffer state: phase%d pushed=%d poped=%d\n",
+              i, buffers[i]->pushed, buffers[i]->poped);
+        if (buffers[0]->pushed != buffers[i]->pushed) {
+            DLOG1("[abuf_cmp_heap_nway] ERROR: Buffer size mismatch! phase0=%d vs phase%d=%d\n",
+                  buffers[0]->pushed, i, buffers[i]->pushed);
+        }
+        assert(buffers[0]->pushed == buffers[i]->pushed);
+        assert(buffers[0]->poped == buffers[i]->poped);
+    }
+    assert(buffers[0]->poped == 0);
+
+    /* Entry-by-entry comparison across all phases */
+    int entry_index = 0;
+    while (entry_index < buffers[0]->pushed) {
+        /* Phase 0 entry is the reference */
+        abuf_entry_t* e0 = &buffers[0]->buf[entry_index];
+
+        /* Verify all phases have same address and size */
+        for (int i = 1; i < n; i++) {
+            abuf_entry_t* ei = &buffers[i]->buf[entry_index];
+            if (e0->addr != ei->addr) {
+                DLOG1("[abuf_cmp_heap_nway] Address mismatch at entry_index=%d: phase0=%p vs phase%d=%p\n",
+                      entry_index, e0->addr, i, ei->addr);
+                DLOG1("[abuf_cmp_heap_nway] Buffer info: phase0 pushed=%d poped=%d, phase%d pushed=%d poped=%d\n",
+                      buffers[0]->pushed, buffers[0]->poped, i, buffers[i]->pushed, buffers[i]->poped);
+            }
+            fail_ifn(e0->addr == ei->addr, "addresses differ");
+            assert(e0->size == ei->size);
+        }
+
+        /* Conflict detection: check if memory value != buffer value (Phase 0) */
+        int conflict = 0;
+        switch (e0->size) {
+        case sizeof(uint8_t):
+            if (*(uint8_t*)e0->addr != ABUF_WVAX(e0, uint8_t, e0->addr)) {
+                conflict = 1;
+            }
+            break;
+        case sizeof(uint16_t):
+            if (*(uint16_t*)e0->addr != ABUF_WVAX(e0, uint16_t, e0->addr)) {
+                conflict = 1;
+            }
+            break;
+        case sizeof(uint32_t):
+            if (*(uint32_t*)e0->addr != ABUF_WVAX(e0, uint32_t, e0->addr)) {
+                conflict = 1;
+            }
+            break;
+        case sizeof(uint64_t):
+            if (*(uint64_t*)e0->addr != ABUF_WVAX(e0, uint64_t, e0->addr)) {
+                conflict = 1;
+            }
+            break;
+        default:
+            assert(0 && "unknown case");
+        }
+
+        if (conflict) {
+            fail_ifn(nentry < ABUF_MAX_CONFLICTS, "too many conflicts");
+            entry[nentry++] = e0;
+        }
+
+        entry_index++;
+    }
+
+    /* Update all phase poped counters */
+    for (int i = 0; i < n; i++) {
+        buffers[i]->poped = buffers[0]->pushed;
+    }
+
+    DLOG1("Number of conflicts: %d\n", nentry);
+
+    if (nentry == 0) return;
+
+    /* Duplicate verification: check conflicting entries */
+    int i, j;
+    for (i = 0; i < nentry; i++) {
+        abuf_entry_t* ce = entry[i];
+        void* addr = ce->addr;
+
+        int found = 0;
+        for (j = buffers[0]->pushed - 1; j >= 0; --j) {
+            if (addr == buffers[0]->buf[j].addr) {
+                if (ce != &buffers[0]->buf[j]) {
+                    found = 1;  /* Duplicate found */
+                    break;
+                }
+            }
+        }
+        fail_ifn(found, "not duplicate! error detected");
+    }
+}
+
+/**
+ * N-way COW buffer comparison for ROLLBACK mode (N >= 3)
+ *
+ * Non-destructive comparison. Returns 1 on success, 0 on mismatch.
+ * Does not modify poped counters (saves and restores).
+ *
+ * @param buffers  Array of abuf_t pointers (length n)
+ * @param n        Number of phases (SEI_DMR_REDUNDANCY)
+ * @return         1 if all buffers match, 0 otherwise
+ */
+inline int
+abuf_try_cmp_heap_nway(abuf_t** buffers, int n)
+{
+    assert(n >= 3 && n == SEI_DMR_REDUNDANCY);
+    assert(buffers != NULL);
+
+    /* Save poped counters for non-destructive operation */
+    int saved_poped[SEI_DMR_REDUNDANCY];
+    for (int i = 0; i < n; i++) {
+        saved_poped[i] = buffers[i]->poped;
+    }
+
+    /* Verify buffer sizes match */
+    for (int i = 1; i < n; i++) {
+        if (buffers[0]->pushed != buffers[i]->pushed) {
+            DLOG1("[abuf_try_cmp_heap_nway] buffer sizes differ: phase0=%d vs phase%d=%d\n",
+                  buffers[0]->pushed, i, buffers[i]->pushed);
+            for (int k = 0; k < n; k++) {
+                buffers[k]->poped = saved_poped[k];
+            }
+            return 0;
+        }
+        if (buffers[0]->poped != buffers[i]->poped) {
+            DLOG1("[abuf_try_cmp_heap_nway] poped counts differ: phase0=%d vs phase%d=%d\n",
+                  buffers[0]->poped, i, buffers[i]->poped);
+            for (int k = 0; k < n; k++) {
+                buffers[k]->poped = saved_poped[k];
+            }
+            return 0;
+        }
+    }
+
+    if (buffers[0]->poped != 0) {
+        DLOG1("[abuf_try_cmp_heap_nway] buffer not rewound\n");
+        for (int k = 0; k < n; k++) {
+            buffers[k]->poped = saved_poped[k];
+        }
+        return 0;
+    }
+
+    /* Collect conflicts (entries where memory != buffer) */
+    abuf_entry_t* entry[ABUF_MAX_CONFLICTS];
+    int nentry = 0;
+
+    int entry_index = 0;
+    while (entry_index < buffers[0]->pushed) {
+        abuf_entry_t* e0 = &buffers[0]->buf[entry_index];
+
+        /* Check all phases have same address and size */
+        for (int i = 1; i < n; i++) {
+            abuf_entry_t* ei = &buffers[i]->buf[entry_index];
+
+            if (e0->size != ei->size) {
+                DLOG1("[abuf_try_cmp_heap_nway] entry sizes differ at phase%d\n", i);
+                for (int k = 0; k < n; k++) {
+                    buffers[k]->poped = saved_poped[k];
+                }
+                return 0;
+            }
+
+            if (e0->addr != ei->addr) {
+                DLOG1("[abuf_try_cmp_heap_nway] addresses differ: %p vs %p (phase%d)\n",
+                      e0->addr, ei->addr, i);
+                for (int k = 0; k < n; k++) {
+                    buffers[k]->poped = saved_poped[k];
+                }
+                return 0;
+            }
+        }
+
+        /* Check if memory value matches buffer value (detect conflicts) */
+        int conflict = 0;
+        switch (e0->size) {
+        case sizeof(uint8_t): {
+            uint8_t* addr = e0->addr;
+            if (*addr != ABUF_WVAX(e0, uint8_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint16_t): {
+            uint16_t* addr = e0->addr;
+            if (*addr != ABUF_WVAX(e0, uint16_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint32_t): {
+            uint32_t* addr = e0->addr;
+            if (*addr != ABUF_WVAX(e0, uint32_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        case sizeof(uint64_t): {
+            uint64_t* addr = e0->addr;
+            if (*addr != ABUF_WVAX(e0, uint64_t, addr)) {
+                conflict = 1;
+            }
+            break;
+        }
+        default:
+            DLOG1("[abuf_try_cmp_heap_nway] unknown size: %lu\n", e0->size);
+            for (int k = 0; k < n; k++) {
+                buffers[k]->poped = saved_poped[k];
+            }
+            return 0;
+        }
+
+        if (conflict) {
+            if (nentry >= ABUF_MAX_CONFLICTS) {
+                DLOG1("[abuf_try_cmp_heap_nway] too many conflicts\n");
+                for (int k = 0; k < n; k++) {
+                    buffers[k]->poped = saved_poped[k];
+                }
+                return 0;
+            }
+            entry[nentry++] = e0;
+        }
+
+        entry_index++;
+    }
+
+    DLOG1("[abuf_try_cmp_heap_nway] Number of conflicts: %d\n", nentry);
+
+    if (nentry == 0) {
+        /* No conflicts - success */
+        for (int k = 0; k < n; k++) {
+            buffers[k]->poped = saved_poped[k];
+        }
+        return 1;
+    }
+
+    /* Check conflicting entries: ensure each conflict is due to duplicate writes */
+    int i, j;
+    for (i = 0; i < nentry; i++) {
+        abuf_entry_t* ce = entry[i];
+        void* addr = ce->addr;
+
+        /* Search for duplicate address in buffer */
+        int found_duplicate = 0;
+        for (j = buffers[0]->pushed - 1; j >= 0; --j) {
+            if (addr == buffers[0]->buf[j].addr) {
+                if (ce != &buffers[0]->buf[j]) {
+                    /* Found duplicate - this is OK */
+                    found_duplicate = 1;
+                    break;
+                }
+            }
+        }
+
+        if (!found_duplicate) {
+            /* Conflict but no duplicate - this is an error (SDC detected) */
+            DLOG1("[abuf_try_cmp_heap_nway] conflict without duplicate at %p\n", addr);
+            for (int k = 0; k < n; k++) {
+                buffers[k]->poped = saved_poped[k];
+            }
+            return 0;
+        }
+    }
+
+    /* All conflicts are due to duplicate writes - success */
+    for (int k = 0; k < n; k++) {
+        buffers[k]->poped = saved_poped[k];
+    }
+    return 1;
+}
+
+#endif /* SEI_DMR_REDUNDANCY >= 3 */

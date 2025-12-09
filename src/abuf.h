@@ -16,7 +16,11 @@ void    abuf_rewind(abuf_t* abuf);
 void    abuf_cmp(abuf_t* a1, abuf_t* a2);
 
 void    abuf_swap(abuf_t* abuf);
+
+#if SEI_DMR_REDUNDANCY == 2
 void    abuf_cmp_heap(abuf_t* a1, abuf_t* a2);
+#endif
+
 void    abuf_check_duplicates(abuf_t* a1);
 void    abuf_push(abuf_t* abuf, void* addr, uint64_t value);
 void*   abuf_pop (abuf_t* abuf, uint64_t* value);
@@ -35,7 +39,19 @@ uint64_t abuf_pop_uint64_t(abuf_t* abuf, const uint64_t* addr);
 #ifdef SEI_CPU_ISOLATION
 void    abuf_restore(abuf_t* abuf);
 int     abuf_try_cmp(abuf_t* a1, abuf_t* a2);
+
+#if SEI_DMR_REDUNDANCY == 2
 int     abuf_try_cmp_heap(abuf_t* a1, abuf_t* a2);
+#endif
+
+#if SEI_DMR_REDUNDANCY >= 3
+int     abuf_try_cmp_heap_nway(abuf_t** buffers, int n);
+#endif
+#endif
+
+/* N-way専用関数 (N>=3でのみ利用可能) */
+#if SEI_DMR_REDUNDANCY >= 3
+void    abuf_cmp_heap_nway(abuf_t** buffers, int n);
 #endif
 
 #endif /* _SEI_ABUF_H_ */

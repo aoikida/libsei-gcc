@@ -54,8 +54,9 @@ talloc_init(heap_t* heap)
     bzero(talloc, sizeof(talloc_t));
     talloc->p = 0;
 
-    talloc->size[0] = 0;
-    talloc->size[1] = 0;
+    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        talloc->size[i] = 0;
+    }
 
     talloc->heap = heap;
 
@@ -77,9 +78,11 @@ inline void*
 talloc_malloc(talloc_t* talloc, size_t size)
 {
     assert (talloc);
+    assert (talloc->p >= 0 && talloc->p < SEI_DMR_REDUNDANCY);
     talloc_allocation_t* a = NULL;
 
     if (talloc->p == 0) {
+        /* Phase 0: allocate new memory */
         assert (talloc->size[0] + 1 < TALLOC_MAX_ALLOCS && "cant allocate");
         a = &talloc->allocations[talloc->size[0]++];
         if (talloc->heap)
@@ -91,10 +94,11 @@ talloc_malloc(talloc_t* talloc, size_t size)
         a->sinfo[0] = sinfo_init(a->addr);
 #endif
     } else {
-        assert (talloc->p == 1);
-        a = &talloc->allocations[talloc->size[1]++];
+        /* Phase 1..N-1: reuse existing allocation */
+        assert (talloc->p > 0 && talloc->p < SEI_DMR_REDUNDANCY);
+        a = &talloc->allocations[talloc->size[talloc->p]++];
 #ifdef SEI_STACK_INFO
-        a->sinfo[1] = sinfo_init(a->addr);
+        a->sinfo[talloc->p] = sinfo_init(a->addr);
 #endif
     }
     return a->addr;
@@ -104,9 +108,10 @@ inline void
 talloc_switch(talloc_t* talloc)
 {
    assert (talloc);
-   assert (talloc->p == 0);
-   assert (talloc->size[1] == 0);
-   talloc->p = 1;
+   assert (talloc->p >= 0 && talloc->p < SEI_DMR_REDUNDANCY - 1);
+   int next_phase = talloc->p + 1;
+   assert (talloc->size[next_phase] == 0);
+   talloc->p = next_phase;
 }
 
 
