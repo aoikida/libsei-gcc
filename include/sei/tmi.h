@@ -63,6 +63,8 @@ void* __sei_malloc(size_t size);
 void* __sei_other(void* addr);
 int   __sei_prepare(const void* ptr, size_t size, uint32_t crc, int ro);
 void  __sei_prepare_nm();
+int   __sei_prepare_n(const void* ptr, size_t size, uint32_t crc, int ro, int redundancy_level);
+void  __sei_prepare_nm_n(int redundancy_level);
 int   __sei_shift(int handle);
 int   __sei_bar();
 
@@ -94,9 +96,13 @@ void  __sei_unprotect(void* addr, size_t size);
 #ifdef TMI_DISABLE_INPUT_CHECKS
 #define __tmi_prepare(ptr, size, crc, ro) 1
 #define __tmi_prepare_nm(ptr)
+#define __tmi_prepare_n(ptr, size, crc, ro, n) 1
+#define __tmi_prepare_nm_n(n)
 #else
 #define __tmi_prepare(ptr, size, crc, ro) __sei_prepare(ptr, size, crc, ro)
 #define __tmi_prepare_nm(ptr) __sei_prepare_nm()
+#define __tmi_prepare_n(ptr, size, crc, ro, n) __sei_prepare_n(ptr, size, crc, ro, n)
+#define __tmi_prepare_nm_n(n) __sei_prepare_nm_n(n)
 #endif
 
 #ifdef TMI_DISABLE_IGNORE

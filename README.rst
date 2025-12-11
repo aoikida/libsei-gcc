@@ -323,6 +323,63 @@ Should be used instead of ``__begin()`` if the hardened handler updates global s
 
 Should be used instead of ``__begin()`` if the hardened handler modifies input message.
 
+
+Dynamic N-way execution interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following APIs allow runtime configuration of execution redundancy levels, enabling different transactions to use different redundancy levels (N values) within the same process. The compile-time ``EXECUTION_REDUNDANCY=N`` setting determines the maximum N value that can be used at runtime.
+
+**Requirements:**
+
+- Runtime N value must not exceed compile-time ``EXECUTION_REDUNDANCY`` value
+- When using ``ROLLBACK=1`` with ``EXECUTION_REDUNDANCY=3`` or higher, runtime N should be 3 or higher for optimal compatibility
+- Runtime N=2 may cause failures in ``ROLLBACK=1`` environments compiled with ``EXECUTION_REDUNDANCY=3`` or higher due to assertion constraints in verification code
+
+**APIs:**
+
+``int __begin_n(const void* ptr, size_t size, uint32_t crc, int N)``
+
+Check input message and start handler execution with N-way redundancy. Returns 1 if the message passes the check, 0 otherwise. The transaction will execute N times and all N executions must produce identical results.
+
+``void __begin_nm_n(int N)``
+
+Should be used instead of ``__begin_n()`` if the hardened handler updates global state without receiving a message. Executes with N-way redundancy.
+
+``int __begin_rw_n(const void* ptr, size_t size, uint32_t crc, int N)``
+
+Should be used instead of ``__begin_n()`` if the hardened handler modifies input message. Executes with N-way redundancy.
+
+**Example usage:**
+::
+
+  // Compile with maximum N=5
+  // make ROLLBACK=1 EXECUTION_REDUNDANCY=5
+
+  // Initialize with N=2 redundancy
+  __begin_nm_n(2);
+  initialize_system();
+  __end();
+
+  // Process high-priority messages with N=5 redundancy
+  if (__begin_n(msg1, len1, crc1, 5)) {
+    process_critical_operation(msg1);
+    __end();
+  }
+
+  // Process normal messages with N=3 redundancy
+  if (__begin_n(msg2, len2, crc2, 3)) {
+    process_normal_operation(msg2);
+    __end();
+  }
+
+**Recommended patterns:**
+
+- **Pattern N=3/3/3**: Consistent 3-way redundancy for all operations (requires ``EXECUTION_REDUNDANCY=3``)
+- **Pattern N=2/3/2**: Lightweight initialization (N=2), critical processing (N=3), cleanup (N=2) - **RECOMMENDED** for balanced performance and reliability (requires ``EXECUTION_REDUNDANCY=3``)
+- **Pattern N=2/5/2**: Maximum critical protection (N=5) with lightweight initialization - requires ``EXECUTION_REDUNDANCY=5``
+
+See ``build_configurations.md`` for detailed testing results and compatibility matrix.
+
 |
 
 References

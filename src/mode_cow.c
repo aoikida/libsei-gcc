@@ -61,16 +61,27 @@
  * N-way DMR (Dual/Multiple Modular Redundancy) Configuration
  * ------------------------------------------------------------------------- */
 
-/* Default redundancy level: 2-way (traditional DMR)
- * Can be overridden at compile time with -DSEI_DMR_REDUNDANCY=N
+/* Default redundancy level (used when __begin() is called without explicit level)
+ * Can be overridden at compile time with -DSEI_DMR_REDUNDANCY=N or EXECUTION_REDUNDANCY=N
  * Valid range: 2-10 */
 #ifndef SEI_DMR_REDUNDANCY
 #define SEI_DMR_REDUNDANCY 2
 #endif
 
-/* Validate redundancy level at compile time */
-#if SEI_DMR_REDUNDANCY < 2 || SEI_DMR_REDUNDANCY > 10
-#error "SEI_DMR_REDUNDANCY must be between 2 and 10"
+/* Maximum redundancy level (determines array sizes at compile time)
+ * Can be overridden at compile time with -DSEI_DMR_MAX_REDUNDANCY=N
+ * Valid range: 2-10 */
+#ifndef SEI_DMR_MAX_REDUNDANCY
+#define SEI_DMR_MAX_REDUNDANCY 10
+#endif
+
+/* Validate redundancy levels at compile time */
+#if SEI_DMR_REDUNDANCY < 2 || SEI_DMR_REDUNDANCY > SEI_DMR_MAX_REDUNDANCY
+#error "SEI_DMR_REDUNDANCY must be between 2 and SEI_DMR_MAX_REDUNDANCY"
+#endif
+
+#if SEI_DMR_MAX_REDUNDANCY < 2 || SEI_DMR_MAX_REDUNDANCY > 10
+#error "SEI_DMR_MAX_REDUNDANCY must be between 2 and 10"
 #endif
 
 /* ----------------------------------------------------------------------------
@@ -78,18 +89,19 @@
  * ------------------------------------------------------------------------- */
 
 struct sei {
-    int       p;       /* current phase: 0 to SEI_DMR_REDUNDANCY-1, or -1 (outside transaction) */
+    int       p;       /* current phase: 0 to redundancy_level-1, or -1 (outside transaction) */
+    int       redundancy_level;  /* runtime redundancy level (2 to SEI_DMR_MAX_REDUNDANCY) */
     heap_t*   heap;    /* optional heap               */
 #ifndef COW_APPEND_ONLY
-    cow_t*    cow[SEI_DMR_REDUNDANCY];  /* N copy-on-write buffers (one per phase) */
+    cow_t*    cow[SEI_DMR_MAX_REDUNDANCY];  /* MAX_REDUNDANCY copy-on-write buffers (allocated once) */
 #else
-    abuf_t*   cow[SEI_DMR_REDUNDANCY];  /* N copy-on-write buffers (one per phase) */
+    abuf_t*   cow[SEI_DMR_MAX_REDUNDANCY];  /* MAX_REDUNDANCY copy-on-write buffers (allocated once) */
 #endif
     tbin_t*   tbin;    /* trash bin for delayed frees */
     talloc_t* talloc;  /* traversal allocator         */
     obuf_t*   obuf;    /* output buffer (messages)    */
     ibuf_t*   ibuf;    /* input message buffer        */
-    cfc_t     cf[SEI_DMR_REDUNDANCY];   /* N control flow verification structures */
+    cfc_t     cf[SEI_DMR_MAX_REDUNDANCY];   /* MAX_REDUNDANCY control flow verification structures */
     stash_t*  stash;   /* obuf contexts               */
 #ifdef SEI_WRAP_SC
     wts_t*	  wts;	   /* waitress for delayed calls  */
@@ -116,6 +128,13 @@ struct sei {
     cpu_stats_t* cpu_stats; /* cpu usage statistics   */
 #endif
 };
+
+/* ----------------------------------------------------------------------------
+ * forward declarations
+ * ------------------------------------------------------------------------- */
+
+void sei_set_redundancy(sei_t* sei, int redundancy_level);
+int sei_get_redundancy(sei_t* sei);
 
 /* ----------------------------------------------------------------------------
  * stats helpers
@@ -181,13 +200,16 @@ sei_init()
     sei_t* sei = (sei_t*) malloc(sizeof(sei_t));
     assert(sei);
 
-    /* Initialize N COW buffers (one per phase) */
+    /* Set default redundancy level (can be overridden per transaction) */
+    sei->redundancy_level = SEI_DMR_REDUNDANCY;
+
+    /* Initialize MAX_REDUNDANCY COW buffers (allocated once, used based on redundancy_level) */
 #ifndef COW_APPEND_ONLY
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < SEI_DMR_MAX_REDUNDANCY; i++) {
         sei->cow[i] = cow_init(0, COW_SIZE);
     }
 #else
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < SEI_DMR_MAX_REDUNDANCY; i++) {
         sei->cow[i] = abuf_init(COW_SIZE);
     }
 #endif
@@ -231,13 +253,13 @@ sei_fini(sei_t* sei)
 {
     assert(sei);
 
-    /* Finalize N COW buffers */
+    /* Finalize MAX_REDUNDANCY COW buffers */
 #ifndef COW_APPEND_ONLY
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < SEI_DMR_MAX_REDUNDANCY; i++) {
         cow_fini(sei->cow[i]);
     }
 #else
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < SEI_DMR_MAX_REDUNDANCY; i++) {
         abuf_fini(sei->cow[i]);
     }
 #endif
@@ -269,6 +291,27 @@ sei_fini(sei_t* sei)
     SEI_STATS_FINI();
 }
 
+void
+sei_set_redundancy(sei_t* sei, int redundancy_level)
+{
+    assert(sei);
+    assert(redundancy_level >= 2 && redundancy_level <= SEI_DMR_MAX_REDUNDANCY);
+    
+    /* Redundancy level can only be set before a transaction begins */
+    assert(sei->p == -1);
+    
+    sei->redundancy_level = redundancy_level;
+    
+    DLOG3("sei_set_redundancy: level = %d\n", redundancy_level);
+}
+
+int
+sei_get_redundancy(sei_t* sei)
+{
+    assert(sei);
+    return sei->redundancy_level;
+}
+
 
 /* ----------------------------------------------------------------------------
  * traversal control
@@ -295,15 +338,20 @@ void
 sei_begin(sei_t* sei)
 {
     if (sei->p == -1) {
-        DLOG2("N-way DMR: Starting phase 0 (N=%d)\n", SEI_DMR_REDUNDANCY);
+        DLOG2("N-way DMR: Starting phase 0 (N=%d)\n", sei->redundancy_level);
+        fprintf(stderr, "[VERIFICATION] Starting transaction with N=%d\n", sei->redundancy_level);
         sei->p = 0;
         //assert (obuf_size(sei->obuf) == 0);
 
-        /* Reset all control flow structures */
-        for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+        /* Synchronize talloc and tbin redundancy levels with sei redundancy level */
+        sei->talloc->redundancy_level = sei->redundancy_level;
+        sei->tbin->redundancy_level = sei->redundancy_level;
+
+        /* Reset all control flow structures (up to current redundancy level) */
+        for (int i = 0; i < sei->redundancy_level; i++) {
             cfc_reset(&sei->cf[i]);
         }
-    } else if (sei->p > 0 && sei->p < SEI_DMR_REDUNDANCY) {
+    } else if (sei->p > 0 && sei->p < sei->redundancy_level) {
         DLOG2("N-way DMR: Executing phase %d\n", sei->p);
     }
 }
@@ -312,10 +360,11 @@ void
 sei_switch(sei_t* sei)
 {
     /* Validate phase range before switching */
-    assert(sei->p >= 0 && sei->p < SEI_DMR_REDUNDANCY - 1 &&
+    assert(sei->p >= 0 && sei->p < sei->redundancy_level - 1 &&
            "sei_switch() called with invalid phase");
 
     DLOG2("Switch: phase %d -> phase %d\n", sei->p, sei->p + 1);
+    fprintf(stderr, "[VERIFICATION] Switching to phase %d (N=%d)\n", sei->p + 1, sei->redundancy_level);
 
     /* Increment to next phase (0→1, 1→2, ..., N-2→N-1) */
     sei->p++;
@@ -348,13 +397,14 @@ sei_switch(sei_t* sei)
 void
 sei_commit(sei_t* sei)
 {
-    DLOG2("N-way COMMIT: verifying %d phases\n", SEI_DMR_REDUNDANCY);
+    int redundancy_level = sei->redundancy_level;
+    DLOG2("N-way COMMIT: verifying %d phases\n", redundancy_level);
     sei->p = -1;
 
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform control flow verification here */
     int r;
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         cfc_alog(&sei->cf[i]);  /* Log control flow before verification */
         r = cfc_amog(&sei->cf[i]);
         if (!r) {
@@ -368,30 +418,31 @@ sei_commit(sei_t* sei)
 
 #ifndef COW_APPEND_ONLY
     /* Non-APPEND_ONLY mode: show and compare all COW buffers */
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         cow_show(sei->cow[i]);
     }
-    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 1; i < redundancy_level; i++) {
         cow_apply_cmp(sei->cow[0], sei->cow[i]);
     }
 #else
     /* APPEND_ONLY mode: N-way COW buffer comparison */
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform N-way heap comparison */
-#if SEI_DMR_REDUNDANCY == 2
-    /* 2-way専用: 既存のロジック */
-    DLOG2("Verifying phase0 vs phase1 (2-way)\n");
-    abuf_cmp_heap(sei->cow[0], sei->cow[1]);
-#else
-    /* N-way専用: 新しいN-way検証 */
-    DLOG2("Verifying N-way COW buffers (N=%d)\n", SEI_DMR_REDUNDANCY);
-    abuf_cmp_heap_nway(sei->cow, SEI_DMR_REDUNDANCY);
-#endif
+    /* Use runtime branching instead of compile-time */
+    if (redundancy_level == 2) {
+        /* 2-way専用: 既存のロジック */
+        DLOG2("Verifying phase0 vs phase1 (2-way)\n");
+        abuf_cmp_heap(sei->cow[0], sei->cow[1]);
+    } else {
+        /* N-way専用: 新しいN-way検証 */
+        DLOG2("Verifying N-way COW buffers (N=%d)\n", redundancy_level);
+        abuf_cmp_heap_nway(sei->cow, redundancy_level);
+    }
 #endif
     /* CPU isolation ON: Skip heap comparison (already verified in sei_try_commit) */
 
     /* Clean all COW buffers */
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         abuf_clean(sei->cow[i]);
     }
 #endif
@@ -406,7 +457,7 @@ sei_commit(sei_t* sei)
 
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform final validations for all phases */
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         r = cfc_check(&sei->cf[i]);
         if (!r) {
             fprintf(stderr, "[libsei] Final control flow check failed in phase %d\n", i);
@@ -663,14 +714,16 @@ void
 sei_rollback(sei_t* sei)
 {
     assert(sei);
-    DLOG1("[sei_rollback] Rolling back transaction\n");
+    int redundancy_level = sei->redundancy_level;
+    DLOG1("[sei_rollback] Rolling back transaction (N=%d)\n", redundancy_level);
 
     /* Step 1: Restore memory from COW buffer (abuf[0] contains old values) */
 #ifdef COW_APPEND_ONLY
     abuf_restore(sei->cow[0]);
-    /* Clean both buffers to prevent stale buffer state during retry */
-    abuf_clean(sei->cow[0]);
-    abuf_clean(sei->cow[1]);
+    /* Clean all buffers to prevent stale buffer state during retry */
+    for (int i = 0; i < redundancy_level; i++) {
+        abuf_clean(sei->cow[i]);
+    }
 #else
     #error "sei_rollback only supports COW_APPEND_ONLY mode"
 #endif
@@ -686,9 +739,10 @@ sei_rollback(sei_t* sei)
     /* Step 4: Reset sei state to beginning of transaction */
     sei->p = 0;
 
-    /* Step 5: Reset control flags */
-    cfc_reset(&sei->cf[0]);
-    cfc_reset(&sei->cf[1]);
+    /* Step 5: Reset control flags for all phases */
+    for (int i = 0; i < redundancy_level; i++) {
+        cfc_reset(&sei->cf[i]);
+    }
 
     DLOG1("[sei_rollback] Rollback complete\n");
 }
@@ -697,14 +751,15 @@ int
 sei_try_commit(sei_t* sei)
 {
     assert(sei);
-    assert(sei->p == SEI_DMR_REDUNDANCY - 1 && "must be in final phase before commit");
+    int redundancy_level = sei->redundancy_level;
+    assert(sei->p == redundancy_level - 1 && "must be in final phase before commit");
 
     /* Non-destructive commit: verify N-way DMR but don't modify state yet */
 
-    DLOG2("N-way try_commit: verifying %d phases\n", SEI_DMR_REDUNDANCY);
+    DLOG2("N-way try_commit: verifying %d phases\n", redundancy_level);
 
     /* Rewind all buffers BEFORE comparison to ensure poped == 0 */
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         abuf_rewind(sei->cow[i]);
     }
 
@@ -726,21 +781,22 @@ sei_try_commit(sei_t* sei)
     /* Non-destructive N-way heap comparison:
      * Compare cow[0] (phase 0) with cow[1] ~ cow[N-1] (all other phases)
      */
-#if SEI_DMR_REDUNDANCY == 2
-    /* 2-way専用: 既存のロジック */
-    DLOG2("Verifying phase0 vs phase1 (2-way)\n");
-    if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[1])) {
-        DLOG1("[sei_try_commit] COW buffer mismatch\n");
-        return 0;
+    /* Use runtime branching instead of compile-time */
+    if (redundancy_level == 2) {
+        /* 2-way専用: 既存のロジック */
+        DLOG2("Verifying phase0 vs phase1 (2-way)\n");
+        if (!abuf_try_cmp_heap(sei->cow[0], sei->cow[1])) {
+            DLOG1("[sei_try_commit] COW buffer mismatch\n");
+            return 0;
+        }
+    } else {
+        /* N-way専用: 新しいN-way検証 */
+        DLOG2("Verifying N-way COW buffers (N=%d)\n", redundancy_level);
+        if (!abuf_try_cmp_heap_nway(sei->cow, redundancy_level)) {
+            DLOG1("[sei_try_commit] COW buffer mismatch (N-way)\n");
+            return 0;
+        }
     }
-#else
-    /* N-way専用: 新しいN-way検証 */
-    DLOG2("Verifying N-way COW buffers (N=%d)\n", SEI_DMR_REDUNDANCY);
-    if (!abuf_try_cmp_heap_nway(sei->cow, SEI_DMR_REDUNDANCY)) {
-        DLOG1("[sei_try_commit] COW buffer mismatch (N-way)\n");
-        return 0;
-    }
-#endif
 #else
     #error "sei_try_commit only supports COW_APPEND_ONLY mode"
 #endif
@@ -751,7 +807,7 @@ sei_try_commit(sei_t* sei)
      * First log control flows, then verify them
      */
     int r;
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         cfc_alog(&sei->cf[i]);
         r = cfc_amog(&sei->cf[i]);
         if (!r) {

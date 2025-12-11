@@ -674,7 +674,6 @@ abuf_try_cmp(abuf_t* a1, abuf_t* a2)
 /* ----------------------------------------------------------------------------
  * N-way COW buffer comparison functions (N >= 3)
  * ------------------------------------------------------------------------- */
-#if SEI_DMR_REDUNDANCY >= 3
 
 /**
  * N-way COW buffer comparison for normal mode (N >= 3)
@@ -804,7 +803,7 @@ abuf_cmp_heap_nway(abuf_t** buffers, int n)
 inline int
 abuf_try_cmp_heap_nway(abuf_t** buffers, int n)
 {
-    assert(n >= 3 && n == SEI_DMR_REDUNDANCY);
+    assert(n >= 2 && n <= SEI_DMR_REDUNDANCY);
     assert(buffers != NULL);
 
     /* Save poped counters for non-destructive operation */
@@ -968,5 +967,3 @@ abuf_try_cmp_heap_nway(abuf_t** buffers, int n)
     }
     return 1;
 }
-
-#endif /* SEI_DMR_REDUNDANCY >= 3 */

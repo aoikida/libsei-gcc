@@ -1278,9 +1278,10 @@ __sei_commit()
     __sei_write_disable = 0;
 
     int current_phase = sei_getp(__sei_thread->sei);
+    int redundancy_level = sei_get_redundancy(__sei_thread->sei);
 
     /* Phase 0 ~ N-2: Switch to next phase and re-execute transaction */
-    if (current_phase < SEI_DMR_REDUNDANCY - 1) {
+    if (current_phase < redundancy_level - 1) {
         DLOG2("Phase %d completed, switching to phase %d\n",
               current_phase, current_phase + 1);
 
@@ -1315,10 +1316,10 @@ __sei_commit()
     }
 
     /* Phase N-1 (final phase): Perform N-way verification and commit */
-    assert(current_phase == SEI_DMR_REDUNDANCY - 1 &&
+    assert(current_phase == redundancy_level - 1 &&
            "Invalid phase in __sei_commit()");
     DLOG2("All %d phases completed, performing N-way verification\n",
-          SEI_DMR_REDUNDANCY);
+          redundancy_level);
 
 #ifdef SEI_CPU_ISOLATION
     /* Automatic retry loop for SDC recovery */
@@ -1432,6 +1433,31 @@ __sei_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef SEI_MT
     if (unlikely(!__sei_thread)) __sei_thread_init();
 #endif
+    memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
+    memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
+    __sei_ignore_num = 0;
+    sei_prepare_nm(__sei_thread->sei);
+}
+
+int
+__sei_prepare_n(const void* ptr, size_t size, uint32_t crc, int ro, int redundancy_level)
+{
+#ifdef SEI_MT
+    if (unlikely(!__sei_thread)) __sei_thread_init();
+#endif
+    /* Set redundancy level before preparing transaction */
+    sei_set_redundancy(__sei_thread->sei, redundancy_level);
+    return sei_prepare(__sei_thread->sei, ptr, size, crc, ro);
+}
+
+void
+__sei_prepare_nm_n(int redundancy_level)
+{
+#ifdef SEI_MT
+    if (unlikely(!__sei_thread)) __sei_thread_init();
+#endif
+    /* Set redundancy level before preparing transaction */
+    sei_set_redundancy(__sei_thread->sei, redundancy_level);
     memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
     memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
     __sei_ignore_num = 0;

@@ -37,6 +37,7 @@ typedef struct {
 
 struct talloc {
     int p;
+    int redundancy_level;  /* N-way redundancy level for this transaction */
     heap_t* heap;
     talloc_allocation_t allocations[TALLOC_MAX_ALLOCS];
     size_t size[SEI_DMR_REDUNDANCY];  /* allocation count for each phase */
@@ -53,6 +54,7 @@ talloc_init(heap_t* heap)
     assert (talloc && "out of memory");
     bzero(talloc, sizeof(talloc_t));
     talloc->p = 0;
+    talloc->redundancy_level = SEI_DMR_REDUNDANCY;  /* Initialize to compile-time default */
 
     for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
         talloc->size[i] = 0;
@@ -108,7 +110,7 @@ inline void
 talloc_switch(talloc_t* talloc)
 {
    assert (talloc);
-   assert (talloc->p >= 0 && talloc->p < SEI_DMR_REDUNDANCY - 1);
+   assert (talloc->p >= 0 && talloc->p < talloc->redundancy_level - 1);
    int next_phase = talloc->p + 1;
    assert (talloc->size[next_phase] == 0);
    talloc->p = next_phase;
@@ -119,11 +121,12 @@ inline void
 talloc_clean(talloc_t* talloc)
 {
    assert (talloc);
-   assert (talloc->p == SEI_DMR_REDUNDANCY - 1 && "must be in final phase");
+   int redundancy_level = talloc->redundancy_level;
+   assert (talloc->p == redundancy_level - 1 && "must be in final phase");
 
    /* N-way verification: all phases must have same allocation count */
    size_t expected_size = talloc->size[0];
-   for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+   for (int i = 1; i < redundancy_level; i++) {
        if (talloc->size[i] != expected_size) {
            fprintf(stderr, "[libsei] Talloc size mismatch: phase0=%zu, phase%d=%zu\n",
                    expected_size, i, talloc->size[i]);
@@ -135,7 +138,7 @@ talloc_clean(talloc_t* talloc)
    int i;
    for (i = 0; i < talloc->size[0]; ++i) {
        talloc_allocation_t* a = &talloc->allocations[i];
-       for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+       for (int p = 0; p < redundancy_level; p++) {
            sinfo_fini(a->sinfo[p]);
            a->sinfo[p] = NULL;
        }
@@ -144,7 +147,7 @@ talloc_clean(talloc_t* talloc)
 
    /* Reset all phase counters */
    talloc->p = 0;
-   for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+   for (int i = 0; i < redundancy_level; i++) {
        talloc->size[i] = 0;
    }
 }
@@ -158,10 +161,11 @@ inline int
 talloc_can_commit(talloc_t* talloc)
 {
     assert(talloc);
+    int redundancy_level = talloc->redundancy_level;
 
     /* N-way verification: check if all phases have same allocation count */
     size_t expected_size = talloc->size[0];
-    for (int i = 1; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 1; i < redundancy_level; i++) {
         if (talloc->size[i] != expected_size) {
             return 0;  /* Mismatch detected */
         }
@@ -177,6 +181,7 @@ void
 talloc_rollback(talloc_t* talloc)
 {
     assert(talloc);
+    int redundancy_level = talloc->redundancy_level;
 
     /* Free all allocations made during all phases */
     for (size_t i = 0; i < talloc->size[0]; i++) {
@@ -190,7 +195,7 @@ talloc_rollback(talloc_t* talloc)
             a->addr = NULL;
         }
 #ifdef SEI_STACK_INFO
-        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 0; p < redundancy_level; p++) {
             if (a->sinfo[p]) {
                 sinfo_fini(a->sinfo[p]);
                 a->sinfo[p] = NULL;
@@ -201,7 +206,7 @@ talloc_rollback(talloc_t* talloc)
 
     /* Reset talloc state to initial values */
     talloc->p = 0;
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         talloc->size[i] = 0;
     }
 }

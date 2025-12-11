@@ -33,6 +33,7 @@ typedef struct {
 
 struct tbin {
     int max_items;                     // maximum number of items
+    int redundancy_level;              // N-way redundancy level for this transaction
     int nitems[SEI_DMR_REDUNDANCY];    // actual number of items per phase
     tbin_item_t* items;                // array of items
     heap_t* heap;                      // heap
@@ -49,6 +50,7 @@ tbin_init(int max_items, heap_t* heap)
     tbin_t* tbin = (tbin_t*) malloc(sizeof(tbin_t));
     assert (tbin && "out of memory");
     tbin->max_items = max_items;
+    tbin->redundancy_level = SEI_DMR_REDUNDANCY;  /* Initialize to compile-time default */
     tbin->items     = (tbin_item_t*) malloc(sizeof(tbin_item_t)*max_items);
     assert (tbin->items && "out of memory");
     bzero(tbin->items, sizeof(tbin_item_t)*max_items);
@@ -95,10 +97,11 @@ inline int
 tbin_can_flush(tbin_t* tbin)
 {
     assert(tbin);
+    int redundancy_level = tbin->redundancy_level;
 
     /* N-way verification: all phases must have same item count */
     int expected_count = tbin->nitems[0];
-    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+    for (int p = 1; p < redundancy_level; p++) {
         if (tbin->nitems[p] != expected_count)
             return 0;
     }
@@ -107,12 +110,12 @@ tbin_can_flush(tbin_t* tbin)
     tbin_item_t* it = &tbin->items[0];
     for (int i = 0; i < expected_count; ++i, ++it) {
         /* Check all phases have valid pointers */
-        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 0; p < redundancy_level; p++) {
             if (!it->ptr[p])
                 return 0;
         }
         /* Compare all phases against Phase 0 (reference) */
-        for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 1; p < redundancy_level; p++) {
             if (it->ptr[0] != it->ptr[p])
                 return 0;
         }
@@ -124,10 +127,11 @@ inline void
 tbin_flush(tbin_t* tbin)
 {
     assert (tbin);
+    int redundancy_level = tbin->redundancy_level;
 
     /* N-way verification: all phases must have same item count */
     int expected_count = tbin->nitems[0];
-    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+    for (int p = 1; p < redundancy_level; p++) {
         fail_ifn(tbin->nitems[p] == expected_count,
                  "number of items differ across phases");
     }
@@ -136,12 +140,12 @@ tbin_flush(tbin_t* tbin)
     tbin_item_t* it = &tbin->items[0];
     for (int i = 0; i < expected_count; ++i, ++it) {
         /* N-way verification: all pointers must be valid */
-        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 0; p < redundancy_level; p++) {
             fail_ifn(it->ptr[p], "null pointer in phase");
         }
 
         /* N-way verification: all pointers must match Phase 0 */
-        for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 1; p < redundancy_level; p++) {
             fail_ifn(it->ptr[0] == it->ptr[p], "pointers differ across phases");
         }
 
@@ -152,13 +156,13 @@ tbin_flush(tbin_t* tbin)
             free(it->ptr[0]);
 
         /* Clear all phase pointers */
-        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 0; p < redundancy_level; p++) {
             it->ptr[p] = NULL;
         }
 
 #ifdef SEI_STACK_INFO
         /* Finalize and clear all sinfo entries */
-        for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+        for (int p = 0; p < redundancy_level; p++) {
             sinfo_fini(it->sinfo[p]);
             it->sinfo[p] = NULL;
         }
@@ -166,7 +170,7 @@ tbin_flush(tbin_t* tbin)
     }
 
     /* Reset all phase counters */
-    for (int i = 0; i < SEI_DMR_REDUNDANCY; i++) {
+    for (int i = 0; i < redundancy_level; i++) {
         tbin->nitems[i] = 0;
     }
 }

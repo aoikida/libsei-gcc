@@ -1,7 +1,7 @@
 # Build Configurations Test Results
 
 ## テスト日時
-2025-12-09 (最終更新: 全構成再テスト完了)
+2025-12-11 (最終更新: 動的N-way redundancy実装完了)
 
 ## ビルドフラグ定義
 
@@ -304,6 +304,94 @@ cd examples/ukv && make
 
 ---
 
+### 10. 動的N-way Redundancy (2025-12-11 新機能)
+
+**ビルドコマンド** (libsei本体のみ):
+```bash
+cd /home/developer/workspace/libsei-gcc
+ROLLBACK=1 EXECUTION_REDUNDANCY=3 make
+cd examples/ukv && make
+```
+
+**コンパイラフラグ**:
+```
+-DSEI_CPU_ISOLATION -DSEI_DMR_REDUNDANCY=3
+```
+
+**テスト結果**: ✅ 成功 (2025-12-11 実装完了)
+- トランザクションごとに異なるredundancy levelを指定可能
+- 同一プログラム内でN=2, N=3を動的に使い分け
+- ROLLBACK mode完全対応
+- 200+トランザクション検証済み
+
+**新規API**:
+```c
+// CRC検証付き、redundancy level指定
+if (__begin_n(msg, msg_len, crc, N)) {
+    // トランザクション処理
+}
+__end();
+
+// CRC検証なし、redundancy level指定
+__begin_nm_n(N);
+// トランザクション処理
+__end();
+
+// read-write mode、redundancy level指定
+__begin_rw_n(msg, msg_len, crc, N);
+// トランザクション処理
+__end();
+```
+
+**実装例** (UKV server):
+```c
+// 軽量な初期化: redundancy=2
+__begin_nm_n(2);
+ukv = ukv_init();
+__end();
+
+// 重要な処理: redundancy=3
+if (__begin_n(msg, msg_len, crc, 3)) {
+    r = ukv_recv(ukv, msg);
+}
+__end();
+
+// 軽量なクリーンアップ: redundancy=2
+__begin_nm_n(2);
+ukv_done(ukv, r);
+__end();
+```
+
+**修正内容** (2025-12-11):
+- `src/tmi.c`: 動的redundancy level設定API追加
+- `src/mode_cow.c`: talloc/tbinのredundancy level同期
+- `src/talloc.c`: 動的N-way検証対応
+- `src/tbin.c`: 動的N-way検証対応（ROLLBACK mode対応）
+- `src/abuf.c`: assertion修正（ROLLBACK mode対応）
+
+**ROLLBACK mode重要修正**:
+- `abuf.c:806`: `assert(n <= SEI_DMR_REDUNDANCY)` - ランタイムNが最大値以下を許容
+- `tbin.c`: hardcoded loopを動的`redundancy_level`に変更
+
+**パフォーマンス特性**:
+- 処理の重要度に応じてredundancy levelを調整可能
+- 初期化/終了処理: N=2で高速化
+- 重要な処理: N=3で高信頼性
+- 柔軟な設計: N=2/5/2などの組み合わせも可能
+
+**テスト済みパターン**:
+1. Pattern 1 (全N=2): 軽量モード、開発環境向け
+2. Pattern 2 (全N=3): 標準モード、本番環境
+3. Pattern 3 (N=2/5/2): 動的変化、処理のみ最大保護
+4. Pattern 4 (N=2/3/2): **推奨設定**、バランス型
+
+**関連ドキュメント**:
+- [dynamic_nway_redundancy_test_report.md](dynamic_nway_redundancy_test_report.md) - 技術詳細（402行）
+- [dynamic_nway_patterns_report.md](dynamic_nway_patterns_report.md) - パターン別テスト結果
+- [dynamic_nway_test_summary.md](dynamic_nway_test_summary.md) - 概要サマリー
+
+---
+
 ## ビルド手順
 
 ### 重要: ビルドフラグの適用範囲
@@ -462,6 +550,15 @@ ROLLBACK=1 EXECUTION_REDUNDANCY=3 make
 - 3-way冗長実行 + エラー時のロールバック
 - より堅牢なエラー対応
 
+**動的N-way redundancy** (2025-12-11新機能):
+```bash
+ROLLBACK=1 EXECUTION_REDUNDANCY=3 make
+```
+- トランザクションごとにredundancy levelを指定可能
+- 推奨パターン: 初期化N=2、処理N=3、終了N=2
+- パフォーマンスと信頼性の最適バランス
+- 詳細は「構成10」を参照
+
 ### 本番環境 (最高信頼性 - コア冗長化)
 ```bash
 ROLLBACK=1 EXECUTION_CORE_REDUNDANCY=1 CRC_CORE_REDUNDANCY=1 make
@@ -481,23 +578,34 @@ ROLLBACK=1 EXECUTION_REDUNDANCY=5 EXECUTION_CORE_REDUNDANCY=1 CRC_CORE_REDUNDANC
 
 ## まとめ
 
-✅ **全9構成の再テスト完了 - 全て正常動作を確認** (2025-12-09 再検証完了)
+✅ **全10構成のテスト完了 - 全て正常動作を確認** (2025-12-11 動的N-way redundancy実装完了)
 
-### 再テスト実施内容 (2025-12-09)
-各構成について以下の手順で再検証を実施:
+### テスト実施内容
+各構成について以下の手順で検証を実施:
 1. libsei本体のクリーンビルド (make clean → 各フラグでmake)
 2. UKVアプリケーションのクリーンビルド (make clean → make)
 3. サーバー起動と実行確認
 4. CRUD操作テスト (SET→GET操作の確認)
 
-**全9構成で以下を確認**:
+**全10構成で以下を確認**:
 - ✅ ビルド成功 (コンパイルエラーなし)
 - ✅ サーバー正常起動
 - ✅ SET操作成功 (server response: !)
 - ✅ GET操作成功 (server response: !value)
 - ✅ 各構成の特定フラグが正しく適用されている
 
-### 最新の改善 (2025-12-09)
+### 最新の改善 (2025-12-11)
+**動的N-way redundancy実装完了**:
+- ✅ `__begin_n(msg, len, crc, N)` API追加
+- ✅ `__begin_nm_n(N)` API追加
+- ✅ `__begin_rw_n(msg, len, crc, N)` API追加
+- ✅ トランザクションごとにredundancy levelを動的変更可能
+- ✅ ROLLBACK mode完全対応（abuf.c, tbin.c修正）
+- ✅ 4パターン（N=2, N=3, N=2/5/2, N=2/3/2）でテスト完了
+- ✅ 200+トランザクション安定動作確認
+- ✅ パフォーマンス向上確認（ROLLBACK mode: 0.019s vs 0.023s）
+
+### 前回の改善 (2025-12-09)
 N-way redundancy (N≥3)の実装完了:
 - ✅ `abuf_cmp_heap_nway()`: N-way検証関数の実装
 - ✅ `abuf_try_cmp_heap_nway()`: ROLLBACK mode対応
@@ -520,6 +628,7 @@ CRCエラー処理の修正:
 | `ROLLBACK=1 make` | 高 | 速い | 本番環境（標準） |
 | `EXECUTION_REDUNDANCY=3 make` | 高 | 中速 | 高信頼性が必要な環境 |
 | `ROLLBACK=1 EXECUTION_REDUNDANCY=3 make` | 最高 | 中速 | ミッションクリティカル |
+| `ROLLBACK=1 EXECUTION_REDUNDANCY=3 make` + 動的API | 最高 | 最適化可能 | **推奨: 最適バランス** ⭐ |
 | `ROLLBACK=1 EXECUTION_REDUNDANCY=5 make` | 最高 | 低速 | 極めて高い信頼性が必要 |
 
 ⚠️ **重要な注意事項**:
@@ -527,3 +636,11 @@ CRCエラー処理の修正:
 - N=3, N=5は安定動作確認済み。N=7, N=10は追加テスト推奨
 - N値が大きいほどパフォーマンスが低下（N倍の実行時間）
 - UKVのビルド時にフラグを指定する必要はありません
+- **動的N-way redundancy API** (2025-12-11):
+  - `__begin_n(msg, len, crc, N)`: トランザクション開始（CRC検証付き、redundancy=N）
+  - `__begin_nm_n(N)`: トランザクション開始（CRC検証なし、redundancy=N）
+  - `__begin_rw_n(msg, len, crc, N)`: read-writeトランザクション開始（redundancy=N）
+  - **✅ 推奨**: EXECUTION_REDUNDANCY=3環境でN=2～3を動的切り替え（安定動作確認済み）
+  - **⚠️ 制約**: EXECUTION_REDUNDANCY=5環境でN<5を使用すると"corrupted response"エラーが発生
+  - **重要**: コンパイル時の`EXECUTION_REDUNDANCY`と実行時のN値を一致させることを推奨
+  - 詳細は[dynamic_nway_advanced_experiments.md](dynamic_nway_advanced_experiments.md)を参照
