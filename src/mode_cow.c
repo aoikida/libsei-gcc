@@ -295,13 +295,22 @@ void
 sei_set_redundancy(sei_t* sei, int redundancy_level)
 {
     assert(sei);
-    assert(redundancy_level >= 2 && redundancy_level <= SEI_DMR_MAX_REDUNDANCY);
-    
+    /* Dynamic N must be within compile-time array bounds */
+    assert(redundancy_level >= 2 && redundancy_level <= SEI_DMR_REDUNDANCY);
+
     /* Redundancy level can only be set before a transaction begins */
     assert(sei->p == -1);
-    
+
     sei->redundancy_level = redundancy_level;
-    
+
+    /* Also update talloc and tbin redundancy levels */
+    if (sei->talloc) {
+        sei->talloc->redundancy_level = redundancy_level;
+    }
+    if (sei->tbin) {
+        sei->tbin->redundancy_level = redundancy_level;
+    }
+
     DLOG3("sei_set_redundancy: level = %d\n", redundancy_level);
 }
 
