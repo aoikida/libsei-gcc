@@ -1050,34 +1050,32 @@ pthread_mutex_lock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
     int r;
 
-    switch (sei_getp(__sei_thread->sei)) {
+    int phase = sei_getp(__sei_thread->sei);
 #ifdef SEI_MTL2
-    case 0:
-    case 1:
+    if (phase == 0 || phase == 1) {
         __sei_commit(1);
         r =  __pthread_mutex_lock(lock);
         __sei_mtl(getbp());
-        break;
-
+    } else {
+        DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
+        r = __pthread_mutex_lock(lock);
+    }
 #else /* SEI_MTL2 */
-    case 0:
+    if (phase == 0) {
+        /* Phase 0: Actually acquire lock and record result */
         DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
         abuf_push_uint64_t(__sei_thread->abuf, (uint64_t*) lock, r);
-#ifdef SEI_2PL
-        //abuf_push_uint64_t(__sei_thread->abuf_2pl, (uint64_t*) lock, r);
-#endif /* SEI_2PL */
-        break;
-    case 1:
+    } else if (phase > 0) {
+        /* Phase 1 ~ N-1: Fake lock (read from recorded result) */
         DLOG3("fake locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__sei_thread->abuf, (uint64_t*) lock);
-        break;
-#endif /* SEI_MTL2 */
-    default:
+    } else {
+        /* phase == -1: Outside transaction */
         DLOG3("locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_lock(lock);
-        break;
     }
+#endif /* SEI_MTL2 */
 
     //__sei_thread->wrapped = 0;
     return r;
@@ -1093,34 +1091,36 @@ pthread_mutex_trylock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (sei_getp(__sei_thread->sei)) {
+    int phase = sei_getp(__sei_thread->sei);
 
 #ifdef SEI_MTL2
-    case 0:
-    case 1:
+    if (phase == 0 || phase == 1) {
         __sei_commit(1);
         r =  __pthread_mutex_trylock(lock);
         __sei_mtl(getbp());
-        break;
-#else
-    case 0:
+    } else {
+        DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
+        r = __pthread_mutex_trylock(lock);
+    }
+#else /* SEI_MTL2 */
+    if (phase == 0) {
+        /* Phase 0: Actually try lock and record result */
         DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
         abuf_push_uint64_t(__sei_thread->abuf, (uint64_t*) lock, r);
 #ifdef SEI_2PL
         //abuf_push_uint64_t(__sei_thread->abuf_2pl, (uint64_t*) lock, r);
 #endif /* SEI_2PL */
-        break;
-    case 1:
+    } else if (phase > 0) {
+        /* Phase 1 ~ N-1: Fake trylock (read from recorded result) */
         DLOG3("fake trylock %p (thread = %p)\n", lock, (void*) pthread_self());
         r = abuf_pop_uint64_t(__sei_thread->abuf, (uint64_t*) lock);
-        break;
-#endif /* SEI_MTL2 */
-    default:
+    } else {
+        /* phase == -1: Outside transaction */
         DLOG3("try locking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_trylock(lock);
-        break;
     }
+#endif /* SEI_MTL2 */
 
     //__sei_thread->wrapped = 0;
     return r;
@@ -1136,16 +1136,15 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (sei_getp(__sei_thread->sei)) {
-    case 0:
-    case 1:
+    int phase = sei_getp(__sei_thread->sei);
+    if (phase == 0 || phase == 1) {
         __sei_commit(1);
         DLOG3( "unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r =  __pthread_mutex_unlock(lock);
         DLOG3( "start mini traversal (thread = %p)\n", (void*) pthread_self());
         __sei_mtl(getbp());
-        break;
-    default:
+    } else {
+        DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_unlock(lock);
     }
 
@@ -1164,26 +1163,31 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
     //__sei_thread->wrapped = 1;
 
     int r;
-    switch (sei_getp(__sei_thread->sei)) {
+    int phase = sei_getp(__sei_thread->sei);
+
 #ifndef SEI_2PL
-    case 0:
+    if (phase == 0) {
+        /* Phase 0: Actually unlock and record result */
         r = __pthread_mutex_unlock(lock);
         abuf_push_uint64_t(__sei_thread->abuf, (uint64_t*) lock, r);
-        break;
-    case 1:
+    } else if (phase > 0) {
+        /* Phase 1 ~ N-1: Fake unlock (read from recorded result) */
         r = abuf_pop_uint64_t(__sei_thread->abuf, (uint64_t*) lock);
-        break;
-#else /* SEI_2PL */
-    case 0:
-    case 1:
-        r = 0; // 0 for successful unlock
-        break;
-#endif /* SEI_2PL */
-    default:
+    } else {
+        /* phase == -1: Outside transaction */
         DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
         r = __pthread_mutex_unlock(lock);
-        break;
     }
+#else /* SEI_2PL */
+    if (phase >= 0) {
+        /* Phase 0 ~ N-1: Skip unlock, locks released at commit time */
+        r = 0; // 0 for successful unlock
+    } else {
+        /* phase == -1: Outside transaction */
+        DLOG3("unlocking %p (thread = %p)\n", lock, (void*) pthread_self());
+        r = __pthread_mutex_unlock(lock);
+    }
+#endif /* SEI_2PL */
 
     //__sei_thread->wrapped = 0;
     return r;
@@ -1279,6 +1283,8 @@ __sei_commit()
 
     int current_phase = sei_getp(__sei_thread->sei);
     int redundancy_level = sei_get_redundancy(__sei_thread->sei);
+    fprintf(stderr, "[VERIFICATION] __sei_commit called: current_phase=%d, redundancy_level=%d\n",
+            current_phase, redundancy_level);
 
     /* Phase 0 ~ N-2: Switch to next phase and re-execute transaction */
     if (current_phase < redundancy_level - 1) {
@@ -1294,6 +1300,13 @@ __sei_commit()
 
         /* Switch to next phase */
         sei_switch(__sei_thread->sei);
+
+#ifdef SEI_MT
+        /* Rewind pthread abuf for Phase 1+ to re-read recorded lock results
+         * This is needed for N-way redundancy (N >= 3) where multiple phases
+         * need to replay the same recorded lock operations */
+        abuf_rewind(__sei_thread->abuf);
+#endif
 
 #ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
         /* Migrate to a different core for phase1 execution (only for phase 0→1)
@@ -1318,6 +1331,7 @@ __sei_commit()
     /* Phase N-1 (final phase): Perform N-way verification and commit */
     assert(current_phase == redundancy_level - 1 &&
            "Invalid phase in __sei_commit()");
+    fprintf(stderr, "[VERIFICATION] Final phase %d completed, proceeding to commit\n", current_phase);
     DLOG2("All %d phases completed, performing N-way verification\n",
           redundancy_level);
 
