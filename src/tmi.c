@@ -1283,7 +1283,7 @@ __sei_commit()
 
     int current_phase = sei_getp(__sei_thread->sei);
     int redundancy_level = sei_get_redundancy(__sei_thread->sei);
-    fprintf(stderr, "[VERIFICATION] __sei_commit called: current_phase=%d, redundancy_level=%d\n",
+    //fprintf(stderr, "[VERIFICATION] __sei_commit called: current_phase=%d, redundancy_level=%d\n",
             current_phase, redundancy_level);
 
     /* Phase 0 ~ N-2: Switch to next phase and re-execute transaction */
@@ -1331,7 +1331,7 @@ __sei_commit()
     /* Phase N-1 (final phase): Perform N-way verification and commit */
     assert(current_phase == redundancy_level - 1 &&
            "Invalid phase in __sei_commit()");
-    fprintf(stderr, "[VERIFICATION] Final phase %d completed, proceeding to commit\n", current_phase);
+    //fprintf(stderr, "[VERIFICATION] Final phase %d completed, proceeding to commit\n", current_phase);
     DLOG2("All %d phases completed, performing N-way verification\n",
           redundancy_level);
 

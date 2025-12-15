@@ -346,10 +346,10 @@ sei_prepare_nm(sei_t* sei)
 void
 sei_begin(sei_t* sei)
 {
-    fprintf(stderr, "[VERIFICATION] sei_begin called: sei->p=%d\n", sei->p);
+    //fprintf(stderr, "[VERIFICATION] sei_begin called: sei->p=%d\n", sei->p);
     if (sei->p == -1) {
         DLOG2("N-way DMR: Starting phase 0 (N=%d)\n", sei->redundancy_level);
-        fprintf(stderr, "[VERIFICATION] Starting transaction with N=%d\n", sei->redundancy_level);
+        //fprintf(stderr, "[VERIFICATION] Starting transaction with N=%d\n", sei->redundancy_level);
         sei->p = 0;
         //assert (obuf_size(sei->obuf) == 0);
 
@@ -370,7 +370,7 @@ sei_switch(sei_t* sei)
            "sei_switch() called with invalid phase");
 
     DLOG2("Switch: phase %d -> phase %d\n", sei->p, sei->p + 1);
-    fprintf(stderr, "[VERIFICATION] Switching to phase %d (N=%d)\n", sei->p + 1, sei->redundancy_level);
+    //fprintf(stderr, "[VERIFICATION] Switching to phase %d (N=%d)\n", sei->p + 1, sei->redundancy_level);
 
     /* Increment to next phase (0→1, 1→2, ..., N-2→N-1) */
     sei->p++;
@@ -391,9 +391,9 @@ sei_switch(sei_t* sei)
      * For N-way (N>=3), we need to swap the previous phase's buffer to restore
      * memory state before executing the next phase. */
     int prev_phase = sei->p - 1;
-    fprintf(stderr, "[VERIFICATION] abuf_swap for phase %d (size=%d)\n", prev_phase, abuf_size(sei->cow[prev_phase]));
+    //fprintf(stderr, "[VERIFICATION] abuf_swap for phase %d (size=%d)\n", prev_phase, abuf_size(sei->cow[prev_phase]));
     abuf_swap(sei->cow[prev_phase]);
-    fprintf(stderr, "[VERIFICATION] abuf_swap done, returning to transaction\n");
+    //fprintf(stderr, "[VERIFICATION] abuf_swap done, returning to transaction\n");
 #else
     cow_swap(sei->cow[sei->p - 1]);
 #endif
@@ -406,7 +406,7 @@ void
 sei_commit(sei_t* sei)
 {
     int redundancy_level = sei->redundancy_level;
-    fprintf(stderr, "[VERIFICATION] Entering sei_commit (N=%d)\n", redundancy_level);
+    //fprintf(stderr, "[VERIFICATION] Entering sei_commit (N=%d)\n", redundancy_level);
     DLOG2("N-way COMMIT: verifying %d phases\n", redundancy_level);
     sei->p = -1;
 
