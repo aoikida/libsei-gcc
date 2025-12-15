@@ -49,10 +49,6 @@ void
 ilog_push(ilog_t* ilog, const char* topic, const char* info)
 {
     uint64_t ts = now();
-    fprintf(ilog->fp, "%lu:%lu:%ld:%s:%s\n", (long unsigned int) ts,
-                                            (long unsigned int) (ts - ilog->ts),
-                                            (long unsigned int) syscall(SYS_gettid),
-                                            topic,
-                                            info);
+    //fprintf(ilog->fp, "%lu:%lu:%ld:%s:%s\n", (long unsigned int) ts, (long unsigned int) (ts - ilog->ts), (long unsigned int) syscall(SYS_gettid), topic, info);
     fflush(ilog->fp);
 }

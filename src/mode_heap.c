@@ -285,8 +285,7 @@ SEI_READ(uint64_t)
               addr, (int64_t) value, (int64_t) value);                  \
         if (!heap_in(sei->heap[sei->p], addr)) {                        \
             if (heap_in(sei->heap[1-sei->p], addr)) {                   \
-                fprintf(stderr, "ERROR, writing on other heap %p\n",    \
-                        addr);                                          \
+                //fprintf(stderr, "ERROR, writing on other heap %p\n", addr);                                          \
                 /* TODO: should be fail_ifn here */                     \
                 assert (0);                                             \
             }                                                           \

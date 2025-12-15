@@ -1315,8 +1315,7 @@ __sei_commit()
             sei_setp(__sei_thread->sei, -1);
             int old_core = phase0_core;
             int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
-            fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n",
-                    old_core, new_core);
+            //fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n", old_core, new_core);
             /* Restore sei->p = current_phase + 1 for next phase execution */
             sei_setp(__sei_thread->sei, current_phase + 1);
         }
@@ -1346,7 +1345,7 @@ __sei_commit()
 
         /* SDC detected - automatic recovery */
         int current_core = sched_getcpu();
-        fprintf(stderr, "[libsei] SDC detected on core %d, recovering...\n", current_core);
+        //fprintf(stderr, "[libsei] SDC detected on core %d, recovering...\n", current_core);
 
         /* Step 0: Set sei->p to -1 to indicate we are outside transaction
          * This prevents pthread wrappers in cpu_isolation functions from

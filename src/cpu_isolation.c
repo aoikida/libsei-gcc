@@ -51,8 +51,7 @@ int cpu_isolation_init(void) {
     cpu_isolation_state.migration_count = 0;
     cpu_isolation_state.blacklist_events = 0;
 
-    fprintf(stderr, "cpu_isolation_init: initialized with %d cores\n",
-            cpu_isolation_state.num_cores);
+    //fprintf(stderr, "cpu_isolation_init: initialized with %d cores\n",cpu_isolation_state.num_cores);
 
     return 0;
 }
@@ -84,8 +83,7 @@ int cpu_isolation_blacklist_current(void) {
     cpu_isolation_state.num_blacklisted++;
     cpu_isolation_state.blacklist_events++;
 
-    fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",
-            core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
+    //fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -112,8 +110,7 @@ void cpu_isolation_blacklist_core(int core_id) {
     cpu_isolation_state.num_blacklisted++;
     cpu_isolation_state.blacklist_events++;
 
-    fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",
-            core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
+    //fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 }
@@ -196,7 +193,7 @@ int cpu_isolation_migrate_current_thread(void) {
 
     cpu_isolation_state.migration_count++;
 
-    fprintf(stderr, "cpu_isolation: migrated thread to core %d\n", new_core);
+    //fprintf(stderr, "cpu_isolation: migrated thread to core %d\n", new_core);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -263,8 +260,7 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
 
     cpu_isolation_state.migration_count++;
 
-    fprintf(stderr, "cpu_isolation: migrated thread to core %d (excluding core %d)\n",
-            new_core, exclude_core);
+    //fprintf(stderr, "cpu_isolation: migrated thread to core %d (excluding core %d)\n",new_core, exclude_core);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -310,15 +306,14 @@ const cpu_isolation_state_t* cpu_isolation_get_stats(void) {
 void cpu_isolation_print_stats(void) {
     pthread_mutex_lock(&cpu_isolation_state.lock);
 
-    fprintf(stderr, "\n=== CPU Isolation Statistics ===\n");
-    fprintf(stderr, "Total cores: %d\n", cpu_isolation_state.num_cores);
-    fprintf(stderr, "Blacklisted cores: %d\n", cpu_isolation_state.num_blacklisted);
-    fprintf(stderr, "Available cores: %d\n",
-            cpu_isolation_state.num_cores - cpu_isolation_state.num_blacklisted);
-    fprintf(stderr, "Blacklist events: %lu\n", cpu_isolation_state.blacklist_events);
-    fprintf(stderr, "Thread migrations: %lu\n", cpu_isolation_state.migration_count);
-    fprintf(stderr, "Blacklist bitmask: 0x%016lx\n", cpu_isolation_state.blacklist);
-    fprintf(stderr, "================================\n\n");
+    //fprintf(stderr, "\n=== CPU Isolation Statistics ===\n");
+    //fprintf(stderr, "Total cores: %d\n", cpu_isolation_state.num_cores);
+    //fprintf(stderr, "Blacklisted cores: %d\n", cpu_isolation_state.num_blacklisted);
+    //fprintf(stderr, "Available cores: %d\n",cpu_isolation_state.num_cores - cpu_isolation_state.num_blacklisted);
+    //fprintf(stderr, "Blacklist events: %lu\n", cpu_isolation_state.blacklist_events);
+    //fprintf(stderr, "Thread migrations: %lu\n", cpu_isolation_state.migration_count);
+    //fprintf(stderr, "Blacklist bitmask: 0x%016lx\n", cpu_isolation_state.blacklist);
+    //fprintf(stderr, "================================\n\n");
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 }

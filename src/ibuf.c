@@ -172,8 +172,7 @@ ibuf_correct_on_entry_safe(ibuf_t* ibuf)
     /* Migrate to a different core for Phase 1
      * Note: This is called before transaction starts, so no need to save/restore sei->p */
     int phase1_core = cpu_isolation_migrate_excluding_core(phase0_core);
-    fprintf(stderr, "[ibuf] CRC migration: core %d (phase0) -> core %d (phase1)\n",
-            phase0_core, phase1_core);
+    //fprintf(stderr, "[ibuf] CRC migration: core %d (phase0) -> core %d (phase1)\n",phase0_core, phase1_core);
 
     /* Phase 1: Compute CRC on different core */
     uint32_t crc_phase1 = crc_compute(ibuf->ptr, ibuf->size);
