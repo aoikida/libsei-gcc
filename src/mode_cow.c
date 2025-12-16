@@ -301,14 +301,20 @@ sei_set_redundancy(sei_t* sei, int redundancy_level)
     /* Redundancy level can only be set before a transaction begins */
     assert(sei->p == -1);
 
+    fprintf(stderr, "[DEBUG] sei_set_redundancy: changing from %d to %d (p=%d)\n",
+            sei->redundancy_level, redundancy_level, sei->p);
+
     sei->redundancy_level = redundancy_level;
 
-    /* Also update talloc and tbin redundancy levels */
+    /* Also update talloc, tbin, and obuf redundancy levels */
     if (sei->talloc) {
         sei->talloc->redundancy_level = redundancy_level;
     }
     if (sei->tbin) {
         sei->tbin->redundancy_level = redundancy_level;
+    }
+    if (sei->obuf) {
+        sei->obuf->redundancy_level = redundancy_level;
     }
 
     DLOG3("sei_set_redundancy: level = %d\n", redundancy_level);
@@ -348,6 +354,7 @@ sei_begin(sei_t* sei)
 {
     //fprintf(stderr, "[VERIFICATION] sei_begin called: sei->p=%d\n", sei->p);
     if (sei->p == -1) {
+        fprintf(stderr, "[DEBUG] sei_begin: Starting transaction with N=%d\n", sei->redundancy_level);
         DLOG2("N-way DMR: Starting phase 0 (N=%d)\n", sei->redundancy_level);
         //fprintf(stderr, "[VERIFICATION] Starting transaction with N=%d\n", sei->redundancy_level);
         sei->p = 0;
@@ -358,6 +365,7 @@ sei_begin(sei_t* sei)
             cfc_reset(&sei->cf[i]);
         }
     } else if (sei->p > 0 && sei->p < sei->redundancy_level) {
+        fprintf(stderr, "[DEBUG] sei_begin: Executing phase %d (N=%d)\n", sei->p, sei->redundancy_level);
         DLOG2("N-way DMR: Executing phase %d\n", sei->p);
     }
 }
@@ -406,9 +414,11 @@ void
 sei_commit(sei_t* sei)
 {
     int redundancy_level = sei->redundancy_level;
+    fprintf(stderr, "[DEBUG] sei_commit: Verifying %d phases\n", redundancy_level);
     //fprintf(stderr, "[VERIFICATION] Entering sei_commit (N=%d)\n", redundancy_level);
     DLOG2("N-way COMMIT: verifying %d phases\n", redundancy_level);
     sei->p = -1;
+    fprintf(stderr, "[DEBUG] sei_commit: Transaction completed, p set to -1, redundancy_level still=%d\n", sei->redundancy_level);
 
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform control flow verification here */

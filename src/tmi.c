@@ -1436,6 +1436,9 @@ __sei_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef SEI_MT
     if (unlikely(!__sei_thread)) __sei_thread_init();
 #endif
+    /* Reset redundancy level to default before preparing transaction */
+    sei_set_redundancy(__sei_thread->sei, SEI_DMR_REDUNDANCY);
+
     return sei_prepare(__sei_thread->sei, ptr, size, crc, ro);
 }
 
@@ -1445,6 +1448,9 @@ __sei_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 #ifdef SEI_MT
     if (unlikely(!__sei_thread)) __sei_thread_init();
 #endif
+    /* Reset redundancy level to default before preparing transaction */
+    sei_set_redundancy(__sei_thread->sei, SEI_DMR_REDUNDANCY);
+
     memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
     memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
     __sei_ignore_num = 0;

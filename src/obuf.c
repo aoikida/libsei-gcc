@@ -31,6 +31,7 @@ typedef struct obuf_queue {
 struct obuf {
     obuf_queue_t queue[SEI_DMR_REDUNDANCY];
     int p;
+    int redundancy_level;  /* Runtime redundancy level (2 to SEI_DMR_REDUNDANCY) */
 };
 
 #define MAX_MSGS 100
@@ -59,6 +60,7 @@ obuf_init(int max_msgs)
     }
 
     obuf->p = 0;
+    obuf->redundancy_level = SEI_DMR_REDUNDANCY;  /* Initialize to default */
     return obuf;
 }
 
@@ -79,8 +81,8 @@ obuf_fini(obuf_t* obuf)
 void
 obuf_close(obuf_t* obuf)
 {
-    /* Sequential phase advancement with wraparound */
-    obuf->p = (obuf->p + 1) % SEI_DMR_REDUNDANCY;
+    /* Sequential phase advancement with wraparound based on runtime redundancy */
+    obuf->p = (obuf->p + 1) % obuf->redundancy_level;
 }
 
 inline void
@@ -126,20 +128,22 @@ obuf_done(obuf_t* obuf)
 inline uint32_t
 obuf_pop(obuf_t* obuf)
 {
-    /* N-way verification: all queues must have messages */
-    for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+    int redundancy_level = obuf->redundancy_level;
+
+    /* N-way verification: all queues (up to redundancy_level) must have messages */
+    for (int p = 0; p < redundancy_level; p++) {
         assert (obuf->queue[p].head < obuf->queue[p].tail);
     }
 
     /* Get entries from all phases and increment head pointers */
     obuf_entry_t* entries[SEI_DMR_REDUNDANCY];
-    for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+    for (int p = 0; p < redundancy_level; p++) {
         obuf_queue_t* q = &obuf->queue[p];
         entries[p] = &q->entries[q->head++ % MAX_MSGS];
     }
 
     /* N-way verification: all entries must match Phase 0 */
-    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+    for (int p = 1; p < redundancy_level; p++) {
         assert (entries[0]->size == entries[p]->size);
         assert (entries[0]->done == entries[p]->done);
         assert (entries[0]->crc  == entries[p]->crc);
@@ -149,7 +153,7 @@ obuf_pop(obuf_t* obuf)
     uint32_t crc = entries[0]->crc;
 
     /* Reset all entries */
-    for (int p = 0; p < SEI_DMR_REDUNDANCY; p++) {
+    for (int p = 0; p < redundancy_level; p++) {
         entries[p]->size = 0;
         entries[p]->done = 0;
         entries[p]->crc  = crc_init();
@@ -162,8 +166,10 @@ obuf_pop(obuf_t* obuf)
 inline int
 obuf_size(obuf_t* obuf)
 {
-    /* N-way verification: all queues must have same head/tail */
-    for (int p = 1; p < SEI_DMR_REDUNDANCY; p++) {
+    int redundancy_level = obuf->redundancy_level;
+
+    /* N-way verification: all queues (up to redundancy_level) must have same head/tail */
+    for (int p = 1; p < redundancy_level; p++) {
         assert (obuf->queue[0].head == obuf->queue[p].head);
         assert (obuf->queue[0].tail == obuf->queue[p].tail);
     }
