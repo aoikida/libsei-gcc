@@ -100,22 +100,20 @@ ibuf_prepare(ibuf_t* ibuf, const void* ptr, size_t size, uint32_t crc,
         if (result == 1) {
             /* Type B error: Received message corrupted
              * Do NOT retry - return failure to application */
-            fprintf(stderr, "[libsei] Received message corrupted (CRC mismatch), discarding\n");
+            //fprintf(stderr, "[libsei] Received message corrupted (CRC mismatch), discarding\n");
             return 0;
         }
 
         /* result == 0: Type A error (SDC detected) - retry with core blacklisting */
         int current_core = sched_getcpu();
-        fprintf(stderr, "[libsei] Type A error: SDC detected on core %d, recovering...\n",
-                current_core);
+        //fprintf(stderr, "[libsei] Type A error: SDC detected on core %d, recovering...\n",current_core);
 
         /* Blacklist the faulty core(s) */
 #ifdef SEI_CRC_MIGRATE_CORES
         /* Cross-core mode: blacklist both phase0 and phase1 cores */
         cpu_isolation_blacklist_core(crc_phase0_core);  /* Phase0 core */
         cpu_isolation_blacklist_core(current_core);      /* Phase1 core */
-        fprintf(stderr, "[libsei] Blacklisted cores %d and %d (CRC cross-core failure)\n",
-                crc_phase0_core, current_core);
+        //fprintf(stderr, "[libsei] Blacklisted cores %d and %d (CRC cross-core failure)\n",crc_phase0_core, current_core);
 #else
         /* Traditional mode: blacklist only the current core */
         cpu_isolation_blacklist_current();

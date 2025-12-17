@@ -1328,7 +1328,7 @@ __sei_commit()
             sei_setp(__sei_thread->sei, -1);
             int old_core = phase0_core;
             int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
-            fprintf(stderr, "[libsei] Core migration: core %d (phase0) -> core %d (phase1)\n", old_core, new_core);
+            //fprintf(stderr, "[libsei] Core migration: core %d (phase0) -> core %d (phase1)\n", old_core, new_core);
             /* Restore sei->p = current_phase + 1 for next phase execution */
             sei_setp(__sei_thread->sei, current_phase + 1);
         }
