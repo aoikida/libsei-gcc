@@ -19,7 +19,13 @@
 #define __begin_nm()                 __tmi_prepare_nm(); if (1) { \
                                      __tmi_begin(x)
 #define __begin_nm_n(n)              __tmi_prepare_nm_n((n)); if (1) { \
-                                     __tmi_begin(x) 
+                                     __tmi_begin(x)
+#define __begin_core_redundancy(ptr, size, crc) __tmi_prepare_core((ptr), (size), (crc), 1) ) \
+                                     {__tmi_begin(x) if (1
+#define __begin_rw_core_redundancy(ptr, size, crc) __tmi_prepare_core((ptr), (size), (crc), 0) ) \
+                                     {__tmi_begin(x) if (1
+#define __begin_nm_core_redundancy() __tmi_prepare_nm_core(); if (1) { \
+                                     __tmi_begin(x)
 #define __output_append(ptr, size)   __tmi_output_append(ptr, size) 
 #define __output_done()              __tmi_output_done()
 #define __crc_pop()                  __tmi_output_next() 

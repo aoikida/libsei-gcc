@@ -30,8 +30,9 @@
 #include <sched.h>
 #include "cpu_isolation.h"
 
-/* Thread-local storage for phase0 core tracking (SEI_CPU_ISOLATION_MIGRATE_PHASES) */
-#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
+/* Thread-local storage for phase0 core tracking
+ * Used by both SEI_CPU_ISOLATION_MIGRATE_PHASES (static) and dynamic core migration API */
+#if defined(SEI_CPU_ISOLATION_MIGRATE_PHASES) || defined(SEI_CPU_ISOLATION)
 static __thread int phase0_core = -1;
 #endif
 #endif
@@ -1290,9 +1291,20 @@ __sei_commit()
         DLOG2("Phase %d completed, switching to phase %d\n",
               current_phase, current_phase + 1);
 
+        /* Record phase0 core before switching (only for phase 0→1)
+         * This supports both static flag (SEI_CPU_ISOLATION_MIGRATE_PHASES) and
+         * dynamic API (core_migration_enabled) */
+#if defined(SEI_CPU_ISOLATION_MIGRATE_PHASES) || defined(SEI_CPU_ISOLATION)
+        int core_migration = 0;
 #ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
-        /* Record phase0 core before switching (only for phase 0→1) */
-        if (current_phase == 0) {
+        core_migration = 1;  /* Static flag enabled */
+#endif
+#ifdef SEI_CPU_ISOLATION
+        if (!core_migration) {
+            core_migration = sei_get_core_migration(__sei_thread->sei);  /* Dynamic API */
+        }
+#endif
+        if (core_migration && current_phase == 0) {
             phase0_core = sched_getcpu();
         }
 #endif
@@ -1307,15 +1319,16 @@ __sei_commit()
         abuf_rewind(__sei_thread->abuf);
 #endif
 
-#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
         /* Migrate to a different core for phase1 execution (only for phase 0→1)
-         * Temporarily set sei->p = -1 to prevent pthread wrappers from
-         * trying to record operations to abuf during migration */
-        if (current_phase == 0) {
+         * This supports both static flag and dynamic API */
+#if defined(SEI_CPU_ISOLATION_MIGRATE_PHASES) || defined(SEI_CPU_ISOLATION)
+        if (core_migration && current_phase == 0) {
+            /* Temporarily set sei->p = -1 to prevent pthread wrappers from
+             * trying to record operations to abuf during migration */
             sei_setp(__sei_thread->sei, -1);
             int old_core = phase0_core;
             int new_core = cpu_isolation_migrate_excluding_core(phase0_core);
-            //fprintf(stderr, "[libsei] Phase migration: core %d (phase0) -> core %d (phase1)\n", old_core, new_core);
+            fprintf(stderr, "[libsei] Core migration: core %d (phase0) -> core %d (phase1)\n", old_core, new_core);
             /* Restore sei->p = current_phase + 1 for next phase execution */
             sei_setp(__sei_thread->sei, current_phase + 1);
         }
@@ -1354,14 +1367,24 @@ __sei_commit()
         sei_setp(__sei_thread->sei, -1);
 
         /* Step 1: Blacklist the faulty core(s) */
+        int blacklist_both_cores = 0;
 #ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
-        /* In phase migration mode: blacklist both phase0 and phase1 cores */
-        cpu_isolation_blacklist_core(phase0_core);  /* phase0 core */
-        cpu_isolation_blacklist_core(current_core);  /* phase1 core */
-#else
-        /* Traditional mode: blacklist only the current core */
-        cpu_isolation_blacklist_current();
+        blacklist_both_cores = 1;  /* Static phase migration mode */
 #endif
+#ifdef SEI_CPU_ISOLATION
+        if (!blacklist_both_cores) {
+            blacklist_both_cores = sei_get_core_migration(__sei_thread->sei);  /* Dynamic API */
+        }
+#endif
+
+        if (blacklist_both_cores) {
+            /* Core migration mode: blacklist both phase0 and phase1 cores */
+            cpu_isolation_blacklist_core(phase0_core);   /* phase0 core */
+            cpu_isolation_blacklist_core(current_core);  /* phase1 core */
+        } else {
+            /* Traditional mode: blacklist only the current core */
+            cpu_isolation_blacklist_current();
+        }
 
         /* Step 2: Migrate to another core (exits if all cores blacklisted) */
         cpu_isolation_migrate_current_thread();
@@ -1377,11 +1400,13 @@ __sei_commit()
         abuf_clean(__sei_thread->abuf);
 #endif
 
-#ifdef SEI_CPU_ISOLATION_MIGRATE_PHASES
-        /* In phase migration mode: reset phase0_core for the retry
+        /* Reset phase0_core for the retry
          * The retry will execute phase0 on the current (new) core,
          * and phase1 will migrate to yet another core */
-        phase0_core = -1;
+#if defined(SEI_CPU_ISOLATION_MIGRATE_PHASES) || defined(SEI_CPU_ISOLATION)
+        if (blacklist_both_cores) {
+            phase0_core = -1;
+        }
 #endif
 
         /* Step 4: Retry from p=0 using context switch
@@ -1439,6 +1464,9 @@ __sei_prepare(const void* ptr, size_t size, uint32_t crc, int ro)
     /* Reset redundancy level to default before preparing transaction */
     sei_set_redundancy(__sei_thread->sei, SEI_DMR_REDUNDANCY);
 
+    /* Disable core migration for existing API (default behavior) */
+    sei_set_core_migration(__sei_thread->sei, 0);
+
     return sei_prepare(__sei_thread->sei, ptr, size, crc, ro);
 }
 
@@ -1450,6 +1478,9 @@ __sei_prepare_nm(const void* ptr, size_t size, uint32_t crc, int ro)
 #endif
     /* Reset redundancy level to default before preparing transaction */
     sei_set_redundancy(__sei_thread->sei, SEI_DMR_REDUNDANCY);
+
+    /* Disable core migration for existing API (default behavior) */
+    sei_set_core_migration(__sei_thread->sei, 0);
 
     memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
     memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
@@ -1479,6 +1510,43 @@ __sei_prepare_nm_n(int redundancy_level)
     memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
     memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
     __sei_ignore_num = 0;
+    sei_prepare_nm(__sei_thread->sei);
+}
+
+int
+__sei_prepare_core(const void* ptr, size_t size, uint32_t crc, int ro)
+{
+#ifdef SEI_MT
+    if (unlikely(!__sei_thread)) __sei_thread_init();
+#endif
+    /* Enable core migration before preparing transaction */
+    sei_set_core_migration(__sei_thread->sei, 1);
+
+    /* Set redundancy level to 2 (fixed for core migration) */
+    sei_set_redundancy(__sei_thread->sei, 2);
+
+    /* Prepare transaction with CRC verification */
+    return sei_prepare(__sei_thread->sei, ptr, size, crc, ro);
+}
+
+void
+__sei_prepare_nm_core(void)
+{
+#ifdef SEI_MT
+    if (unlikely(!__sei_thread)) __sei_thread_init();
+#endif
+    /* Enable core migration before preparing transaction */
+    sei_set_core_migration(__sei_thread->sei, 1);
+
+    /* Set redundancy level to 2 (fixed for core migration) */
+    sei_set_redundancy(__sei_thread->sei, 2);
+
+    /* Reset ignore addresses */
+    memset(__sei_ignore_addr_s, 0, sizeof(__sei_ignore_addr_s));
+    memset(__sei_ignore_addr_e, 0, sizeof(__sei_ignore_addr_e));
+    __sei_ignore_num = 0;
+
+    /* Prepare transaction without message verification */
     sei_prepare_nm(__sei_thread->sei);
 }
 

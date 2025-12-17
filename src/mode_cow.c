@@ -91,6 +91,7 @@
 struct sei {
     int       p;       /* current phase: 0 to redundancy_level-1, or -1 (outside transaction) */
     int       redundancy_level;  /* runtime redundancy level (2 to SEI_DMR_MAX_REDUNDANCY) */
+    int       core_migration_enabled;  /* core migration flag (0 or 1) */
     heap_t*   heap;    /* optional heap               */
 #ifndef COW_APPEND_ONLY
     cow_t*    cow[SEI_DMR_MAX_REDUNDANCY];  /* MAX_REDUNDANCY copy-on-write buffers (allocated once) */
@@ -135,6 +136,8 @@ struct sei {
 
 void sei_set_redundancy(sei_t* sei, int redundancy_level);
 int sei_get_redundancy(sei_t* sei);
+void sei_set_core_migration(sei_t* sei, int enable);
+int sei_get_core_migration(sei_t* sei);
 
 /* ----------------------------------------------------------------------------
  * stats helpers
@@ -202,6 +205,9 @@ sei_init()
 
     /* Set default redundancy level (can be overridden per transaction) */
     sei->redundancy_level = SEI_DMR_REDUNDANCY;
+
+    /* Set default core migration flag (disabled by default) */
+    sei->core_migration_enabled = 0;
 
     /* Initialize MAX_REDUNDANCY COW buffers (allocated once, used based on redundancy_level) */
 #ifndef COW_APPEND_ONLY
@@ -325,6 +331,28 @@ sei_get_redundancy(sei_t* sei)
 {
     assert(sei);
     return sei->redundancy_level;
+}
+
+void
+sei_set_core_migration(sei_t* sei, int enable)
+{
+    assert(sei);
+    /* Core migration can be enabled (1) or disabled (0) */
+    assert(enable == 0 || enable == 1);
+
+    /* Core migration can only be set before a transaction begins */
+    assert(sei->p == -1 && "sei_set_core_migration() must be called outside transaction");
+
+    sei->core_migration_enabled = enable;
+
+    DLOG3("sei_set_core_migration: enable = %d\n", enable);
+}
+
+int
+sei_get_core_migration(sei_t* sei)
+{
+    assert(sei);
+    return sei->core_migration_enabled;
 }
 
 
