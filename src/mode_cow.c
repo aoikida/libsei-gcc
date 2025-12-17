@@ -441,6 +441,7 @@ void
 sei_commit(sei_t* sei)
 {
     int redundancy_level = sei->redundancy_level;
+    int r;  /* Verification result variable */
     //fprintf(stderr, "[DEBUG] sei_commit: Verifying %d phases\n", redundancy_level);
     //fprintf(stderr, "[VERIFICATION] Entering sei_commit (N=%d)\n", redundancy_level);
     DLOG2("N-way COMMIT: verifying %d phases\n", redundancy_level);
@@ -449,7 +450,6 @@ sei_commit(sei_t* sei)
 
 #ifndef SEI_CPU_ISOLATION
     /* CPU isolation OFF: Perform control flow verification here */
-    int r;
     for (int i = 0; i < redundancy_level; i++) {
         cfc_alog(&sei->cf[i]);  /* Log control flow before verification */
         r = cfc_amog(&sei->cf[i]);
@@ -501,20 +501,41 @@ sei_commit(sei_t* sei)
     talloc_clean(sei->talloc);
     obuf_close(sei->obuf);
 
-#ifndef SEI_CPU_ISOLATION
-    /* CPU isolation OFF: Perform final validations for all phases */
+    /* === Post-operation verification (Defense in Depth) === */
+    /* Note: In SEI_CPU_ISOLATION mode, these checks are performed both in
+     * sei_try_commit() (before heavy operations) and here (after heavy operations).
+     * This double-checking detects memory corruption during wts_flush(), tbin_flush(),
+     * talloc_clean(), and obuf_close() execution. */
+
+    /* 1. Control flow check - ALWAYS execute (not in sei_try_commit) */
     for (int i = 0; i < redundancy_level; i++) {
         r = cfc_check(&sei->cf[i]);
         if (!r) {
             fprintf(stderr, "[libsei] Final control flow check failed in phase %d\n", i);
+#ifdef SEI_CPU_ISOLATION
+            /* This indicates memory corruption during heavy operations */
+            fprintf(stderr, "[FATAL] cfc_check() detected memory corruption\n");
+            fprintf(stderr, "[FATAL] LScf/LRcf flags were corrupted after sei_try_commit()\n");
+            abort();
+#else
             assert(0 && "control flow error");
+#endif
         }
     }
 
+    /* 2. Input message verification - Double-check after heavy operations */
     r = ibuf_correct(sei->ibuf);
-    assert (r == 1 && "input message modified");
+    if (!r) {
+        fprintf(stderr, "[libsei] Input message verification failed\n");
+#ifdef SEI_CPU_ISOLATION
+        /* This indicates memory corruption during heavy operations */
+        fprintf(stderr, "[FATAL] Input message was corrupted during heavy operations\n");
+        fprintf(stderr, "[FATAL] ibuf was intact in sei_try_commit() but corrupted now\n");
+        abort();
+#else
+        assert(0 && "input message modified");
 #endif
-    /* CPU isolation ON: All validations already done in sei_try_commit() */
+    }
 
     SEI_STATS_INC(ntrav);
     SEI_STATS_REPORT();
