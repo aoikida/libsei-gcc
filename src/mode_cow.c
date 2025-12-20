@@ -140,6 +140,32 @@ static inline void fault_count_transaction(void) {
     g_transaction_count++;
 }
 
+/* Get fault type from environment (cached) */
+static inline int fault_get_type(void) {
+    static int fault_type = -1;
+    if (fault_type < 0) {
+        const char* s = getenv("SEI_FAULT_TYPE");
+        fault_type = s ? atoi(s) : 0;
+    }
+    return fault_type;
+}
+
+/* Inject SIGSEGV fault during transaction execution
+ * Called from sei_write to trigger segfault within transaction
+ * SEI_FAULT_TYPE=5: SIGSEGV injection
+ */
+static inline void fault_inject_sigsegv(void) {
+    if (fault_get_type() != 5) return;
+    if (!fault_should_inject()) return;
+
+    fprintf(stderr, "[FAULT] type=sigsegv injecting...\n");
+    g_fault_injected = 1;
+
+    /* Trigger SIGSEGV by accessing NULL pointer */
+    volatile int* null_ptr = NULL;
+    *null_ptr = 0xDEAD;
+}
+
 /* Inject fault into abuf entry (corrupt the recorded value)
  * Fault type is selected via SEI_FAULT_TYPE environment variable:
  *   0 or unset: first entry (default)
@@ -147,6 +173,7 @@ static inline void fault_count_transaction(void) {
  *   2: last entry
  *   3: multiple entries
  *   4: talloc count mismatch (not yet implemented)
+ *   5: SIGSEGV (handled separately in fault_inject_sigsegv)
  */
 static void fault_inject_abuf(abuf_t* abuf) {
     if (!fault_should_inject()) return;
@@ -154,11 +181,7 @@ static void fault_inject_abuf(abuf_t* abuf) {
     int size = abuf_size(abuf);
     if (size == 0) return;
 
-    static int fault_type = -1;
-    if (fault_type < 0) {
-        const char* s = getenv("SEI_FAULT_TYPE");
-        fault_type = s ? atoi(s) : 0;
-    }
+    int fault_type = fault_get_type();
 
     switch (fault_type) {
     case 1:
@@ -173,6 +196,9 @@ static void fault_inject_abuf(abuf_t* abuf) {
         abuf_corrupt_multiple(abuf);
         fprintf(stderr, "[FAULT] type=multiple injected\n");
         break;
+    case 5:
+        /* SIGSEGV is handled in fault_inject_sigsegv during transaction */
+        return;
     case 0:
     default:
         abuf_corrupt_first(abuf);
@@ -816,6 +842,19 @@ SEI_READ(uint16_t)
 SEI_READ(uint32_t)
 SEI_READ(uint64_t)
 
+#ifdef SEI_FAULT_INJECTION
+#define SEI_WRITE(type) inline                                          \
+    void sei_write_##type(sei_t* sei, type* addr, type value)           \
+    {                                                                   \
+   	    SEI_STATS_INC(nw##type);                                        \
+   	    assert (sei->p >= 0 && sei->p < SEI_DMR_REDUNDANCY);            \
+        DLOG3("sei_write_%s(%d): %p <- %llx\n", #type, sei->p,          \
+              addr, (uint64_t) value);                                  \
+        abuf_push_##type(sei->cow[sei->p], addr, *addr);                \
+        *addr = value;                                                  \
+        fault_inject_sigsegv();                                         \
+    }
+#else
 #define SEI_WRITE(type) inline                                          \
     void sei_write_##type(sei_t* sei, type* addr, type value)           \
     {                                                                   \
@@ -826,6 +865,7 @@ SEI_READ(uint64_t)
         abuf_push_##type(sei->cow[sei->p], addr, *addr);                \
         *addr = value;                                                  \
     }
+#endif
 SEI_WRITE(uint8_t)
 SEI_WRITE(uint16_t)
 SEI_WRITE(uint32_t)

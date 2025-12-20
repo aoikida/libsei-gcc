@@ -168,18 +168,20 @@ sendto_f*  __sendto  = NULL;
 #endif
 
 /* ----------------------------------------------------------------------------
- * Heap protection
+ * Heap protection and SIGSEGV recovery
  * ------------------------------------------------------------------------- */
 
+#if defined(HEAP_PROTECT) || defined(SEI_SIGSEGV_RECOVERY)
 #ifdef HEAP_PROTECT
 void sei_unprotect(sei_t* sei, void* addr, size_t size);
+#endif
 #  include "protect.c"
 #  define HEAP_PROTECT_INIT protect_setsignal()
 PROTECT_HANDLER
 
 #else
 #  define HEAP_PROTECT_INIT
-#endif /* HEAP_PROTECT */
+#endif /* HEAP_PROTECT || SEI_SIGSEGV_RECOVERY */
 
 #ifdef SEI_WRAP_SC
 #define SYSCALL_WRAPPER_INIT(name)                                      \
@@ -297,6 +299,7 @@ __sei_thread_init()
     assert (__sei_thread->sei == NULL);
     __sei_thread->sei = sei_init();
     assert (__sei_thread->sei);
+    HEAP_PROTECT_INIT;
     __sei_thread->abuf = abuf_init(100);
     __sei_thread->wrapped = 0;
 #ifdef SEI_2PL
