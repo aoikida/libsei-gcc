@@ -98,9 +98,9 @@ ifdef SEI_TBAR
 AFLAGS += -DSEI_TBAR
 endif
 
-# Rollback on error detection
+# Rollback on error detection (includes SIGSEGV recovery)
 ifdef ROLLBACK
-AFLAGS += -DSEI_CPU_ISOLATION
+AFLAGS += -DSEI_CPU_ISOLATION -DSEI_SIGSEGV_RECOVERY
 endif
 
 # Execute different phases on different CPU cores
@@ -128,6 +128,12 @@ endif
 # Example: EXECUTION_REDUNDANCY=5 make
 ifdef EXECUTION_REDUNDANCY
 AFLAGS += -DSEI_DMR_REDUNDANCY=$(EXECUTION_REDUNDANCY)
+endif
+
+# Fault injection for ROLLBACK testing
+# Usage: FAULT_INJECT=1 make
+ifdef FAULT_INJECT
+AFLAGS += -DSEI_FAULT_INJECTION
 endif
 
 # compiler

@@ -149,10 +149,12 @@ Currently, the supported options are:
   library is compiled with inlining and ``-O3``.
 
 - ``ROLLBACK=1``: Enable automatic rollback on error detection with CPU core
-  isolation and SDC (Silent Data Corruption) detection. When enabled,
-  transactions are executed with redundancy verification. If SDC is detected,
-  the faulty core is blacklisted and the transaction is retried on a different
-  core.
+  isolation, SDC (Silent Data Corruption) detection, and SIGSEGV recovery.
+  When enabled, transactions are executed with redundancy verification. If SDC
+  is detected or a segmentation fault occurs within a transaction, the faulty
+  core is blacklisted and the transaction is automatically rolled back and
+  retried on a different core. The process terminates only when all available
+  cores have been blacklisted.
 
 - ``EXECUTION_CORE_REDUNDANCY=1``: Execute different phases on different CPU
   cores (requires ``ROLLBACK=1``). When enabled, each execution phase runs on
@@ -179,6 +181,10 @@ Currently, the supported options are:
   must match. Can be combined with ``EXECUTION_REDUNDANCY`` and ``ROLLBACK``.
   Note: Cannot be used together with ``CRC_CORE_REDUNDANCY`` as they are
   mutually exclusive approaches.
+
+- ``FAULT_INJECT=1``: Enable fault injection for testing error recovery
+  mechanisms. When enabled, faults can be injected at runtime using environment
+  variables. Requires ``ROLLBACK=1`` for recovery testing.
 
 **Valid Flag Combinations:**
 
@@ -243,6 +249,44 @@ Example build commands::
     # Debug build with all redundancy features
     DEBUG=3 ROLLBACK=1 CRC_REDUNDANCY=3 EXECUTION_REDUNDANCY=5 make
 
+    # Build with fault injection for testing
+    ROLLBACK=1 FAULT_INJECT=1 make
+
+
+Fault Injection
+~~~~~~~~~~~~~~~
+
+When built with ``FAULT_INJECT=1``, faults can be injected at runtime using
+environment variables to test the error recovery mechanisms.
+
+**Environment Variables:**
+
+- ``SEI_FAULT_TYPE``: Type of fault to inject
+
+  - ``0``: Corrupt first abuf entry (SDC, default)
+  - ``1``: Corrupt random abuf entry (SDC)
+  - ``2``: Corrupt last abuf entry (SDC)
+  - ``3``: Corrupt multiple abuf entries (SDC)
+  - ``5``: Trigger SIGSEGV (segmentation fault)
+
+- ``SEI_FAULT_INJECT_AFTER_TXN=N``: Inject fault after N transactions
+- ``SEI_FAULT_INJECT_DELAY_MS=N``: Inject fault after N milliseconds
+
+**Example usage:**
+::
+
+    # Build with fault injection enabled
+    ROLLBACK=1 FAULT_INJECT=1 make
+    cd examples/ukv && ROLLBACK=1 FAULT_INJECT=1 make
+
+    # Test SDC recovery (corrupt first entry after 3 transactions)
+    SEI_FAULT_TYPE=0 SEI_FAULT_INJECT_AFTER_TXN=3 ./build_sei/ukv-server.sei 10000
+
+    # Test SIGSEGV recovery (trigger segfault after 3 transactions)
+    SEI_FAULT_TYPE=5 SEI_FAULT_INJECT_AFTER_TXN=3 ./build_sei/ukv-server.sei 10000
+
+    # Test with time-based injection (inject after 5 seconds)
+    SEI_FAULT_TYPE=5 SEI_FAULT_INJECT_DELAY_MS=5000 ./build_sei/ukv-server.sei 10000
 
 |
 
