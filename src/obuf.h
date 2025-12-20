@@ -16,5 +16,6 @@ void     obuf_push(obuf_t* obuf, const void* ptr, size_t size);
 void     obuf_done(obuf_t* obuf);
 void     obuf_close(obuf_t* obuf);
 uint32_t obuf_pop(obuf_t* obuf);
+void     obuf_reset(obuf_t* obuf);
 
 #endif /* _SEI_OBUF_H_ */

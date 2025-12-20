@@ -176,3 +176,25 @@ obuf_size(obuf_t* obuf)
 
     return obuf->queue[0].tail - obuf->queue[0].head;
 }
+
+/* Reset obuf without freeing memory (for rollback) */
+inline void
+obuf_reset(obuf_t* obuf)
+{
+    int redundancy_level = obuf->redundancy_level;
+
+    /* Reset all queues */
+    for (int p = 0; p < redundancy_level; p++) {
+        obuf->queue[p].head = 0;
+        obuf->queue[p].tail = 0;
+
+        /* Reset all entries */
+        for (int i = 0; i < MAX_MSGS; i++) {
+            obuf->queue[p].entries[i].size = 0;
+            obuf->queue[p].entries[i].crc  = crc_init();
+            obuf->queue[p].entries[i].done = 0;
+        }
+    }
+
+    obuf->p = 0;
+}

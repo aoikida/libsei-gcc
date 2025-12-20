@@ -85,6 +85,105 @@
 #endif
 
 /* ----------------------------------------------------------------------------
+ * Fault Injection for ROLLBACK testing
+ *
+ * Injects fault into abuf entries AFTER transaction execution completes,
+ * just before DMR verification. This ensures:
+ * 1. Transaction executes normally without segfaults from corrupted pointers
+ * 2. DMR verification detects the mismatch
+ * 3. ROLLBACK is triggered and transaction is retried
+ * ------------------------------------------------------------------------- */
+#ifdef SEI_FAULT_INJECTION
+#include "now.h"
+
+static uint64_t g_fault_delay_us = 0;
+static int g_fault_injected = 0;
+static uint64_t g_fault_start_us = 0;
+
+static void fault_init(void) {
+    if (g_fault_start_us) return;
+    g_fault_start_us = now();
+    const char* s = getenv("SEI_FAULT_INJECT_DELAY_MS");
+    if (s) g_fault_delay_us = (uint64_t)atol(s) * 1000;
+}
+
+/* Transaction counter for fault injection timing */
+static int g_transaction_count = 0;
+static int g_fault_after_txn = 0;
+
+/* Check if fault should be injected (called before DMR verification) */
+static inline int fault_should_inject(void) {
+    if (g_fault_injected) return 0;
+
+    /* Initialize fault timing from environment (once) */
+    if (g_fault_after_txn == 0) {
+        const char* s = getenv("SEI_FAULT_INJECT_AFTER_TXN");
+        if (s) g_fault_after_txn = atoi(s);
+        if (g_fault_after_txn == 0) g_fault_after_txn = -1; /* disabled */
+    }
+
+    /* Check transaction count based trigger */
+    if (g_fault_after_txn > 0 && g_transaction_count >= g_fault_after_txn) {
+        return 1;
+    }
+
+    /* Check time based trigger (only if SEI_FAULT_INJECT_DELAY_MS was set) */
+    if (g_fault_delay_us > 0) {
+        return (now() - g_fault_start_us) >= g_fault_delay_us;
+    }
+
+    return 0;
+}
+
+/* Increment transaction counter (called at start of sei_try_commit) */
+static inline void fault_count_transaction(void) {
+    g_transaction_count++;
+}
+
+/* Inject fault into abuf entry (corrupt the recorded value)
+ * Fault type is selected via SEI_FAULT_TYPE environment variable:
+ *   0 or unset: first entry (default)
+ *   1: random entry
+ *   2: last entry
+ *   3: multiple entries
+ *   4: talloc count mismatch (not yet implemented)
+ */
+static void fault_inject_abuf(abuf_t* abuf) {
+    if (!fault_should_inject()) return;
+
+    int size = abuf_size(abuf);
+    if (size == 0) return;
+
+    static int fault_type = -1;
+    if (fault_type < 0) {
+        const char* s = getenv("SEI_FAULT_TYPE");
+        fault_type = s ? atoi(s) : 0;
+    }
+
+    switch (fault_type) {
+    case 1:
+        abuf_corrupt_random(abuf);
+        fprintf(stderr, "[FAULT] type=random injected\n");
+        break;
+    case 2:
+        abuf_corrupt_last(abuf);
+        fprintf(stderr, "[FAULT] type=last injected\n");
+        break;
+    case 3:
+        abuf_corrupt_multiple(abuf);
+        fprintf(stderr, "[FAULT] type=multiple injected\n");
+        break;
+    case 0:
+    default:
+        abuf_corrupt_first(abuf);
+        fprintf(stderr, "[FAULT] type=first injected\n");
+        break;
+    }
+    g_fault_injected = 1;
+}
+#endif
+
+/* ----------------------------------------------------------------------------
  * Core data structures
  * ------------------------------------------------------------------------- */
 
@@ -202,6 +301,10 @@ sei_init()
 {
     sei_t* sei = (sei_t*) malloc(sizeof(sei_t));
     assert(sei);
+
+#ifdef SEI_FAULT_INJECTION
+    fault_init();
+#endif
 
     /* Set default redundancy level (can be overridden per transaction) */
     sei->redundancy_level = SEI_DMR_REDUNDANCY;
@@ -549,6 +652,7 @@ sei_commit(sei_t* sei)
     }
     abuf_clean(sei->wpages);
 #endif
+
 }
 
 inline int
@@ -782,11 +886,15 @@ sei_rollback(sei_t* sei)
 {
     assert(sei);
     int redundancy_level = sei->redundancy_level;
+
     DLOG1("[sei_rollback] Rolling back transaction (N=%d)\n", redundancy_level);
 
-    /* Step 1: Restore memory from COW buffer (abuf[0] contains old values) */
+    /* Step 1: Restore memory from COW buffer (abuf[0] contains old values)
+     * IMPORTANT: Use abuf_restore_filtered() to skip talloc-allocated memory.
+     * Talloc memory will be freed by talloc_rollback(), so we must not restore
+     * values to it (would cause use-after-free or heap corruption). */
 #ifdef COW_APPEND_ONLY
-    abuf_restore(sei->cow[0]);
+    abuf_restore_filtered(sei->cow[0], sei->talloc);
     /* Clean all buffers to prevent stale buffer state during retry */
     for (int i = 0; i < redundancy_level; i++) {
         abuf_clean(sei->cow[i]);
@@ -795,18 +903,27 @@ sei_rollback(sei_t* sei)
     #error "sei_rollback only supports COW_APPEND_ONLY mode"
 #endif
 
-    /* Step 2: Rollback dynamic allocations (free all talloc allocations) */
+    /* Step 2: Reset tbin (discard pending frees to prevent double-free) */
+    tbin_reset(sei->tbin);
+
+    /* Step 3: Rollback dynamic allocations (free all talloc allocations) */
     talloc_rollback(sei->talloc);
 
-    /* Step 3: Reset waitress queue (discard delayed system calls) */
+    /* Step 4: Reset output buffer (discard stale CRCs to prevent corrupted response) */
+    obuf_reset(sei->obuf);
+
+    /* Step 5: Reset input buffer (reset checked flag for retry) */
+    ibuf_reset(sei->ibuf);
+
+    /* Step 6: Reset waitress queue (discard delayed system calls) */
 #ifdef SEI_WRAP_SC
     wts_reset(sei->wts);
 #endif
 
-    /* Step 4: Reset sei state to beginning of transaction */
+    /* Step 7: Reset sei state to beginning of transaction */
     sei->p = 0;
 
-    /* Step 5: Reset control flags for all phases */
+    /* Step 8: Reset control flags for all phases */
     for (int i = 0; i < redundancy_level; i++) {
         cfc_reset(&sei->cf[i]);
     }
@@ -821,6 +938,10 @@ sei_try_commit(sei_t* sei)
     int redundancy_level = sei->redundancy_level;
     assert(sei->p == redundancy_level - 1 && "must be in final phase before commit");
 
+#ifdef SEI_FAULT_INJECTION
+    fault_count_transaction();
+#endif
+
     /* Non-destructive commit: verify N-way DMR but don't modify state yet */
 
     DLOG2("N-way try_commit: verifying %d phases\n", redundancy_level);
@@ -829,6 +950,14 @@ sei_try_commit(sei_t* sei)
     for (int i = 0; i < redundancy_level; i++) {
         abuf_rewind(sei->cow[i]);
     }
+
+#ifdef SEI_FAULT_INJECTION
+    /* Inject fault into Phase 0 buffer just before DMR verification.
+     * cow[0] contains the NEW values from Phase 0 (after abuf_swap).
+     * DMR compares memory (NEW from Phase N-1) with cow[0] (NEW from Phase 0).
+     * Corrupting cow[0] causes mismatch detection. */
+    fault_inject_abuf(sei->cow[0]);
+#endif
 
     /* N-WAY DMR VERIFICATION: Compare phase 0 with all other phases
      *

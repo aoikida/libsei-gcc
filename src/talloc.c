@@ -30,6 +30,7 @@
 
 typedef struct {
     void* addr;
+    size_t size;  /* Size of allocation for range checking */
 #ifdef SEI_STACK_INFO
     sinfo_t* sinfo[SEI_DMR_REDUNDANCY];
 #endif
@@ -92,6 +93,7 @@ talloc_malloc(talloc_t* talloc, size_t size)
         else
             a->addr = malloc(size);
         assert (a->addr && "out of memory");
+        a->size = size;  /* Record size for range checking */
 #ifdef SEI_STACK_INFO
         a->sinfo[0] = sinfo_init(a->addr);
 #endif
@@ -209,6 +211,34 @@ talloc_rollback(talloc_t* talloc)
     for (int i = 0; i < redundancy_level; i++) {
         talloc->size[i] = 0;
     }
+}
+
+heap_t*
+talloc_get_heap(talloc_t* talloc)
+{
+    assert(talloc);
+    return talloc->heap;
+}
+
+/* Check if an address falls within any talloc allocation range.
+ * Returns 1 if addr is within [allocation.addr, allocation.addr + size),
+ * 0 otherwise. Used by abuf_restore_filtered() to skip heap memory. */
+int
+talloc_addr_in_range(talloc_t* talloc, void* addr)
+{
+    if (!talloc) return 0;
+
+    for (size_t i = 0; i < talloc->size[0]; i++) {
+        talloc_allocation_t* a = &talloc->allocations[i];
+        if (a->addr) {
+            char* start = (char*)a->addr;
+            char* end = start + a->size;
+            if ((char*)addr >= start && (char*)addr < end) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 #endif /* SEI_CPU_ISOLATION */

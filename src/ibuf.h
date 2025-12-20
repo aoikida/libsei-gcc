@@ -16,5 +16,6 @@ int     ibuf_prepare(ibuf_t* ibuf, const void* ptr, size_t size, uint32_t crc,
                     ibuf_mode_t mode);
 int     ibuf_correct(ibuf_t* ibuf);
 void    ibuf_switch(ibuf_t* ibuf);
+void    ibuf_reset(ibuf_t* ibuf);
 
 #endif /* _SEI_IBUF_H_ */

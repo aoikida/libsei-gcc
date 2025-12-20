@@ -33,10 +33,19 @@ uint32_t abuf_pop_uint32_t(abuf_t* abuf, const uint32_t* addr);
 uint64_t abuf_pop_uint64_t(abuf_t* abuf, const uint64_t* addr);
 
 #ifdef SEI_CPU_ISOLATION
+#include "talloc.h"
 void    abuf_restore(abuf_t* abuf);
+void    abuf_restore_filtered(abuf_t* abuf, talloc_t* talloc);
 int     abuf_try_cmp(abuf_t* a1, abuf_t* a2);
 int     abuf_try_cmp_heap(abuf_t* a1, abuf_t* a2);
 int     abuf_try_cmp_heap_nway(abuf_t** buffers, int n);
+#endif
+
+#ifdef SEI_FAULT_INJECTION
+void    abuf_corrupt_first(abuf_t* abuf);
+void    abuf_corrupt_random(abuf_t* abuf);
+void    abuf_corrupt_last(abuf_t* abuf);
+void    abuf_corrupt_multiple(abuf_t* abuf);
 #endif
 
 /* N-way専用関数 (N>=3でのみ利用可能) */

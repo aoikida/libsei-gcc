@@ -1390,7 +1390,9 @@ __sei_commit()
         cpu_isolation_migrate_current_thread();
 
         /* Step 3: Rollback transaction state (sets sei->p back to 0) */
+        //fprintf(stderr, "[ROLLBACK] Rolling back transaction (N=%d)\n", __sei_thread->sei->redundancy_level);
         sei_rollback(__sei_thread->sei);
+        //fprintf(stderr, "[ROLLBACK] Rollback complete\n");
 
         /* Step 3.5: Clean up thread-local buffers not managed by sei_t */
 #ifdef SEI_WRAP_SC

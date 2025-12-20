@@ -240,3 +240,10 @@ ibuf_correct(ibuf_t* ibuf)
         return crc_check == ibuf->tcrc;
     }
 }
+
+/* Reset ibuf for rollback (keep ptr/size/crc but reset checked flag) */
+void
+ibuf_reset(ibuf_t* ibuf)
+{
+    ibuf->checked = 0;
+}

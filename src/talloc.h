@@ -18,6 +18,8 @@ void      talloc_clean(talloc_t* talloc);
 
 #ifdef SEI_CPU_ISOLATION
 void      talloc_rollback(talloc_t* talloc);
+heap_t*   talloc_get_heap(talloc_t* talloc);
+int       talloc_addr_in_range(talloc_t* talloc, void* addr);
 #endif
 
 #endif /* _SEI_TALLOC_H_ */

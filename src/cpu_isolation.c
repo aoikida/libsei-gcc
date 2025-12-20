@@ -83,7 +83,7 @@ int cpu_isolation_blacklist_current(void) {
     cpu_isolation_state.num_blacklisted++;
     cpu_isolation_state.blacklist_events++;
 
-    //fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
+    //fprintf(stderr, "[CPU] blacklisted core %d (%d/%d cores blacklisted)\n", core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -110,7 +110,7 @@ void cpu_isolation_blacklist_core(int core_id) {
     cpu_isolation_state.num_blacklisted++;
     cpu_isolation_state.blacklist_events++;
 
-    //fprintf(stderr, "cpu_isolation: blacklisted core %d (%d/%d cores blacklisted)\n",core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
+    //fprintf(stderr, "[CPU] blacklisted core %d (%d/%d cores blacklisted)\n", core_id, cpu_isolation_state.num_blacklisted, cpu_isolation_state.num_cores);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 }
@@ -193,7 +193,7 @@ int cpu_isolation_migrate_current_thread(void) {
 
     cpu_isolation_state.migration_count++;
 
-    //fprintf(stderr, "cpu_isolation: migrated thread to core %d\n", new_core);
+    //fprintf(stderr, "[CPU] migrated thread to core %d\n", new_core);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -260,7 +260,7 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
 
     cpu_isolation_state.migration_count++;
 
-    //fprintf(stderr, "cpu_isolation: migrated thread to core %d (excluding core %d)\n",new_core, exclude_core);
+    //fprintf(stderr, "[CPU] migrated thread to core %d (excluding core %d)\n", new_core, exclude_core);
 
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 

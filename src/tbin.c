@@ -174,3 +174,38 @@ tbin_flush(tbin_t* tbin)
         tbin->nitems[i] = 0;
     }
 }
+
+/* Reset tbin without freeing memory (for rollback) */
+inline void
+tbin_reset(tbin_t* tbin)
+{
+    assert(tbin);
+    int redundancy_level = tbin->redundancy_level;
+
+    /* Clear all pointers without freeing */
+    int max_count = tbin->nitems[0];
+    for (int p = 1; p < redundancy_level; p++) {
+        if (tbin->nitems[p] > max_count)
+            max_count = tbin->nitems[p];
+    }
+
+    tbin_item_t* it = &tbin->items[0];
+    for (int i = 0; i < max_count; ++i, ++it) {
+        for (int p = 0; p < redundancy_level; p++) {
+            it->ptr[p] = NULL;
+        }
+#ifdef SEI_STACK_INFO
+        for (int p = 0; p < redundancy_level; p++) {
+            if (it->sinfo[p]) {
+                sinfo_fini(it->sinfo[p]);
+                it->sinfo[p] = NULL;
+            }
+        }
+#endif
+    }
+
+    /* Reset all phase counters */
+    for (int i = 0; i < redundancy_level; i++) {
+        tbin->nitems[i] = 0;
+    }
+}

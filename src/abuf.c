@@ -604,10 +604,135 @@ abuf_restore(abuf_t* abuf)
     abuf_clean(abuf);
 }
 
+/* Restore old values, but skip addresses within talloc allocations.
+ * This is used by sei_rollback() to avoid restoring values to
+ * heap-allocated memory that will be freed by talloc_rollback(). */
+void
+abuf_restore_filtered(abuf_t* abuf, talloc_t* talloc)
+{
+    DLOG2("[abuf_restore_filtered] restoring %d entries (talloc=%p)\n",
+          abuf->pushed, (void*)talloc);
+
+    int skipped = 0, restored = 0, skipped_ptr = 0;
+    for (int i = 0; i < abuf->pushed; i++) {
+        abuf_entry_t* e = &abuf->buf[i];
+
+        /* Skip talloc-allocated memory (will be freed by talloc_rollback) */
+        if (talloc_addr_in_range(talloc, e->addr)) {
+            DLOG3("[abuf_restore_filtered] skipping talloc addr %p\n", e->addr);
+            skipped++;
+            continue;
+        }
+
+        /* For pointer-sized values, check if the CURRENT VALUE at this address
+         * points to talloc-allocated memory. If so, we need to NULL it out
+         * because talloc_rollback() will free that memory.
+         * This handles the case where h->table[index] stores a pointer to
+         * struct entry (inside talloc). */
+        if (e->size == sizeof(void*)) {
+            void** ptr_addr = (void**)e->addr;
+            void* current_ptr = *ptr_addr;
+            if (current_ptr != NULL && talloc_addr_in_range(talloc, current_ptr)) {
+                DLOG3("[abuf_restore_filtered] NULLing ptr to talloc: addr=%p current=%p\n",
+                        e->addr, current_ptr);
+                *ptr_addr = NULL;  /* Clear the dangling pointer */
+                skipped_ptr++;
+                continue;
+            }
+        }
+
+        restored++;
+        /* Restore old value for stack/global memory */
+        switch (e->size) {
+        case sizeof(uint8_t):
+            ABUF_RESTORE(e, uint8_t);
+            break;
+        case sizeof(uint16_t):
+            ABUF_RESTORE(e, uint16_t);
+            break;
+        case sizeof(uint32_t):
+            ABUF_RESTORE(e, uint32_t);
+            break;
+        case sizeof(uint64_t):
+            ABUF_RESTORE(e, uint64_t);
+            break;
+        default:
+            assert(0 && "unknown size in abuf_restore_filtered");
+        }
+    }
+
+    DLOG2("[abuf_restore_filtered] done: restored=%d, skipped=%d, skipped_ptr=%d\n",
+            restored, skipped, skipped_ptr);
+
+    /* Clean the buffer after restoration */
+    abuf_clean(abuf);
+}
+#endif /* SEI_CPU_ISOLATION */
+
+/* ----------------------------------------------------------------------------
+ * Fault injection for ROLLBACK testing
+ * ------------------------------------------------------------------------- */
+#ifdef SEI_FAULT_INJECTION
+void
+abuf_corrupt_first(abuf_t* abuf)
+{
+    if (abuf->pushed == 0) return;
+
+    /* Corrupt the first entry's value by flipping the lowest bit */
+    abuf_entry_t* e = &abuf->buf[0];
+    ABUF_WVAL(e) ^= 1;
+
+    DLOG2("[abuf_corrupt_first] corrupted entry at %p, new value=0x%lx\n",
+          e->addr, ABUF_WVAL(e));
+}
+
+void
+abuf_corrupt_random(abuf_t* abuf)
+{
+    if (abuf->pushed == 0) return;
+
+    /* Corrupt a random entry's value */
+    int idx = rand() % abuf->pushed;
+    abuf_entry_t* e = &abuf->buf[idx];
+    ABUF_WVAL(e) ^= 0xDEADBEEF;
+
+    //fprintf(stderr, "[abuf_corrupt_random] corrupted entry #%d at %p\n", idx, e->addr);
+}
+
+void
+abuf_corrupt_last(abuf_t* abuf)
+{
+    if (abuf->pushed == 0) return;
+
+    /* Corrupt the last entry's value */
+    abuf_entry_t* e = &abuf->buf[abuf->pushed - 1];
+    ABUF_WVAL(e) ^= 0xFF;
+
+    //fprintf(stderr, "[abuf_corrupt_last] corrupted entry #%d at %p\n", abuf->pushed - 1, e->addr);
+}
+
+void
+abuf_corrupt_multiple(abuf_t* abuf)
+{
+    if (abuf->pushed < 2) return;
+
+    /* Corrupt multiple entries */
+    int count = 0;
+    for (int i = 0; i < abuf->pushed && count < 3; i += 2) {
+        abuf_entry_t* e = &abuf->buf[i];
+        ABUF_WVAL(e) ^= (1 << count);
+        count++;
+    }
+
+    //fprintf(stderr, "[abuf_corrupt_multiple] corrupted %d entries\n", count);
+}
+#endif /* SEI_FAULT_INJECTION */
+
 /* ----------------------------------------------------------------------------
  * Non-destructive comparison for SDC detection
  * Returns: 1 if buffers match, 0 if mismatch detected
  * ------------------------------------------------------------------------- */
+#ifdef SEI_CPU_ISOLATION
 
 int
 abuf_try_cmp(abuf_t* a1, abuf_t* a2)
