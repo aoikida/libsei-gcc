@@ -30,7 +30,7 @@ int cpu_isolation_init(void) {
     }
 
     /* Initialize available_cores bitmask (all cores initially available) */
-    if (cpu_isolation_state.num_cores >= 128) {
+    if (cpu_isolation_state.num_cores > 128) {
         fprintf(stderr, "cpu_isolation_init: too many cores (%d), max 128\n",
                 cpu_isolation_state.num_cores);
         return -1;
