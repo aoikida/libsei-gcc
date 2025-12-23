@@ -30,12 +30,12 @@ int cpu_isolation_init(void) {
     }
 
     /* Initialize available_cores bitmask (all cores initially available) */
-    if (cpu_isolation_state.num_cores >= 64) {
-        fprintf(stderr, "cpu_isolation_init: too many cores (%d), max 64\n",
+    if (cpu_isolation_state.num_cores >= 128) {
+        fprintf(stderr, "cpu_isolation_init: too many cores (%d), max 128\n",
                 cpu_isolation_state.num_cores);
         return -1;
     }
-    cpu_isolation_state.available_cores = (1ULL << cpu_isolation_state.num_cores) - 1;
+    cpu_isolation_state.available_cores = (((__uint128_t)1 << cpu_isolation_state.num_cores) - 1);
 
     /* Initialize blacklist (no cores blacklisted initially) */
     cpu_isolation_state.blacklist = 0;
@@ -72,7 +72,7 @@ int cpu_isolation_blacklist_current(void) {
     pthread_mutex_lock(&cpu_isolation_state.lock);
 
     /* Check if already blacklisted */
-    uint64_t core_mask = 1ULL << core_id;
+    __uint128_t core_mask = (__uint128_t)1 << core_id;
     if (cpu_isolation_state.blacklist & core_mask) {
         pthread_mutex_unlock(&cpu_isolation_state.lock);
         return core_id; /* Already blacklisted */
@@ -99,7 +99,7 @@ void cpu_isolation_blacklist_core(int core_id) {
     pthread_mutex_lock(&cpu_isolation_state.lock);
 
     /* Check if already blacklisted */
-    uint64_t core_mask = 1ULL << core_id;
+    __uint128_t core_mask = (__uint128_t)1 << core_id;
     if (cpu_isolation_state.blacklist & core_mask) {
         pthread_mutex_unlock(&cpu_isolation_state.lock);
         return; /* Already blacklisted */
@@ -121,7 +121,7 @@ int cpu_isolation_is_blacklisted(int core_id) {
     }
 
     pthread_mutex_lock(&cpu_isolation_state.lock);
-    uint64_t core_mask = 1ULL << core_id;
+    __uint128_t core_mask = (__uint128_t)1 << core_id;
     int is_blacklisted = (cpu_isolation_state.blacklist & core_mask) ? 1 : 0;
     pthread_mutex_unlock(&cpu_isolation_state.lock);
 
@@ -139,7 +139,7 @@ int cpu_isolation_get_available_count(void) {
 
 int cpu_isolation_get_next_available(void) {
     /* Caller must hold lock */
-    uint64_t available_mask = cpu_isolation_state.available_cores & ~cpu_isolation_state.blacklist;
+    __uint128_t available_mask = cpu_isolation_state.available_cores & ~cpu_isolation_state.blacklist;
 
     if (available_mask == 0) {
         return -1; /* All cores blacklisted */
@@ -147,7 +147,7 @@ int cpu_isolation_get_next_available(void) {
 
     /* Find first available core (lowest bit set) */
     for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
-        if (available_mask & (1ULL << i)) {
+        if (available_mask & ((__uint128_t)1 << i)) {
             return i;
         }
     }
@@ -213,10 +213,10 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
     pthread_mutex_lock(&cpu_isolation_state.lock);
 
     /* Build mask of available cores, excluding the specified core */
-    uint64_t available_mask = cpu_isolation_state.available_cores & ~cpu_isolation_state.blacklist;
+    __uint128_t available_mask = cpu_isolation_state.available_cores & ~cpu_isolation_state.blacklist;
 
     if (exclude_core >= 0 && exclude_core < cpu_isolation_state.num_cores) {
-        available_mask &= ~(1ULL << exclude_core);
+        available_mask &= ~((__uint128_t)1 << exclude_core);
     }
 
     if (available_mask == 0) {
@@ -230,7 +230,7 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
     /* Find first available core from the filtered mask */
     int new_core = -1;
     for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
-        if (available_mask & (1ULL << i)) {
+        if (available_mask & ((__uint128_t)1 << i)) {
             new_core = i;
             break;
         }

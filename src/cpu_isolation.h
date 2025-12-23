@@ -13,8 +13,8 @@
 
 /* CPU Isolation Manager state */
 typedef struct {
-    uint64_t blacklist;          /* Bitmask of blacklisted cores (1 = blacklisted) */
-    uint64_t available_cores;    /* Bitmask of initially available cores */
+    __uint128_t blacklist;       /* Bitmask of blacklisted cores (1 = blacklisted) */
+    __uint128_t available_cores; /* Bitmask of initially available cores */
     int num_cores;               /* Total number of CPU cores */
     int num_blacklisted;         /* Count of blacklisted cores */
     pthread_mutex_t lock;        /* Mutex for thread-safe operations */
