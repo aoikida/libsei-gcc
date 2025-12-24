@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include <sched.h>
+#include <inttypes.h>
 #include "fail.h"
 
 /* ----------------------------------------------------------------------------
@@ -329,7 +330,43 @@ abuf_cmp_heap(abuf_t* a1, abuf_t* a2)
         for (j = a1->pushed-1; j >= 0; --j) {
             //++loop;
             if (addr == a1->buf[j].addr) {
-                fail_ifn(ce != &a1->buf[j], "not duplicate! error detected");
+                if (unlikely(ce == &a1->buf[j])) {
+                    int idx = (int) (ce - a1->buf);
+                    abuf_entry_t* ce2 = (idx >= 0 && idx < a2->pushed) ? &a2->buf[idx] : NULL;
+
+                    switch (ce->size) {
+                    case sizeof(uint8_t): {
+                        uint8_t cur = *(uint8_t*) addr;
+                        uint8_t exp0 = ABUF_WVAX(ce, uint8_t, addr);
+                        uint8_t exp1 = ce2 ? ABUF_WVAX(ce2, uint8_t, addr) : 0;
+                        SEI_FAIL("not duplicate! addr=%p size=%" PRIu64 " cur=0x%02" PRIx8 " exp0=0x%02" PRIx8 " exp1=0x%02" PRIx8 " idx=%d",
+                                 addr, ce->size, cur, exp0, exp1, idx);
+                    }
+                    case sizeof(uint16_t): {
+                        uint16_t cur = *(uint16_t*) addr;
+                        uint16_t exp0 = ABUF_WVAX(ce, uint16_t, addr);
+                        uint16_t exp1 = ce2 ? ABUF_WVAX(ce2, uint16_t, addr) : 0;
+                        SEI_FAIL("not duplicate! addr=%p size=%" PRIu64 " cur=0x%04" PRIx16 " exp0=0x%04" PRIx16 " exp1=0x%04" PRIx16 " idx=%d",
+                                 addr, ce->size, cur, exp0, exp1, idx);
+                    }
+                    case sizeof(uint32_t): {
+                        uint32_t cur = *(uint32_t*) addr;
+                        uint32_t exp0 = ABUF_WVAX(ce, uint32_t, addr);
+                        uint32_t exp1 = ce2 ? ABUF_WVAX(ce2, uint32_t, addr) : 0;
+                        SEI_FAIL("not duplicate! addr=%p size=%" PRIu64 " cur=0x%08" PRIx32 " exp0=0x%08" PRIx32 " exp1=0x%08" PRIx32 " idx=%d",
+                                 addr, ce->size, cur, exp0, exp1, idx);
+                    }
+                    case sizeof(uint64_t): {
+                        uint64_t cur = *(uint64_t*) addr;
+                        uint64_t exp0 = ABUF_WVAX(ce, uint64_t, addr);
+                        uint64_t exp1 = ce2 ? ABUF_WVAX(ce2, uint64_t, addr) : 0;
+                        SEI_FAIL("not duplicate! addr=%p size=%" PRIu64 " cur=0x%016" PRIx64 " exp0=0x%016" PRIx64 " exp1=0x%016" PRIx64 " idx=%d",
+                                 addr, ce->size, cur, exp0, exp1, idx);
+                    }
+                    default:
+                        SEI_FAIL("not duplicate! addr=%p size=%" PRIu64 " idx=%d", addr, ce->size, idx);
+                    }
+                }
                 break;
             }
         }

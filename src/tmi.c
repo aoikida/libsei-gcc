@@ -546,34 +546,98 @@ ITM_WRITE_ALL(uint16_t, U2)
 ITM_WRITE_ALL(uint32_t, U4)
 ITM_WRITE_ALL(uint64_t, U8)
 
-// if x86_64
-typedef union { __uint128_t sse; uint64_t v[2];} m128;
+// x86_64 vector helpers
+typedef long long v2di __attribute__((vector_size(16)));
+typedef int v2si __attribute__((vector_size(8)));
+
+typedef union { v2di vec; uint64_t u64[2]; } m128;
+
+static inline uint64_t v2si_to_u64(v2si v)
+{
+    uint64_t out;
+    memcpy(&out, &v, sizeof(out));
+    return out;
+}
+
+static inline v2si u64_to_v2si(uint64_t v)
+{
+    v2si out;
+    memcpy(&out, &v, sizeof(out));
+    return out;
+}
+
 void
-_ITM_WM128(void* txn, __uint128_t* a, __uint128_t v)
+_ITM_WM128(v2di* a, v2di v)
 {
     m128 x;
     uintptr_t y;
 
-    x.sse = v;
+    x.vec = v;
     y = (uintptr_t) a;
 
-    _ITM_WU8((uint64_t*) y, x.v[0]);
-    _ITM_WU8((uint64_t*)(y+sizeof(uint64_t)), x.v[1]);
+    _ITM_WU8((uint64_t*) y, x.u64[0]);
+    _ITM_WU8((uint64_t*)(y+sizeof(uint64_t)), x.u64[1]);
 
 }
 
-__uint128_t
-_ITM_RM128(void* txn, __uint128_t* a)
+v2di
+_ITM_RM128(const v2di* a)
 {
     m128 x;
     uint64_t* y;
 
     y = (uint64_t*) a;
 
-    x.v[0] = _ITM_RU8(y);
-    x.v[1] = _ITM_RU8(y+1);
+    x.u64[0] = _ITM_RU8(y);
+    x.u64[1] = _ITM_RU8(y+1);
 
-    return x.sse;
+    return x.vec;
+}
+
+/* 64-bit "M" operations use an 8-byte vector type and pass/return via XMM0. */
+v2si
+_ITM_RM64(const v2si* a)
+{
+    return u64_to_v2si(_ITM_RU8((const uint64_t*) a));
+}
+
+v2si
+_ITM_RfWM64(const v2si* a)
+{
+    return _ITM_RM64(a);
+}
+
+void
+_ITM_WM64(v2si* a, v2si v)
+{
+    _ITM_WU8((uint64_t*) a, v2si_to_u64(v));
+}
+
+void
+_ITM_WaRM128(v2di* a, v2di v)
+{
+    _ITM_WM128(a, v);
+}
+
+void
+_ITM_WaWM128(v2di* a, v2di v)
+{
+    _ITM_WM128(a, v);
+}
+
+void
+_ITM_WaWM64(v2si* a, v2si v)
+{
+    _ITM_WM64(a, v);
+}
+
+double
+_ITM_RD(const double* addr)
+{
+    uint64_t bits = _ITM_RU8((const uint64_t*) addr);
+    double out;
+    memcpy(&out, &bits, sizeof(out));
+    return out;
 }
 
 void
@@ -1199,6 +1263,7 @@ pthread_mutex_unlock(pthread_mutex_t* lock)
 #endif /* SEI_MTL */
 #endif /* SEI_MT */
 
+/* sei_mutex_* functions are in src/sei_mutex.c (compiled with -fgnu-tm) */
 
 /* ----------------------------------------------------------------------------
  * sei_thread interface methods
