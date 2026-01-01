@@ -38,9 +38,15 @@
 #define SEI_DECLP(RETURN, FUNC, ARGS) SEI_PREF RETURN FUNC ARGS SEI_ATTR;
 #endif
 
+/* C++'s <assert.h> declares __assert_fail with a noexcept/__THROW specifier.
+ * Declaring it here as transaction_pure causes a conflicting declaration.
+ * Since libsei user code typically does not call __assert_fail directly, we
+ * avoid redeclaring it in C++ translation units. */
+#ifndef __cplusplus
 void __assert_fail (const char *__assertion, const char *__file,
                     unsigned int __line, const char *__function)
     __attribute__((transaction_pure));
+#endif
 
 SEI_DECLP(size_t, strlen,  (const char*))
 SEI_DECLP(int,    strcmp,  (const char*, const char*))
