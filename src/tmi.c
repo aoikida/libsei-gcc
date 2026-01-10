@@ -34,8 +34,10 @@
  * Used by both SEI_CPU_ISOLATION_MIGRATE_PHASES (static) and dynamic core migration API */
 #if defined(SEI_CPU_ISOLATION_MIGRATE_PHASES) || defined(SEI_CPU_ISOLATION)
 static __thread int phase0_core = -1;
+#ifndef SEI_CPU_ISOLATION_MIGRATE_PHASES
 static __thread cpu_set_t saved_affinity;
 static __thread int affinity_saved = 0;
+#endif
 #endif
 #endif
 
@@ -1375,11 +1377,13 @@ __sei_commit()
         }
 #endif
         if (core_migration && current_phase == 0) {
+#ifndef SEI_CPU_ISOLATION_MIGRATE_PHASES
             if (!affinity_saved) {
                 if (cpu_isolation_save_affinity(&saved_affinity) == 0) {
                     affinity_saved = 1;
                 }
             }
+#endif
             phase0_core = sched_getcpu();
         }
 #endif
@@ -1501,12 +1505,14 @@ __sei_commit()
 #endif /* SEI_CPU_ISOLATION */
 
 #ifdef SEI_CPU_ISOLATION
+#ifndef SEI_CPU_ISOLATION_MIGRATE_PHASES
     if (affinity_saved) {
         if (cpu_isolation_restore_affinity(&saved_affinity) != 0) {
             cpu_isolation_migrate_current_thread();
         }
         affinity_saved = 0;
     }
+#endif
 #endif
 
 #ifdef SEI_2PL
