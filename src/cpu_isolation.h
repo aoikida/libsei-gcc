@@ -6,8 +6,12 @@
 #ifndef CPU_ISOLATION_H
 #define CPU_ISOLATION_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <stdint.h>
 #include <pthread.h>
+#include <sched.h>
 
 #ifdef SEI_CPU_ISOLATION
 
@@ -17,6 +21,7 @@ typedef struct {
     __uint128_t available_cores; /* Bitmask of initially available cores */
     int num_cores;               /* Total number of CPU cores */
     int num_blacklisted;         /* Count of blacklisted cores */
+    int rr_cursor;               /* Round-robin cursor for core selection */
     pthread_mutex_t lock;        /* Mutex for thread-safe operations */
 
     /* Statistics */
@@ -94,6 +99,24 @@ int cpu_isolation_migrate_excluding_core(int exclude_core);
  * Returns: 0 on success, -1 on failure
  */
 int cpu_isolation_set_affinity(pthread_t thread);
+
+/**
+ * Save current thread CPU affinity mask
+ * Returns: 0 on success, -1 on failure
+ */
+int cpu_isolation_save_affinity(cpu_set_t* out);
+
+/**
+ * Restore CPU affinity mask after applying blacklist
+ * Returns: 0 on success, -1 if no valid cores remain or on failure
+ */
+int cpu_isolation_restore_affinity(const cpu_set_t* saved);
+
+/**
+ * Remove blacklisted cores from a CPU set
+ * Returns: 1 if any cores remain, 0 if empty
+ */
+int cpu_isolation_apply_blacklist(cpu_set_t* cpuset);
 
 /* --- Statistics --- */
 

@@ -50,6 +50,7 @@ int cpu_isolation_init(void) {
     /* Initialize statistics */
     cpu_isolation_state.migration_count = 0;
     cpu_isolation_state.blacklist_events = 0;
+    cpu_isolation_state.rr_cursor = 0;
 
     //fprintf(stderr, "cpu_isolation_init: initialized with %d cores\n",cpu_isolation_state.num_cores);
 
@@ -145,14 +146,21 @@ int cpu_isolation_get_next_available(void) {
         return -1; /* All cores blacklisted */
     }
 
-    /* Find first available core (lowest bit set) */
+    int start = cpu_isolation_state.rr_cursor;
+    if (start < 0 || start >= cpu_isolation_state.num_cores) {
+        start = 0;
+    }
+
+    /* Round-robin selection to avoid core hot-spotting */
     for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
-        if (available_mask & ((__uint128_t)1 << i)) {
-            return i;
+        int core = (start + i) % cpu_isolation_state.num_cores;
+        if (available_mask & ((__uint128_t)1 << core)) {
+            cpu_isolation_state.rr_cursor = (core + 1) % cpu_isolation_state.num_cores;
+            return core;
         }
     }
 
-    return -1; /* Should not reach here */
+    return -1; /* No available cores found */
 }
 
 int cpu_isolation_migrate_current_thread(void) {
@@ -227,11 +235,17 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
         exit(EXIT_FAILURE);
     }
 
-    /* Find first available core from the filtered mask */
+    int start = cpu_isolation_state.rr_cursor;
+    if (start < 0 || start >= cpu_isolation_state.num_cores) {
+        start = 0;
+    }
+
     int new_core = -1;
     for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
-        if (available_mask & ((__uint128_t)1 << i)) {
-            new_core = i;
+        int core = (start + i) % cpu_isolation_state.num_cores;
+        if (available_mask & ((__uint128_t)1 << core)) {
+            new_core = core;
+            cpu_isolation_state.rr_cursor = (core + 1) % cpu_isolation_state.num_cores;
             break;
         }
     }
@@ -291,6 +305,64 @@ int cpu_isolation_set_affinity(pthread_t thread) {
     if (ret != 0) {
         fprintf(stderr, "cpu_isolation_set_affinity: pthread_setaffinity_np failed: %s\n",
                 strerror(ret));
+        return -1;
+    }
+
+    return 0;
+}
+
+int cpu_isolation_save_affinity(cpu_set_t* out) {
+    if (!out) {
+        return -1;
+    }
+
+    pthread_t current_thread = pthread_self();
+    int ret = pthread_getaffinity_np(current_thread, sizeof(cpu_set_t), out);
+    if (ret != 0) {
+        fprintf(stderr, "cpu_isolation: pthread_getaffinity_np failed: %s\n", strerror(ret));
+        return -1;
+    }
+
+    return 0;
+}
+
+int cpu_isolation_apply_blacklist(cpu_set_t* cpuset) {
+    if (!cpuset) {
+        return 0;
+    }
+
+    pthread_mutex_lock(&cpu_isolation_state.lock);
+    __uint128_t blacklist = cpu_isolation_state.blacklist;
+    int num_cores = cpu_isolation_state.num_cores;
+    pthread_mutex_unlock(&cpu_isolation_state.lock);
+
+    int has_core = 0;
+    for (int i = 0; i < num_cores; i++) {
+        if (blacklist & ((__uint128_t)1 << i)) {
+            CPU_CLR(i, cpuset);
+        }
+        if (CPU_ISSET(i, cpuset)) {
+            has_core = 1;
+        }
+    }
+
+    return has_core;
+}
+
+int cpu_isolation_restore_affinity(const cpu_set_t* saved) {
+    if (!saved) {
+        return -1;
+    }
+
+    cpu_set_t mask = *saved;
+    if (!cpu_isolation_apply_blacklist(&mask)) {
+        return -1;
+    }
+
+    pthread_t current_thread = pthread_self();
+    int ret = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &mask);
+    if (ret != 0) {
+        fprintf(stderr, "cpu_isolation: pthread_setaffinity_np failed: %s\n", strerror(ret));
         return -1;
     }
 
