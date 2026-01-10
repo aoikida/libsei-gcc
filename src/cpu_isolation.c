@@ -235,17 +235,10 @@ int cpu_isolation_migrate_excluding_core(int exclude_core) {
         exit(EXIT_FAILURE);
     }
 
-    int start = cpu_isolation_state.rr_cursor;
-    if (start < 0 || start >= cpu_isolation_state.num_cores) {
-        start = 0;
-    }
-
     int new_core = -1;
     for (int i = 0; i < cpu_isolation_state.num_cores; i++) {
-        int core = (start + i) % cpu_isolation_state.num_cores;
-        if (available_mask & ((__uint128_t)1 << core)) {
-            new_core = core;
-            cpu_isolation_state.rr_cursor = (core + 1) % cpu_isolation_state.num_cores;
+        if (available_mask & ((__uint128_t)1 << i)) {
+            new_core = i;
             break;
         }
     }
